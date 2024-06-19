@@ -1,46 +1,53 @@
 const mongoose = require('mongoose');
+const { required } = require('nodemon/lib/config');
 const { Schema } = mongoose;
 
 const UserSchema = new Schema({
     first_name:{
         type:String,
-        default:'',
+        required:true,
         },
     last_name:{
         type:String,
-        default:'',
+        required:true,
     },
     email:{
         type:String,
-        default:'',
+        required:true,
+        trim:true,
+        unique:true
     },
     phone_number:{
         type:String,
-        default:'',
+        required:true,
     },
     base:{
         type:String,
-        default:'',
+        required:true,
     },
     title:{
         type:String,
-        default:'',
+        required:true,
     },
     responsible:{
         type:String,
-        default:'',
+        required:true,
     },
     speciality:{
         type:String,
-        default:'',
+        required:true,
     },
     Address:{
         type:String,
-        default:'',
+        required:true,
     },
     password:{
         type:String,
-        default:'',
+        required:true,
+    },
+    clinicName:{
+        type:String,
+        required:true,
     },
     // is_staff:{
     //     type:Boolean,
@@ -54,10 +61,10 @@ const UserSchema = new Schema({
     //     type:Date,
     //     default:"none"
     // },
-    // profile_picture:{
-    //     type:String,
-    //     default:"none"
-    // },
+    profile_picture:{
+        type:String,
+        default:""
+    },
     // is_superuser:{
     //     type:Boolean,
     //     default:false,

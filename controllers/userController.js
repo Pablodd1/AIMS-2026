@@ -7,10 +7,9 @@ const { response } = require("express");
 
 const createUser = asyncHandler(async (req,res)=>{
   
-  const { id,first_name, last_name ,email, phone_number , password,re_password  , title , Address , speciality , responsible , base} = req.body;
+  const { first_name, last_name ,email, phone_number , password,re_password  , title , Address , speciality , responsible , base , clinicName} = req.body;
   if (req.method == "POST") {
     try {
-      // console.log(first_name,last_name,email,phone_n/umber,password,title,Address,speciality,responsible,base)
 
       if(!first_name)
         return res.status(200).send({ msg:"Enter first name", response: false });
@@ -32,7 +31,15 @@ const createUser = asyncHandler(async (req,res)=>{
         return res.status(200).send({ msg:"Enter responsible", response: false });
       else if(!base)
         return res.status(200).send({ msg:"Enter base", response: false });
+      else if(!clinicName)
+        return res.status(200).send({ msg:"Enter clinicName", response: false });
       else{
+
+          const isAccExits = await User.findOne({email})
+          if(isAccExits!=null)
+          {
+            return res.status(200).send({ msg:"Accountt already exits with this email", response: false });
+          }
           let u = await User.create({
             first_name,
             last_name,
@@ -43,6 +50,7 @@ const createUser = asyncHandler(async (req,res)=>{
             responsible,
             speciality,
             Address,
+            clinicName,
             password: CryptoJS.AES.encrypt(
               password,
               process.env.JWTSECRET
@@ -127,11 +135,35 @@ catch(e)
 }
 })
 
+const updateProfile = asyncHandler(async(req,res)=>{
+  try{
+    const { _id,first_name, last_name ,email, phone_number  , title , Address , speciality , responsible , base,profile_picture} = req.body;
+    console.log(req.body.first_name)
+    await User.updateOne({_id},{first_name,last_name,email,phone_number,title,Address,speciality,responsible,base,profile_picture})
+    return res.status(200).json({respnse:true,msg:"Profile updated"})
+  }catch(e){
+    return res.status(200).json({respnse:false,msg:"Error try again"})
+  }
+})
+
+const checkUserToken = asyncHandler(async(req,res)=>{
+
+  try{
+    return res.json({response:true,msg:"token is valid"})
+  }
+  catch(e)
+  {
+    return res.json({response:false,msg:"token is not valid"})
+  }
+})
+
 
 
 module.exports = {
     createUser,
     signin,
     passcracker,
-    getUserInfo
+    getUserInfo,
+    updateProfile,
+    checkUserToken
 };

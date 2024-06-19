@@ -17,12 +17,12 @@ const protect = asyncHandler(async (req, res, next) => {
 
       next();
     } catch (error) {
-      res.status(200).json({success:false,msg:"Token-Session-Ended"});
+      res.status(200).json({response:false,msg:"Token-Session-Ended"});
     }
   }
 
   if (!token) {
-    res.status(200).json({success:false,msg:"Token-Session-Ended"});
+    res.status(200).json({response:false,msg:"Token-Session-Ended"});
     
   }
 });
