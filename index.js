@@ -1,6 +1,6 @@
 const {createUser,signin,passcracker,getUserInfo,updateProfile,checkUserToken} = require('./controllers/userController')
-const {createPatient,getPatients} = require('./controllers/patientController')
-const {createVisit,viewReport} = require('./controllers/visitController')
+const {createPatient,getPatients,getPatientById,updatePatient} = require('./controllers/patientController')
+const {createVisit,viewReport,getVists} = require('./controllers/visitController')
 const { protect } = require('./middleware/authMiddleware')
 const bodyParser = require('body-parser');
 const connectDB = require('./config/db')
@@ -29,10 +29,13 @@ app.get('/api/get/checkUserToken',protect,checkUserToken)
 //patient Routes
 app.post('/api/post/createPatient',protect,createPatient)
 app.get('/api/get/getPatients',protect,getPatients)
+app.get('/api/get/getPatientById',getPatientById)
+app.post('/api/post/updatePatient',updatePatient)
 
 //visit routes
-app.post('/api/post/createVisit',protect,createVisit);
-app.get("/api/get/viewReport",viewReport)
+app.post('/api/post/createVisit',protect,protect,createVisit);
+app.get("/api/get/viewReport",protect,viewReport)
+app.get('/api/get/getVists',protect,getVists)
 
 
 

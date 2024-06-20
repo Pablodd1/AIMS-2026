@@ -61,8 +61,9 @@ const createPatient = asyncHandler(async(req,res)=>{
 const getPatients = asyncHandler(async(req,res)=>{
   try
   {
-    const patiens = await Patient.find({doc_id:req.query.id})
-    res.status(200).json({patiens,response:true})
+    console.log(req.query.id)
+    const patients = await Patient.find({doc_id:req.query.id})
+    res.status(200).json({patients,response:true})
   }
   catch(e)
   {
@@ -70,11 +71,73 @@ const getPatients = asyncHandler(async(req,res)=>{
   }
 })
 
+const getPatientById = asyncHandler(async(req,res)=>{
+  try
+  {
+    const patient = await Patient.findOne({_id:req.query.id})
+    res.status(200).json({patient,response:true})
+  }
+  catch(e)
+  {
+    res.json({response:false})
+  }
+})
+
+const updatePatient = asyncHandler(async(req,res)=>{
+  try{
+
+    const { _id , FullName , birthDate , gender , address , phoneNumber , email , provider , policyName , groupNB , memberid } = req.body
+    if(!FullName)
+    return res.status(200).send({ msg:"Enter FullName", response: false });
+  else if(!birthDate)
+    return res.status(200).send({ msg:"Enter birthDate", response: false });
+  else if(!email || !email.includes("@"))
+    return res.status(200).send({ msg:"Enter email", response: false });
+  else if(!gender)
+    return res.status(200).send({ msg:"Enter gender", response: false });
+  else if(!phoneNumber)
+    return res.status(200).send({ msg:"Enter phoneNumber", response: false });
+  else if(!address)
+    return res.status(200).send({ msg:"Enter address", response: false });
+  else if(!provider)
+    return res.status(200).send({ msg:"Enter provider", response: false });
+  else if(!policyName)
+    return res.status(200).send({ msg:"Enter policyName", response: false });
+  else if(!groupNB)
+    return res.status(200).send({ msg:"Enter groupNB", response: false });
+  else if(!memberid)
+    return res.status(200).send({ msg:"Enter memberid", response: false });
+  else{
+    
+  await Patient.updateOne({_id},{
+        FullName,
+        birthDate,
+        gender,
+        address,
+        phoneNumber,
+        email,
+        provider,
+        policyName,
+        groupNB,
+        memberid
+    });
+    
+    return res.json({response:true,msg:"Patient information updated"});
+  }
+}
+catch(e){
+    return res.status(500).json({response:false,msg:"Server down"})
+}
+})
+
+
 
 
 
 
 module.exports = {
     createPatient,
-    getPatients
+    getPatients,
+    getPatientById,
+    updatePatient
 };

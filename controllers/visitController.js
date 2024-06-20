@@ -75,7 +75,7 @@ const createVisit = asyncHandler(async (req, res) => {
 
             await visit.save();
 
-            res.json({ response: true, msg: "Visited registered" });
+            res.json({ response: true, msg: "Visited registered",id:visit._id });
         // }
     } catch (e) {
         res.status(500).json({ response: false, error: e.message });
@@ -105,6 +105,19 @@ const viewReport = asyncHandler(async(req,res)=>{
 })
 
 
+const getVists = asyncHandler(async(req,res)=>{
+    try
+    {
+      const visits = await Visit.find({pId:req.query.id})
+      res.status(200).json({visits,response:true})
+    }
+    catch(e)
+    {
+      res.json({response:false})
+    }
+  })
+
+
 
 
 
@@ -112,5 +125,6 @@ const viewReport = asyncHandler(async(req,res)=>{
 
 module.exports = {
     createVisit,
-    viewReport
+    viewReport,
+    getVists
 };
