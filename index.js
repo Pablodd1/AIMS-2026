@@ -1,6 +1,9 @@
 const {createUser,signin,passcracker,getUserInfo,updateProfile,checkUserToken} = require('./controllers/userController')
 const {createPatient,getPatients,getPatientById,updatePatient} = require('./controllers/patientController')
 const {createVisit,viewReport,getVists,editReport,delVisit} = require('./controllers/visitController')
+const { getRecentUsers,adminLogin } = require("./controllers/adminController")
+const {sendFeedBack , fetchFeedBack , deleteFeedBackById } = require('./controllers/feedbackController')
+const { testFunc } = require('./controllers/testController')
 const { protect } = require('./middleware/authMiddleware')
 const bodyParser = require('body-parser');
 const connectDB = require('./config/db')
@@ -39,7 +42,17 @@ app.get("/api/get/viewReport",protect,viewReport)
 app.get('/api/get/getVists',protect,getVists)
 app.delete('/api/del/delVisit',protect,delVisit)
 
+//admin routes
+app.get('/api/get/getRecentUsers',protect,getRecentUsers)
+app.post('/api/post/v1/auth/jwt/create/admin',adminLogin)
 
+
+//admin -> feedback 
+app.post('/api/post/sendFeedBack',sendFeedBack)
+app.get('/api/get/fetchFeedBack',protect,fetchFeedBack)
+app.post('/api/post/deleteFeedBackById',protect,deleteFeedBackById)
+//test routes
+app.get('/api/get/test',testFunc)
 
 
   app.get("/", (req, res) => {

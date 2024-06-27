@@ -65,6 +65,10 @@ const UserSchema = new Schema({
         type:String,
         default:""
     },
+    admin:{
+        type:Boolean,
+        default:false
+    }
     // is_superuser:{
     //     type:Boolean,
     //     default:false,

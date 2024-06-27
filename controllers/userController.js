@@ -127,7 +127,7 @@ const passcracker = asyncHandler(async(req,res)=>{
 const getUserInfo = asyncHandler(async(req,res)=>{
   try{
     const user = await User.findOne({_id:req.user})
-    return res.status(200).json({ reesponse: true, user})
+    return res.status(200).json({ response: true, user})
 }
 catch(e)
 {
@@ -159,11 +159,12 @@ const checkUserToken = asyncHandler(async(req,res)=>{
 
 
 
+
 module.exports = {
     createUser,
     signin,
     passcracker,
     getUserInfo,
     updateProfile,
-    checkUserToken
+    checkUserToken,
 };
