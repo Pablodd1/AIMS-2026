@@ -1,7 +1,7 @@
 const {createUser,signin,passcracker,getUserInfo,updateProfile,checkUserToken} = require('./controllers/userController')
 const {createPatient,getPatients,getPatientById,updatePatient} = require('./controllers/patientController')
 const {createVisit,viewReport,getVists,editReport,delVisit} = require('./controllers/visitController')
-const { getRecentUsers,adminLogin } = require("./controllers/adminController")
+const { getRecentUsers,adminLogin , fetchAllDoctors} = require("./controllers/adminController")
 const {sendFeedBack , fetchFeedBack , deleteFeedBackById } = require('./controllers/feedbackController')
 const { testFunc } = require('./controllers/testController')
 const { protect } = require('./middleware/authMiddleware')
@@ -30,14 +30,14 @@ app.get('/api/v1/auth/users/me',protect,getUserInfo)
 app.post('/api/post/updateProfile',protect,updateProfile)
 app.get('/api/get/checkUserToken',protect,checkUserToken)
 //patient Routes
-app.post('/api/post/createPatient',protect,createPatient)
+app.post('/api/post/createPatient',createPatient)
 app.get('/api/get/getPatients',protect,getPatients)
 app.get('/api/get/getPatientById',getPatientById)
 app.post('/api/post/updatePatient',updatePatient)
 app.get("/api/get/editReport",protect,editReport)
 
 //visit routes
-app.post('/api/post/createVisit',protect,protect,createVisit);
+app.post('/api/post/createVisit',protect,createVisit);
 app.get("/api/get/viewReport",protect,viewReport)
 app.get('/api/get/getVists',protect,getVists)
 app.delete('/api/del/delVisit',protect,delVisit)
@@ -51,6 +51,8 @@ app.post('/api/post/v1/auth/jwt/create/admin',adminLogin)
 app.post('/api/post/sendFeedBack',sendFeedBack)
 app.get('/api/get/fetchFeedBack',protect,fetchFeedBack)
 app.post('/api/post/deleteFeedBackById',protect,deleteFeedBackById)
+//admin->doctors
+app.get('/api/get/fetchAllDoctors',protect,fetchAllDoctors)
 //test routes
 app.get('/api/get/test',testFunc)
 

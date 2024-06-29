@@ -2,8 +2,8 @@ const asyncHandler = require("express-async-handler");
 const FeedBack  = require('../models/Feedback')
 
 const sendFeedBack = asyncHandler(async(req,res)=>{
-    const {username, email, msg} = req.body;
-    if(!username || !email || !msg)
+    const {email, msg} = req.body;
+    if(!email || !msg)
     {
         return res.status(200).json({success:false,msg:'fill form correctly if you want to submit'})
     }
@@ -11,7 +11,7 @@ const sendFeedBack = asyncHandler(async(req,res)=>{
     try
     {
         await FeedBack.create({
-            username,email,msg
+            email,msg
         })
 
         return res.status(200).json({success:true,msg:'Your FeedBack has been sent to admin'})

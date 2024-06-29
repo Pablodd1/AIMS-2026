@@ -34,7 +34,6 @@ const createPatient = asyncHandler(async(req,res)=>{
         if(patientExists!=null){
             return res.json({response:false,msg:"Patient already exists in you patient list"});
         }
-       console.log(doc_id)
        let p =  await Patient.create({
             doc_id,
             FullName,
@@ -48,7 +47,7 @@ const createPatient = asyncHandler(async(req,res)=>{
             groupNB,
             memberid
         });
-        p.save()
+        // p.save()
         
          res.json({response:true,msg:"Patient added in your list",id:p._id});
       }

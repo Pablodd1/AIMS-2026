@@ -3,14 +3,9 @@ const { Schema } = mongoose;
 
 const FeedBackSchema = new Schema({
     __v: { type: Number, default: 0 }, 
-    username:{
-        type:String,
-         required:true
-        },
     email:{
         type:String,
         required:true,
-        unique:true,
         trim: true
     },
     msg:{
