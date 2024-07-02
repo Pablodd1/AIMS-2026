@@ -1,7 +1,7 @@
 const {createUser,signin,passcracker,getUserInfo,updateProfile,checkUserToken} = require('./controllers/userController')
 const {createPatient,getPatients,getPatientById,updatePatient} = require('./controllers/patientController')
 const {createVisit,viewReport,getVists,editReport,delVisit} = require('./controllers/visitController')
-const { getRecentUsers,adminLogin , fetchAllDoctors} = require("./controllers/adminController")
+const { getRecentUsers,adminLogin , fetchAllDoctors, fetchAllAdmins} = require("./controllers/adminController")
 const {sendFeedBack , fetchFeedBack , deleteFeedBackById } = require('./controllers/feedbackController')
 const { testFunc } = require('./controllers/testController')
 const { protect } = require('./middleware/authMiddleware')
@@ -53,6 +53,8 @@ app.get('/api/get/fetchFeedBack',protect,fetchFeedBack)
 app.post('/api/post/deleteFeedBackById',protect,deleteFeedBackById)
 //admin->doctors
 app.get('/api/get/fetchAllDoctors',protect,fetchAllDoctors)
+//admin->admins
+app.get('/api/get/fetchAllAdmins',protect,fetchAllAdmins)
 //test routes
 app.get('/api/get/test',testFunc)
 

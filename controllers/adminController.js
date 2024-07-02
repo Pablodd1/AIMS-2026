@@ -96,9 +96,30 @@ const fetchAllDoctors = asyncHandler(async(req,res)=>{
         return res.status(200).send({success:false,msg:'Server Error'})
     }
   });
+
+const fetchAllAdmins = asyncHandler(async(req,res)=>{
+    try{
+      const {page} = req.query;
+      const totalData = await User.find({admin:true}).count();
+      const dataPerPage = 10;
+  
+      const totalPages = Math.ceil(totalData / dataPerPage);
+      let currentPage = 1;
+  
+      if(Number(page) >= 1) currentPage = Number(page);
+  
+      let offset = (currentPage - 1) * dataPerPage;
+        const users = await User.find({admin:true}).sort({ createdAt: -1 }).skip(offset).limit(dataPerPage)
+        return res.status(200).send({success:true,users,totalPages})
+    }
+    catch(e)
+    {
+        return res.status(200).send({success:false,msg:'Server Error'})
+    }
+  });
   
 
-  const createDoctor = asyncHandler(async (req,res)=>{
+const createDoctor = asyncHandler(async (req,res)=>{
   
     const { first_name,last_name, email ,password, phone , access , role , address} = req.body;
     if (req.method == "POST") {
@@ -149,6 +170,7 @@ const fetchAllDoctors = asyncHandler(async(req,res)=>{
 module.exports = {
     getRecentUsers,
     adminLogin,
-    fetchAllDoctors
+    fetchAllDoctors,
+    fetchAllAdmins
     
 };
