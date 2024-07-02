@@ -54,7 +54,7 @@ const createPatient = asyncHandler(async(req,res)=>{
 
   
   try {
-
+     console.log(doc_id)
     // Check if patient already exists
     const patientExists = await Patient.findOne({ email });
     if (patientExists) {
@@ -91,7 +91,7 @@ const createPatient = asyncHandler(async(req,res)=>{
         symptomSeverity,
         symptomHistory,
         symptomTriggers,
-        
+
         occupation,
         lifestyle,
 
@@ -110,7 +110,7 @@ const createPatient = asyncHandler(async(req,res)=>{
     // Save patient to database
     await newPatient.save();
 
-    res.status(201).json({ response: true, msg: "Patient registered", id: newPatient._id });
+    res.status(200).json({ response: true, msg: "Patient registered", id: newPatient._id });
 } catch (error) {
     console.error(error);
     res.status(500).json({ response: false, msg: "Server error" });
