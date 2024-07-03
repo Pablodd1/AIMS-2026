@@ -3,12 +3,15 @@ const {createPatient,getPatients,getPatientById,updatePatient} = require('./cont
 const {createVisit,viewReport,getVists,editReport,delVisit} = require('./controllers/visitController')
 const { getRecentUsers,adminLogin , fetchAllDoctors, fetchAllAdmins} = require("./controllers/adminController")
 const {sendFeedBack , fetchFeedBack , deleteFeedBackById } = require('./controllers/feedbackController')
+const { speechToTextForm } = require('./controllers/openaiController')
 const { testFunc } = require('./controllers/testController')
 const { protect } = require('./middleware/authMiddleware')
 const bodyParser = require('body-parser');
 const connectDB = require('./config/db')
 const express = require("express");
 const cors = require('cors');
+const multer = require('multer');
+const path = require('path');
 require('dotenv').config();
 connectDB()
 
@@ -21,6 +24,21 @@ app.use(express.json()); // to accept json data
 app.use(cors({
   origin: '*' // Replace with your Next.js frontend URL
 }));
+
+
+//multer
+const storage = multer.diskStorage({
+  destination: function(req, file, cb) {
+    // Define where to store the files
+    cb(null, './uploads'); // Uploads directory should exist
+  },
+  filename: (req, file, cb) => {
+    cb(null, file.fieldname + '-' + Date.now() + path.extname('audio.webm'));
+  }
+});
+
+const upload = multer({ storage: storage });
+
 
 //user Routes
 app.post('/api/v1/auth/users/',createUser);
@@ -57,6 +75,10 @@ app.get('/api/get/fetchAllDoctors',protect,fetchAllDoctors)
 app.get('/api/get/fetchAllAdmins',protect,fetchAllAdmins)
 //test routes
 app.get('/api/get/test',testFunc)
+
+
+//oepnai
+app.post('/api/post/speechToText',upload.single('file'),speechToTextForm)
 
 
   app.get("/", (req, res) => {
