@@ -22,7 +22,7 @@ const PatientSchema = new Schema({
     visitReason: { type: String, required: false, required: false },
     symptomDescription: { type: String, required: false },
     symptomDuration: { type: String, required: false },
-    symptomSeverity: { type: Number,  required: false },
+    symptomSeverity: { type: String,  required: false },
     symptomHistory: { type: String, required: false },
     symptomTriggers: { type: String, required: false },
     occupation: { type: String, required: false },

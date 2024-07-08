@@ -33,7 +33,7 @@ async function extractAnswers(text){
             messages: [
                 {
                     role: "system",
-                    content: `Extracts answers and formats them into JSON. Return a null answer if you don't find the answer to that question in the provided text.output must be english langauge
+                    content: `Extracts answers and formats them into JSON. Return a null answer if you don't find the answer to that question in the provided text.output must be in english language
                     "questions": [
                      { "id": 1, "question": "Please state your full name." },
                      { "id": 2, "question": "What is your date of birth?" },
@@ -269,6 +269,7 @@ async function extractSummary(text){
     }
 }
 
+
 const speechToTextForm =  asyncHandler(async(req,res)=>{
     try
     {
@@ -293,6 +294,7 @@ const speechToTextForm =  asyncHandler(async(req,res)=>{
     
 })
 
+
 const patientDataToSummary =  asyncHandler(async(req,res)=>{
     try
     {
@@ -305,8 +307,6 @@ const patientDataToSummary =  asyncHandler(async(req,res)=>{
     }
     
 })
-
-
 
 
 
