@@ -2,8 +2,8 @@ const asyncHandler = require("express-async-handler");
 const User = require('../models/User')
 const generateToken = require('../config/generateToken')
 const CryptoJS = require("crypto-js");
-const { response } = require("express");
-
+const { sign } = require("jsonwebtoken");
+const cloudinary = require('cloudinary').v2;
 
 const createUser = asyncHandler(async (req,res)=>{
   
@@ -137,9 +137,9 @@ catch(e)
 
 const updateProfile = asyncHandler(async(req,res)=>{
   try{
-    const { _id,first_name, last_name ,email, phone_number  , title , Address , speciality , responsible , base,profile_picture} = req.body;
-    console.log(req.body.first_name)
-    await User.updateOne({_id},{first_name,last_name,email,phone_number,title,Address,speciality,responsible,base,profile_picture})
+    const { _id,first_name, last_name ,email, phone_number  , title , Address , speciality , responsible , base,clinicName} = req.body;
+   
+    await User.updateOne({_id},{first_name,last_name,email,phone_number,title,Address,speciality,responsible,base,clinicName})
     return res.status(200).json({respnse:true,msg:"Profile updated"})
   }catch(e){
     return res.status(200).json({respnse:false,msg:"Error try again"})
@@ -158,6 +158,76 @@ const checkUserToken = asyncHandler(async(req,res)=>{
 })
 
 
+const updateSignature = asyncHandler(async(req,res)=>{
+
+   const { _id , signature } = req.body;
+   try{
+     await User.updateOne({_id},{signature})
+     return res.json({"response":true,msg:"Signature updated"})
+    }catch(e)
+    {
+      return res.json({"response":false,msg:"Failed to updated signature try again"})
+    }
+})
+const updateProfiePicture = asyncHandler(async(req,res)=>{
+
+  const { _id , profile_picture } = req.body;
+  try{
+    await User.updateOne({_id},{profile_picture})
+    return res.json({"response":true,msg:"Profile picture updated"})
+   }catch(e)
+   {
+     return res.json({"response":false,msg:"Failed to updated profile picture try again"})
+   }
+})
+const updateClinicLogo = asyncHandler(async(req,res)=>{
+
+  const { _id , clinic_logo } = req.body;
+  try{
+    await User.updateOne({_id},{clinic_logo})
+    return res.json({"response":true,msg:"Clinic logo updated"})
+   }catch(e)
+   {
+     return res.json({"response":false,msg:"Failed to updated Clinic logo try again"})
+   }
+})
+
+cloudinary.config({
+  cloud_name: 'dlasb4krd',
+  api_key: '486585293283911',
+  api_secret: 'LUDKjvJk-r_Xn1Dt7v3OSlIyK0'
+});
+
+async function deleteImage(publicId) {
+  try {
+    const response = await cloudinary.uploader.destroy(publicId);
+    console.log(response)
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+const delSignature = asyncHandler(async(req,res)=>{
+  const { _id , publicId } = req.body;
+  console.log(_id,publicId)
+  const rres = await deleteImage("co1pbf9gbmy18rc1noy0")
+  console.log(rres)
+  //  try{
+  //    if(await deleteImage(publicId) == true)
+  //    {
+  //      await User.updateOne({_id},{signature:""})
+  //      return res.json({"response":true,msg:"Signature deleted"})
+  //     }else{
+        return res.json({"response":false,msg:"Failed to delete signature try again"})
+//       }
+//     }catch(e)
+//     {
+//       return res.json({"response":false,msg:"Failed to delete signature try again"})
+//     }
+})
+
+
 
 
 module.exports = {
@@ -167,4 +237,8 @@ module.exports = {
     getUserInfo,
     updateProfile,
     checkUserToken,
+    updateSignature,
+    delSignature,
+    updateProfiePicture,
+    updateClinicLogo
 };

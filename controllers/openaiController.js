@@ -33,7 +33,7 @@ async function extractAnswers(text){
             messages: [
                 {
                     role: "system",
-                    content: `Extracts answers and formats them into JSON. Return a null answer if you don't find the answer to that question in the provided text.
+                    content: `Extracts answers and formats them into JSON. Return a null answer if you don't find the answer to that question in the provided text.output must be english langauge
                     "questions": [
                      { "id": 1, "question": "Please state your full name." },
                      { "id": 2, "question": "What is your date of birth?" },
@@ -246,6 +246,28 @@ async function extractAnswers(text){
     }
 }
 
+async function extractSummary(text){
+    try {
+        console.log(text)
+        const response = await openai.chat.completions.create({
+            model: "gpt-4o",
+            temperature: 0,
+            messages: [
+                {
+                    role: "system",
+                    content: `make a detailed summary of given text. it's a patient detail and also correct grammer if any mistake in it. return as a string paragraph`
+                },
+                {
+                    role: "user",
+                    content:JSON.stringify(text)
+                }
+            ]
+        });
+        return response.choices[0].message.content;;
+    } catch (error) {
+        return { error: "Error processing" };
+    }
+}
 
 const speechToTextForm =  asyncHandler(async(req,res)=>{
     try
@@ -255,13 +277,31 @@ const speechToTextForm =  asyncHandler(async(req,res)=>{
             return res.status(400).send('No file uploaded.');
         }
         const text = await speechToText(req.file)
-        const answers = await extractAnswers(text)
-        res.json({'success':true,summary:text,data:JSON.parse(answers)});
+        console.log(text)
+        const [
+            answers, 
+        ] = await Promise.all([
+            extractAnswers(text),
+        ]);
+        res.json({'success':true,data:JSON.parse(answers)});
         
         
     }catch(e)
     {
-        res.send({'success':false,msg:"Error"})
+        res.send({success:false,msg:"Error in processing inforrmation"})
+    }
+    
+})
+
+const patientDataToSummary =  asyncHandler(async(req,res)=>{
+    try
+    {
+        const summary = await extractSummary(req.body)
+        res.json({success:true,summary});
+        
+    }catch(e)
+    {
+        res.send({success:false,msg:"Error in processing inforrmation"})
     }
     
 })
@@ -274,6 +314,12 @@ const speechToTextForm =  asyncHandler(async(req,res)=>{
 
 
 
+
+
+
+
+
 module.exports = {
     speechToTextForm,
+    patientDataToSummary
 };

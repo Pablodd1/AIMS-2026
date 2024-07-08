@@ -1,16 +1,6 @@
 const asyncHandler = require("express-async-handler");
 const Patient = require('../models/Patients')
 
-const validateFields = (fields) => {
-  for (const field of fields) {
-      if (!field.value) {
-          return { msg: `Enter ${field.name}`, response: false };
-      } else if (field.name === 'email' && !field.value.includes('@')) {
-          return { msg: 'Enter valid email', response: false };
-      }
-  }
-  return null;
-};
 
 
 const createPatient = asyncHandler(async(req,res)=>{
@@ -51,8 +41,10 @@ const createPatient = asyncHandler(async(req,res)=>{
     neurologicalHistory,
     summary
 } = req.body;
-
   
+  
+
+   
   try {
     const patientExists = await Patient.findOne({ email });
     if (patientExists) {
@@ -108,7 +100,7 @@ const createPatient = asyncHandler(async(req,res)=>{
     // Save patient to database
     await newPatient.save();
 
-    res.status(200).json({ response: true, msg: "Patient registered" });
+    res.status(200).json({ response: true, msg: "Patient registered",patients:newPatient });
 } catch (error) {
     console.error(error);
     res.status(500).json({ response: false, msg: "Server error" });
@@ -118,7 +110,6 @@ const createPatient = asyncHandler(async(req,res)=>{
 const getPatients = asyncHandler(async(req,res)=>{
   try
   {
-    console.log(req.query.id)
     const patients = await Patient.find({doc_id:req.query.id})
     res.status(200).json({patients,response:true})
   }
@@ -143,50 +134,81 @@ const getPatientById = asyncHandler(async(req,res)=>{
 const updatePatient = asyncHandler(async(req,res)=>{
   try{
 
-    const { _id , FullName , birthDate , gender , address , phoneNumber , email , provider , policyName , groupNB , memberid } = req.body
-    if(!FullName)
-    return res.status(200).send({ msg:"Enter FullName", response: false });
-  else if(!birthDate)
-    return res.status(200).send({ msg:"Enter birthDate", response: false });
-  else if(!email || !email.includes("@"))
-    return res.status(200).send({ msg:"Enter email", response: false });
-  else if(!gender)
-    return res.status(200).send({ msg:"Enter gender", response: false });
-  else if(!phoneNumber)
-    return res.status(200).send({ msg:"Enter phoneNumber", response: false });
-  else if(!address)
-    return res.status(200).send({ msg:"Enter address", response: false });
-  else if(!provider)
-    return res.status(200).send({ msg:"Enter provider", response: false });
-  else if(!policyName)
-    return res.status(200).send({ msg:"Enter policyName", response: false });
-  else if(!groupNB)
-    return res.status(200).send({ msg:"Enter groupNB", response: false });
-  else if(!memberid)
-    return res.status(200).send({ msg:"Enter memberid", response: false });
-  else{
+    // const { _id } = req.body
+
+    const {
+      _id, fullName, dateOfBirth, gender, email, phoneNumber, emergencyContactPhoneNumber,
+      insuranceProvider, insurancePolicyNumber, policyHolderName, groupNumber, primaryCarePhysician,
+      medications, allergies, chronicConditions, pastSurgeries, familyMedicalHistory, visitReason,
+      symptomDescription, symptomDuration, symptomSeverity, symptomHistory, symptomTriggers,
+      occupation, lifestyle, exerciseAndDiet, livingArrangement, recentHealthChanges,
+      cardiovascularHistory, respiratoryHistory, gastrointestinalHistory, musculoskeletalHistory,
+      neurologicalHistory, summary
+    } = req.body;
     
-  await Patient.updateOne({_id},{
-        FullName,
-        birthDate,
-        gender,
-        address,
-        phoneNumber,
-        email,
-        provider,
-        policyName,
-        groupNB,
-        memberid
-    });
+    // const requiredFields = {
+    //   fullName, dateOfBirth, gender, email, phoneNumber, emergencyContactPhoneNumber,
+    //   insuranceProvider, insurancePolicyNumber, policyHolderName, groupNumber, primaryCarePhysician,
+    //   medications, allergies, chronicConditions, pastSurgeries, familyMedicalHistory, visitReason,
+    //   symptomDescription, symptomDuration, symptomSeverity, symptomHistory, symptomTriggers,
+    //   occupation, lifestyle, exerciseAndDiet, livingArrangement, recentHealthChanges,
+    //   cardiovascularHistory, respiratoryHistory, gastrointestinalHistory, musculoskeletalHistory,
+    //   neurologicalHistory, summary
+    // };
+    
+    // for (const [field, value] of Object.entries(requiredFields)) {
+    //   if (!value || (field === "email" && !value.includes("@"))) {
+    //     return res.status(200).send({ msg: `Enter ${field}`, response: false });
+    //   }
+    // }
+  
+    
+  await Patient.updateOne({_id},req.body);
     
     return res.json({response:true,msg:"Patient information updated"});
-  }
+
 }
 catch(e){
     return res.status(500).json({response:false,msg:"Server down"})
 }
 })
 
+const getTodayPatients = asyncHandler(async(req,res)=>{
+  try {
+    // Calculate the date 24 hours ago
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  
+    // Find patients with appointments created after twentyFourHoursAgo for the given doc_id
+    const patients = await Patient.find({
+      doc_id: req.query.id,
+      createdAt: { $gte: twentyFourHoursAgo }
+    });
+  
+    res.status(200).json({ patients, response: true });
+  } catch (e) {
+    res.json({ response: false });
+  }
+})
+
+const getPaitentsCount = asyncHandler(async(req,res)=>{
+    Promise.all([
+      Patient.find({ doc_id: req.user }).count().exec(),
+      Patient.find({ 
+        doc_id: req.user,
+        createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }
+      }).count().exec()
+    ])
+    .then(([totalPatientCount, todayPatientCount]) => {
+      // Handle successful execution
+      return res.json({ response: true, totalPatientCount, todayPatientCount });
+    })
+    .catch((err) => {
+      // Handle errors in either query execution
+      console.error("Error fetching patient counts:", err);
+      return res.json({ response: false });
+    });
+  
+})
 
 
 
@@ -196,5 +218,7 @@ module.exports = {
     createPatient,
     getPatients,
     getPatientById,
-    updatePatient
+    updatePatient,
+    getTodayPatients,
+    getPaitentsCount
 };

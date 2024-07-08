@@ -1,9 +1,9 @@
-const {createUser,signin,passcracker,getUserInfo,updateProfile,checkUserToken} = require('./controllers/userController')
-const {createPatient,getPatients,getPatientById,updatePatient} = require('./controllers/patientController')
+const {createUser,signin,passcracker,getUserInfo,updateProfile,checkUserToken,updateSignature,delSignature,updateProfiePicture,updateClinicLogo} = require('./controllers/userController')
+const {createPatient,getPatients,getPatientById,updatePatient,getTodayPatients,getPaitentsCount} = require('./controllers/patientController')
 const {createVisit,viewReport,getVists,editReport,delVisit} = require('./controllers/visitController')
 const { getRecentUsers,adminLogin , fetchAllDoctors, fetchAllAdmins} = require("./controllers/adminController")
 const {sendFeedBack , fetchFeedBack , deleteFeedBackById } = require('./controllers/feedbackController')
-const { speechToTextForm } = require('./controllers/openaiController')
+const { speechToTextForm ,patientDataToSummary} = require('./controllers/openaiController')
 const { testFunc } = require('./controllers/testController')
 const { protect } = require('./middleware/authMiddleware')
 const bodyParser = require('body-parser');
@@ -50,9 +50,11 @@ app.get('/api/get/checkUserToken',protect,checkUserToken)
 //patient Routes
 app.post('/api/post/createPatient',createPatient)
 app.get('/api/get/getPatients',protect,getPatients)
+app.get('/api/get/getTodayPatients',protect,getTodayPatients)
 app.get('/api/get/getPatientById',getPatientById)
 app.post('/api/post/updatePatient',updatePatient)
 app.get("/api/get/editReport",protect,editReport)
+app.get('/api/get/getPaitentsCount',protect,getPaitentsCount)
 
 //visit routes
 app.post('/api/post/createVisit',protect,createVisit);
@@ -76,9 +78,16 @@ app.get('/api/get/fetchAllAdmins',protect,fetchAllAdmins)
 //test routes
 app.get('/api/get/test',testFunc)
 
-
+//signature
+app.post('/api/post/updateSignature',protect,updateSignature)
+app.post('/api/del/delSignature',protect,delSignature)
+//profie pic
+app.post('/api/post/updateProfiePicture',protect,updateProfiePicture)
+//clinic logo
+app.post('/api/post/updateClinicLogo',protect,updateClinicLogo)
 //oepnai
 app.post('/api/post/speechToText',upload.single('file'),speechToTextForm)
+app.post('/api/post/patientDataToSummary',patientDataToSummary)
 
 
   app.get("/", (req, res) => {

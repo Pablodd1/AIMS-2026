@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-const { required } = require('nodemon/lib/config');
 const { Schema } = mongoose;
 
 const UserSchema = new Schema({
@@ -49,19 +48,15 @@ const UserSchema = new Schema({
         type:String,
         required:true,
     },
-    // is_staff:{
-    //     type:Boolean,
-    //     default:false
-    // },
-    // is_active:{
-    //     type:Boolean,
-    //     default:false
-    // },
-    // date_joined:{
-    //     type:Date,
-    //     default:"none"
-    // },
+    clinic_logo:{
+        type:String,
+        default:""
+    },
     profile_picture:{
+        type:String,
+        default:""
+    },
+    signature:{
         type:String,
         default:""
     },
@@ -69,16 +64,6 @@ const UserSchema = new Schema({
         type:Boolean,
         default:false
     }
-    // is_superuser:{
-    //     type:Boolean,
-    //     default:false,
-    // },
-    // last_login:{
-    //     type:String,
-    //     default:null
-    // },
-    
-    // name:{type:Object}
 
 
     
