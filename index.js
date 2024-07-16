@@ -1,7 +1,7 @@
 const {createUser,signin,passcracker,getUserInfo,updateProfile,checkUserToken,updateSignature,delSignature,updateProfiePicture,updateClinicLogo} = require('./controllers/userController')
 const {createPatient,getPatients,getPatientById,updatePatient,getTodayPatients,getPaitentsCount} = require('./controllers/patientController')
 const {createVisit,viewReport,getVists,editReport,delVisit} = require('./controllers/visitController')
-const { getRecentUsers,adminLogin , fetchAllDoctors, fetchAllAdmins} = require("./controllers/adminController")
+const { getRecentUsers,adminLogin , fetchAllDoctors, fetchAllAdmins,fecthDemoAccounts,demoUserCount,createDemoUser} = require("./controllers/adminController")
 const {sendFeedBack , fetchFeedBack , deleteFeedBackById } = require('./controllers/feedbackController')
 const { speechToTextForm ,patientDataToSummary} = require('./controllers/openaiController')
 const { testFunc } = require('./controllers/testController')
@@ -77,6 +77,11 @@ app.get('/api/get/fetchAllDoctors',protect,fetchAllDoctors)
 app.get('/api/get/fetchAllAdmins',protect,fetchAllAdmins)
 //test routes
 app.get('/api/get/test',testFunc)
+
+// admin->demo
+app.post('/api/get/fecthDemoAccounts',fecthDemoAccounts)
+app.post('/api/get/demoUserCount',demoUserCount)
+app.post('/api/post/createDemoUser',protect,createDemoUser)
 
 //signature
 app.post('/api/post/updateSignature',protect,updateSignature)
