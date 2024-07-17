@@ -193,8 +193,8 @@ const fecthDemoAccounts = asyncHandler(async(req,res)=>{
 
 const createDemoUser = asyncHandler(async(req,res)=>{
   try{
-    const { token , email , password , name ,phone } = req.body;
-    const formData = {email,password,name,phone_number:phone}
+    const { token , email , password , name ,phone,logo } = req.body;
+    const formData = {email,password,name,phone_number:phone,logo}
     const data = await axios.post(`${process.env.NODE_PUBLIC_URL}/v1/auth/users/`,formData,{
      headers: {
        'Authorization': `Bearer ${token}`,
