@@ -1,7 +1,8 @@
 const {createUser,signin,passcracker,getUserInfo,updateProfile,checkUserToken,updateSignature,delSignature,updateProfiePicture,updateClinicLogo} = require('./controllers/userController')
-const {createPatient,getPatients,getPatientById,updatePatient,getTodayPatients,getPaitentsCount} = require('./controllers/patientController')
+const {createPatient,getPatients,getPatientById,updatePatient,getTodayPatients,getPaitentsCount,getTodayPatietnsForAppointment} = require('./controllers/patientController')
 const {createVisit,viewReport,getVists,editReport,delVisit} = require('./controllers/visitController')
 const { getRecentUsers,adminLogin , fetchAllDoctors, fetchAllAdmins,fecthDemoAccounts,demoUserCount,createDemoUser} = require("./controllers/adminController")
+const { createAppointment , getbyDateAppointment , delAppointment , editAppTime} = require('./controllers/appointmentController')
 const {sendFeedBack , fetchFeedBack , deleteFeedBackById } = require('./controllers/feedbackController')
 const { speechToTextForm ,patientDataToSummary} = require('./controllers/openaiController')
 const { testFunc } = require('./controllers/testController')
@@ -14,6 +15,7 @@ const multer = require('multer');
 const path = require('path');
 require('dotenv').config();
 connectDB()
+
 
 
 const app = express();
@@ -55,6 +57,7 @@ app.get('/api/get/getPatientById',getPatientById)
 app.post('/api/post/updatePatient',updatePatient)
 app.get("/api/get/editReport",protect,editReport)
 app.get('/api/get/getPaitentsCount',protect,getPaitentsCount)
+app.get('/api/get/getTodayPatietnsForAppointment',protect,getTodayPatietnsForAppointment)
 
 //visit routes
 app.post('/api/post/createVisit',protect,createVisit);
@@ -94,10 +97,15 @@ app.post('/api/post/updateClinicLogo',protect,updateClinicLogo)
 app.post('/api/post/speechToText',upload.single('file'),speechToTextForm)
 app.post('/api/post/patientDataToSummary',patientDataToSummary)
 
+//appointments
+app.post('/api/post/createAppointment',protect,createAppointment)
+app.post('/api/get/getbyDateAppointment',protect,getbyDateAppointment)
+app.post('/api/del/delAppointment',protect,delAppointment)
+app.post('/api/edit/editAppTime',protect,editAppTime)
 
-  app.get("/", (req, res) => {
+app.get("/", (req, res) => {
     res.send("AIMS node.js backend api routes running");
-  });
+});
 
 const PORT = 4000;
 

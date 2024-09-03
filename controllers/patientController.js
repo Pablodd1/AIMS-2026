@@ -1,6 +1,7 @@
 const asyncHandler = require("express-async-handler");
 const Patient = require('../models/Patients')
-
+const Appointment = require('../models/Appointment');
+const { appendFile } = require("fs");
 
 
 const createPatient = asyncHandler(async(req,res)=>{
@@ -176,12 +177,19 @@ catch(e){
 const getTodayPatients = asyncHandler(async(req,res)=>{
   try {
     // Calculate the date 24 hours ago
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    // const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const today = new Date();
+    const startOfDay = new Date(today.setHours(0, 0, 0, 0));
+    const endOfDay = new Date(today.setHours(23, 59, 59, 999));
   
     // Find patients with appointments created after twentyFourHoursAgo for the given doc_id
     const patients = await Patient.find({
       doc_id: req.query.id,
-      createdAt: { $gte: twentyFourHoursAgo }
+      createdAt: {
+        $gte: startOfDay,
+        $lt: endOfDay
+      }
+      // createdAt: { $gte: twentyFourHoursAgo }
     });
   
     res.status(200).json({ patients, response: true });
@@ -210,6 +218,89 @@ const getPaitentsCount = asyncHandler(async(req,res)=>{
   
 })
 
+const getTodayPatietnsForAppointment = asyncHandler(async (req, res) => {
+  try {
+    const today = new Date();
+    const startOfDay = new Date(today.setHours(0, 0, 0, 0));
+    const endOfDay = new Date(today.setHours(23, 59, 59, 999));
+
+    const pat = {
+      doc_id: req.user,
+      createdAt: {
+        $gte: startOfDay,
+        $lt: endOfDay
+      }
+    };
+    const appt = {
+      doctorID: req.user,
+      createdAt: {
+        $gte: startOfDay,
+        $lt: endOfDay
+      }
+    };
+
+    const todayPatients = await Patient.find(pat);
+    const todayAppointments = await Appointment.find(appt);
+
+    // Create a Set of patient IDs that have appointments
+    const patientsWithAppointments = new Set(todayAppointments.map(appt => appt.patientID.toString()));
+
+    // Filter out patients who do not have appointments
+    const patientsWithoutAppointments = todayPatients.filter(patient => !patientsWithAppointments.has(patient._id.toString()));
+
+    return res.json({ success: true, patients: patientsWithoutAppointments });
+  } catch (e) {
+    console.error(e); // Log the error for debugging
+    return res.json({ success: false });
+  }
+});
+
+
+// const getTodayPatietnsForAppointment = asyncHandler(async(req,res)=>{
+//   try
+//   {
+//   const today = new Date();
+//     const startOfDay = new Date(today.setHours(0, 0, 0, 0));
+//     const endOfDay = new Date(today.setHours(23, 59, 59, 999));
+
+//     const pat = {
+//       doc_id:req.user,
+//       createdAt: {
+//         $gte: startOfDay,
+//         $lt: endOfDay
+//       }
+//     };
+//     const appt = {
+//       doctorID:req.user,
+//       createdAt: {
+//         $gte: startOfDay,
+//         $lt: endOfDay
+//       }
+//     };
+
+//   const todayPatients = await Patient.find(pat);
+//   const todayAppointments = await Appointment.find(appt)
+
+//   let patientsWithoutAppointments = []
+//   for(let i=0;i<todayPatients.length;i++)
+//   {
+//     for(let j=0;j<todayAppointments.length;j++)
+//     {
+//       console.log(todayPatients[i]._id == todayAppointments[j].patientID) 
+//       if(todayPatients[i]._id != todayAppointments[j].patientID){
+//         patientsWithoutAppointments.push(todayPatients[i])
+//       }
+//     }
+
+//   }
+
+//   return res.json({"success":true,patients:patientsWithoutAppointments})
+// }catch(e)
+// {
+//   return res.json({"success":false})
+// }
+
+// })
 
 
 
@@ -220,5 +311,6 @@ module.exports = {
     getPatientById,
     updatePatient,
     getTodayPatients,
-    getPaitentsCount
+    getPaitentsCount,
+    getTodayPatietnsForAppointment
 };
