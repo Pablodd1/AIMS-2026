@@ -45,7 +45,7 @@ function formatDateString(dateString) {
     hours = hours % 12 || 12; // Convert '0' hour to '12'
   
     // Format the date string as desired
-    const formattedDate = `${dayOfWeek} ${month} ${day.toString().padStart(2, '0')} ${year} ${hours}:${minutes}:${seconds} ${amOrPm}`;
+    const formattedDate = `${dayOfWeek} ${month} ${day.toString().padStart(2, '0')} ${year} ${hours}:${minutes} ${amOrPm}`;
   
     return formattedDate;
   }
@@ -65,16 +65,12 @@ const createAppointment = asyncHandler(async (req,res)=>{
         console.log(paienInfo)
         if(paienInfo)
         {
-            if(!paienInfo.phoneNumber)
-            {
-                return res.json({success:false,msg:"Patient has not yet completed their registration. "})
-            }
+            
 
             await Appointment.create({
                 patientID,
                 doctorID:req.user,
                 email:paienInfo.email,
-                phone_number:paienInfo.phoneNumber,
                 name:paienInfo.fullName,
                 // time:getOriginalAndReminderDates(time).originalDate,
                 // time:formatCreatedAt(time),
