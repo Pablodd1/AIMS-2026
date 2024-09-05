@@ -4,8 +4,8 @@ const { Schema } = mongoose;
 const PatientSchema = new Schema({
     doc_id:{type:String, required: true},
     fullName: { type: String, required: true },
-    dateOfBirth: { type: String, required: true },
-    gender: { type: String, required: true },
+    dateOfBirth: { type: String},
+    gender: { type: String },
     email: { type: String, required: false, unique: true },
     phoneNumber: { type: String, required: false },
     emergencyContactPhoneNumber: { type: String, required: false },

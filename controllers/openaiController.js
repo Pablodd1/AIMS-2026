@@ -245,6 +245,214 @@ async function extractAnswers(text){
         return { error: "Error processing" };
     }
 }
+async function extractAnswersforUpdate(text){
+    try {
+        const response = await openai.chat.completions.create({
+            model: "gpt-4o",
+            temperature: 0,
+            messages: [
+                {
+                    role: "system",
+                    content: `Extracts answers and formats them into JSON. Return a null answer if you don't find the answer to that question in the provided text.output must be in english language
+                    "questions": [
+                     { "id": 1, "question": "What is your date of birth?" },
+                     { "id": 2, "question": "What is your gender?" },
+                     { "id": 3, "question": "What is your phone number?" },
+                     { "id": 4, "question": "Please provide the phone number of an emergency contact." },
+                     { "id": 5, "question": "Who is your insurance provider?" },
+                     { "id": 6, "question": "What is your insurance policy number?" },
+                     { "id": 7, "question": "What is your Policy Holder Name?" },
+                     { "id": 8, "question": "What is your group number?" },
+                     { "id": 9, "question": "Who is your primary care physician?" },
+                     { "id": 10, "question": "Please list any medications you are currently taking." },
+                     { "id": 11, "question": "Do you have any allergies to medications, food, or other substances?" },
+                     { "id": 12, "question": "Do you have any chronic medical conditions?" },
+                     { "id": 13, "question": "Have you had any surgeries in the past?" },
+                     { "id": 14, "question": "Is there any significant family medical history we should be aware of?" },
+                     { "id": 15, "question": "What brings you in today?" },
+                     { "id": 16, "question": "Can you describe your symptoms in detail?" },
+                     { "id": 17, "question": "How long have you been experiencing these symptoms?" },
+                     { "id": 18, "question": "On a scale of 1 to 10, how severe are your symptoms?" },
+                     { "id": 19, "question": "Have you experienced these symptoms before?" },
+                     { "id": 20, "question": "Is there anything that makes the symptoms better or worse?" },
+                     { "id": 21, "question": "What is your current occupation?" },
+                     { "id": 22, "question": "Do you smoke, drink alcohol, or use recreational drugs?" },
+                     { "id": 23, "question": "How often do you exercise, and what does your diet typically consist of?" },
+                     { "id": 24, "question": "Do you live alone, with family, or in another arrangement?" },
+                     { "id": 25, "question": "Have you experienced any weight loss, fever, or fatigue recently?" },
+                     { "id": 26, "question": "Any history of chest pain, palpitations, or swelling in the legs?" },
+                     { "id": 27, "question": "Any cough, shortness of breath, or wheezing?" },
+                     { "id": 28, "question": "Any nausea, vomiting, diarrhea, or constipation?" },
+                     { "id": 29, "question": "Any joint pain, muscle aches, or weakness?" },
+                     { "id": 30, "question": "Any headaches, dizziness, or numbness?" }
+                 ],
+                 "example": [
+                     {
+                         "id": 1,
+                         "question": "What is your date of birth?",
+                         "answer": 'null'
+                     },
+                     {
+                         "id": 2,
+                         "question": "What is your gender?",
+                         "answer": "Male"
+                     },
+                     {
+                         "id": 3,
+                         "question": "What is your phone number?",
+                         "answer": "123-456-7890"
+                     },
+                     {
+                         "id": 4,
+                         "question": "Please provide the phone number of an emergency contact.",
+                         "answer": 'null'
+                     },
+                     {
+                         "id": 5,
+                         "question": "Who is your insurance provider?",
+                         "answer": "ABC Insurance"
+                     },
+                     {
+                         "id": 6,
+                         "question": "What is your insurance policy number?",
+                         "answer": "123456789"
+                     },
+                     {
+                         "id": 7,
+                         "question": "What is your Policy Holder Name?",
+                         "answer": "John Doe"
+                     },
+                     {
+                         "id": 8,
+                         "question": "What is your group number?",
+                         "answer": "G123"
+                     },
+                     {
+                         "id": 9,
+                         "question": "Who is your primary care physician?",
+                         "answer": "Dr. Smith"
+                     },
+                     {
+                         "id": 10,
+                         "question": "Please list any medications you are currently taking.",
+                         "answer": "Medication A, Medication B"
+                     },
+                     {
+                         "id": 11,
+                         "question": "Do you have any allergies to medications, food, or other substances?",
+                         "answer": "Penicillin"
+                     },
+                     {
+                         "id": 12,
+                         "question": "Do you have any chronic medical conditions?",
+                         "answer": "Diabetes"
+                     },
+                     {
+                         "id": 13,
+                         "question": "Have you had any surgeries in the past?",
+                         "answer": "Appendectomy"
+                     },
+                     {
+                         "id": 14,
+                         "question": "Is there any significant family medical history we should be aware of?",
+                         "answer": "Heart disease"
+                     },
+                     {
+                         "id": 15,
+                         "question": "What brings you in today?",
+                         "answer": "Persistent cough"
+                     },
+                     {
+                         "id": 16,
+                         "question": "Can you describe your symptoms in detail?",
+                         "answer": "Cough with mucus, occasional fever"
+                     },
+                     {
+                         "id": 17,
+                         "question": "How long have you been experiencing these symptoms?",
+                         "answer": "2 weeks"
+                     },
+                     {
+                         "id": 18,
+                         "question": "On a scale of 1 to 10, how severe are your symptoms?",
+                         "answer": "7"
+                     },
+                     {
+                         "id": 19,
+                         "question": "Have you experienced these symptoms before?",
+                         "answer": "No"
+                     },
+                     {
+                         "id": 20,
+                         "question": "Is there anything that makes the symptoms better or worse?",
+                         "answer": "Worse with cold weather"
+                     },
+                     {
+                         "id": 21,
+                         "question": "What is your current occupation?",
+                         "answer": "Engineer"
+                     },
+                     {
+                         "id": 22,
+                         "question": "Do you smoke, drink alcohol, or use recreational drugs?",
+                         "answer": "No"
+                     },
+                     {
+                         "id": 23,
+                         "question": "How often do you exercise, and what does your diet typically consist of?",
+                         "answer": "Exercise 3 times a week, balanced diet"
+                     },
+                     {
+                         "id": 24,
+                         "question": "Do you live alone, with family, or in another arrangement?",
+                         "answer": "With family"
+                     },
+                     {
+                         "id": 25,
+                         "question": "Have you experienced any weight loss, fever, or fatigue recently?",
+                         "answer": "No"
+                     },
+                     {
+                         "id": 26,
+                         "question": "Any history of chest pain, palpitations, or swelling in the legs?",
+                         "answer": "No"
+                     },
+                     {
+                         "id": 27,
+                         "question": "Any cough, shortness of breath, or wheezing?",
+                         "answer": "Cough"
+                     },
+                     {
+                         "id": 28,
+                         "question": "Any nausea, vomiting, diarrhea, or constipation?",
+                         "answer": "No"
+                     },
+                     {
+                         "id": 29,
+                         "question": "Any joint pain, muscle aches, or weakness?",
+                         "answer": "Joint pain"
+                     },
+                     {
+                         "id": 30,
+                         "question": "Any headaches, dizziness, or numbness?",
+                         "answer": "Headaches occasionally"
+                     }
+                 ]
+                `
+                },
+                {
+                    role: "user",
+                    content: text
+                }
+            ]
+        });
+        let cleanedString = response.choices[0].message.content.replace(/```/g, '').replace(/json/g, '');
+        return cleanedString;
+    } catch (error) {
+        console.error(`Error processing: ${error}`);
+        return { error: "Error processing" };
+    }
+}
 
 async function extractSummary(text){
     try {
@@ -278,13 +486,25 @@ const speechToTextForm =  asyncHandler(async(req,res)=>{
             return res.status(400).send('No file uploaded.');
         }
         const text = await speechToText(req.file)
-        console.log(text)
-        const [
-            answers, 
-        ] = await Promise.all([
-            extractAnswers(text),
-        ]);
-        res.json({'success':true,data:JSON.parse(answers)});
+        if(req.body.type=="create")
+        {
+            const [
+                answers, 
+            ] = await Promise.all([
+                extractAnswers(text),
+            ]);
+            res.json({'success':true,data:JSON.parse(answers)});
+        }
+        else
+        {
+            const [
+                answers, 
+            ] = await Promise.all([
+                extractAnswersforUpdate(text),
+            ]);
+            res.json({'success':true,data:JSON.parse(answers)});
+
+        }
         
         
     }catch(e)

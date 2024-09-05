@@ -63,7 +63,7 @@ function appointmentCreated(time) {
         </div>
         <div class="footer">
             <p>&copy; 2024 AIMS. All rights reserved.</p>
-            <p><a href="https://www.aiscribers.com" target="_blank">AIMS - www.aidemoscriber.com</a></p>
+            <p><a href="https://www.aiscribers.com" target="_blank">AIMS - www.aidemoscribers.com</a></p>
         </div>
     </div>
 </body>

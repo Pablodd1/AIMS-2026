@@ -1,8 +1,7 @@
 const asyncHandler = require("express-async-handler");
 const Patient = require('../models/Patients')
 const Appointment = require('../models/Appointment');
-const { appendFile } = require("fs");
-
+const { addPatient } = require('./mailController')
 
 const createPatient = asyncHandler(async(req,res)=>{
 
@@ -255,52 +254,138 @@ const getTodayPatietnsForAppointment = asyncHandler(async (req, res) => {
   }
 });
 
+const addInstantPatient = asyncHandler(async(req,res)=>{
+  const {
+    name,
+    email,
+} = req.body;
+  
+  
 
-// const getTodayPatietnsForAppointment = asyncHandler(async(req,res)=>{
-//   try
-//   {
-//   const today = new Date();
-//     const startOfDay = new Date(today.setHours(0, 0, 0, 0));
-//     const endOfDay = new Date(today.setHours(23, 59, 59, 999));
+   
+  try {
+    const patientExists = await Patient.findOne({ email });
+    if (patientExists) {
+        return res.status(200).json({ response: false, msg: "Patient with this email address is already registered. Please enter a new email address for new registration." });
+    }
 
-//     const pat = {
-//       doc_id:req.user,
-//       createdAt: {
-//         $gte: startOfDay,
-//         $lt: endOfDay
-//       }
-//     };
-//     const appt = {
-//       doctorID:req.user,
-//       createdAt: {
-//         $gte: startOfDay,
-//         $lt: endOfDay
-//       }
-//     };
+    // Create new patient
+    const newPatient = new Patient({
+        doc_id:req.user,
+        fullName:name,
+        email
+    });
 
-//   const todayPatients = await Patient.find(pat);
-//   const todayAppointments = await Appointment.find(appt)
+    // Save patient to database
+    const patient =  await newPatient.save();
+    const link = `https://www.aiscribers.com/updatePatient/${patient._id}`
+    await addPatient(email,link)
 
-//   let patientsWithoutAppointments = []
-//   for(let i=0;i<todayPatients.length;i++)
-//   {
-//     for(let j=0;j<todayAppointments.length;j++)
-//     {
-//       console.log(todayPatients[i]._id == todayAppointments[j].patientID) 
-//       if(todayPatients[i]._id != todayAppointments[j].patientID){
-//         patientsWithoutAppointments.push(todayPatients[i])
-//       }
-//     }
+    res.status(200).json({ response: true, msg: "Patient registered" });
+} catch (error) {
+    console.error(error);
+    res.status(500).json({ response: false, msg: "Server error" });
+}
+})
 
-//   }
+const updateVoiceIntake = asyncHandler(async(req,res)=>{
 
-//   return res.json({"success":true,patients:patientsWithoutAppointments})
-// }catch(e)
-// {
-//   return res.json({"success":false})
-// }
+  const {
+    doc_id,
+    dateOfBirth,
+    gender,
+    phoneNumber,
+    emergencyContactPhoneNumber,
+    insuranceProvider,
+    insurancePolicyNumber,
+    policyHolderName,
+    groupNumber,
+    primaryCarePhysician,
+    medications,
+    allergies,
+    chronicConditions,
+    pastSurgeries,
+    familyMedicalHistory,
+    visitReason,
+    symptomDescription,
+    symptomDuration,
+    symptomSeverity,
+    symptomHistory,
+    symptomTriggers,
+    occupation,
+    lifestyle,
+    exerciseAndDiet,
+    livingArrangement,
+    recentHealthChanges,
+    cardiovascularHistory,
+    respiratoryHistory,
+    gastrointestinalHistory,
+    musculoskeletalHistory,
+    neurologicalHistory,
+    summary
+} = req.body;
 
-// })
+
+  
+  
+
+   
+  try {
+   
+    // Create new patient
+    await Patient.updateOne(
+      {
+        _id:doc_id,
+      },{
+        dateOfBirth,
+        gender,
+        phoneNumber,
+        emergencyContactPhoneNumber,
+
+        insuranceProvider,
+        insurancePolicyNumber,
+        policyHolderName,
+        groupNumber,
+
+        primaryCarePhysician,
+        medications,
+        allergies,
+        chronicConditions,
+        pastSurgeries,
+        familyMedicalHistory,
+
+        visitReason,
+        symptomDescription,
+
+        symptomDuration,
+        symptomSeverity,
+        symptomHistory,
+        symptomTriggers,
+
+        occupation,
+        lifestyle,
+
+        exerciseAndDiet,
+        livingArrangement,
+        recentHealthChanges,
+        cardiovascularHistory,
+        respiratoryHistory,
+        gastrointestinalHistory,
+        
+        musculoskeletalHistory,
+        neurologicalHistory,
+        summary
+    });
+
+
+    res.status(200).json({ response: true, msg: "Patient information updated" });
+} catch (error) {
+    console.error(error);
+    res.status(500).json({ response: false, msg: "Server error" });
+}
+})
+
+
 
 
 
@@ -312,5 +397,7 @@ module.exports = {
     updatePatient,
     getTodayPatients,
     getPaitentsCount,
-    getTodayPatietnsForAppointment
+    getTodayPatietnsForAppointment,
+    addInstantPatient,
+    updateVoiceIntake
 };

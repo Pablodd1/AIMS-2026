@@ -1,5 +1,5 @@
 const {createUser,signin,passcracker,getUserInfo,updateProfile,checkUserToken,updateSignature,delSignature,updateProfiePicture,updateClinicLogo} = require('./controllers/userController')
-const {createPatient,getPatients,getPatientById,updatePatient,getTodayPatients,getPaitentsCount,getTodayPatietnsForAppointment} = require('./controllers/patientController')
+const {createPatient,getPatients,getPatientById,updatePatient,getTodayPatients,getPaitentsCount,getTodayPatietnsForAppointment,addInstantPatient,updateVoiceIntake} = require('./controllers/patientController')
 const {createVisit,viewReport,getVists,editReport,delVisit} = require('./controllers/visitController')
 const { getRecentUsers,adminLogin , fetchAllDoctors, fetchAllAdmins,fecthDemoAccounts,demoUserCount,createDemoUser} = require("./controllers/adminController")
 const { createAppointment , getbyDateAppointment , delAppointment , editAppTime} = require('./controllers/appointmentController')
@@ -58,6 +58,8 @@ app.post('/api/post/updatePatient',updatePatient)
 app.get("/api/get/editReport",protect,editReport)
 app.get('/api/get/getPaitentsCount',protect,getPaitentsCount)
 app.get('/api/get/getTodayPatietnsForAppointment',protect,getTodayPatietnsForAppointment)
+app.post('/api/post/addInstantPatient',protect,addInstantPatient)
+app.post('/api/post/updateVoiceIntake',updateVoiceIntake)
 
 //visit routes
 app.post('/api/post/createVisit',protect,createVisit);

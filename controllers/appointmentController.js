@@ -1,7 +1,7 @@
 const asyncHandler = require("express-async-handler");
 const Appointment = require('../models/Appointment')
 const Patient = require('../models/Patients')
-const {appMail,appCancel} = require('./mailController')
+const {appMail,appCancel,appUpdate} = require('./mailController')
 
 function getOriginalAndReminderDates(originalDateString) {
     // Parse the original date
@@ -24,24 +24,7 @@ function getOriginalAndReminderDates(originalDateString) {
     };
 }
 
-function formatDate() {
-    const date = new Date();
-  
-    // Options for formatting the date
-    const options = {
-      month: 'short',   // "Sep"
-      day: '2-digit',   // "02"
-      year: 'numeric',  // "2024"
-      hour: '2-digit',  // "17"
-      minute: '2-digit', // "58"
-      hour12: true      // "PM"
-    };
-  
-    // Format date to the required format
-    const formattedDate = date.toLocaleString('en-US', options).replace(',', '');
-  
-    return formattedDate;
-  }
+
 
 function formatDateString(dateString) {
     // Parse the input date string
@@ -70,7 +53,6 @@ function formatDateString(dateString) {
 const createAppointment = asyncHandler(async (req,res)=>{
   
  const { patientID , time  } = req.body;
-
  try
  {     
      const isPatientAppointmentAlreadyBooked = await Appointment.findOne({patientID})
@@ -78,10 +60,15 @@ const createAppointment = asyncHandler(async (req,res)=>{
      {
          return res.json({success:false,msg:"Patient appointment is already scheduled. If you want to make new appointment. Please remove previous one"})
     }
-
+ 
         const paienInfo = await Patient.findOne({_id:patientID}) 
+        console.log(paienInfo)
         if(paienInfo)
         {
+            if(!paienInfo.phoneNumber)
+            {
+                return res.json({success:false,msg:"Patient has not yet completed their registration. "})
+            }
 
             await Appointment.create({
                 patientID,
@@ -108,22 +95,13 @@ const createAppointment = asyncHandler(async (req,res)=>{
 const getbyDateAppointment = asyncHandler(async (req,res)=>{
     try{
 
-        const { date } = req.body
-
-        // Get today's date and set the time to 00:00:00 to compare only date part
-        // const today = new Date();
-        // today.setHours(0, 0, 0, 0);
-
-        // Delete appointments that are before today
-        // await Appointment.deleteMany({doctorID:req.user, createdAt: { $lt: today } });
-
-        const selectedDate = new Date(date);
-        const startOfDay = new Date(selectedDate.setHours(0, 0, 0, 0)); //12 AM
-        const endOfDay = new Date(selectedDate.setHours(23, 59, 59, 999));//11:59PM
-
-        const query = { createdAt: { $gte: startOfDay, $lte: endOfDay } };
+        let { date } = req.body
+        
+        date = date.slice(0,10)
+        const query = { time: {
+            $regex: `^${date}`
+          }};
         const results = await Appointment.find(query)
-
 
 
         return res.json({appointments:results,success:true})
@@ -151,10 +129,11 @@ const delAppointment = asyncHandler(async(req,res)=>{
 })
 
 const editAppTime = asyncHandler(async(req,res)=>{
-    const { appId , time } = req.body
-    console.log(appId,time)
+    const { appId , time , number } = req.body
    try{
-    await Appointment.updateOne({_id:appId},{time});
+    let appt = await Appointment.findOne({_id:appId})
+    await Appointment.updateOne({_id:appId},{ $set: { createdAt: new Date(time), time } });
+    await appUpdate(appt.email,formatDateString(appt.time),formatDateString(time),number)
     return res.json({success:true})
    }catch(e)
    {
