@@ -52,18 +52,17 @@ function addInstantPatient(link) {
     </head>
     <body>
         <div class="container">
-            <div class="header">
-                <img src="https://res.cloudinary.com/dlasb4krd/image/upload/fl_preserve_transparency/v1723113449/yjscvyuqu2fpubu9zm31.jpg?_s=public-apps" alt="iCare Mobile Medicine Logo">
-                <h1>iCare Mobile Medicine</h1>
-            </div>
+        <div class="header">
+        <img src="https://res.cloudinary.com/dlasb4krd/image/upload/v1725280173/mhxcy03vi7mi0r1lybmm.png" alt="AIMS">
+        <h1>AIMS</h1>
+    </div>
             <div class="content">
-                <p>Dear Patient,</p>
                 <p>We are pleased to inform you that you can now complete your patient intake form online. Please use the link below to navigate to the form:</p>
                 <p><a href=${link} target="_blank">Click Me :)</a></p>
                 <p>If you have any questions or need assistance, feel free to contact us.</p>
             </div>
             <div class="footer">
-                <p>&copy; 2024 iCare Mobile Medicine. All rights reserved.</p>
+                <p>&copy; 2024 AIMS. All rights reserved.</p>
                 <p><a href="https://www.aidemoscriber.com" target="_blank">AIMS - www.aidemoscriber.com</a></p>
             </div>
         </div>

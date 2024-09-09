@@ -54,11 +54,10 @@ function appointmentCancelled(time,number)
 <body>
     <div class="container">
         <div class="header">
-            <img src="https://res.cloudinary.com/dlasb4krd/image/upload/v1725280173/mhxcy03vi7mi0r1lybmm.png" alt="iCare Mobile Medicine Logo">
+            <img src="https://res.cloudinary.com/dlasb4krd/image/upload/v1725280173/mhxcy03vi7mi0r1lybmm.png" alt="AIMS">
             <h1>AIMS</h1>
         </div>
         <div class="content">
-            <p>Dear Patient,</p>
             <p>We regret to inform you that your appointment scheduled for <strong>${time}</strong> has been canceled by the doctor.</p>
             <p>We apologize for any inconvenience this may cause. If you have any questions or need to reschedule, please contact us at <strong>${number}</strong>.</p>
             <p>Thank you for your understanding.</p>

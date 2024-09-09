@@ -3,24 +3,25 @@ const { appointmentCreated } = require('../Template/Appointments/appointmentcrea
 const { appointmentCancelled } = require('../Template/Appointments/appointmentCancelled');
 const { appointmentUpdate } = require('../Template/Appointments/appointmentUpdate');
 const { addInstantPatient } = require('../Template/Patients/addInstantPatient')
-const appMail = async (userEmail,time) => {
+
+const appMail = async (businessMail,appCode,userEmail,time,phone_number,clinicname,patient) => {
   try {
     const transporter = nodemailer.createTransport({
       port: 465,
       host: "smtp.gmail.com",
       service: "Gmail",
       auth: {
-        user: process.env.NODE_MAILER_USER,
-        pass: process.env.NODE_MAILER_PASS,
+        user: businessMail,
+        pass: appCode,
       },
       secure: true,
     });
 
     await transporter.sendMail({
-      from: "zainyshorts@gmail.com",
+      from: businessMail,
       to: userEmail,
       subject: "Appointment",
-      html: appointmentCreated(time),
+      html: appointmentCreated(time,phone_number,clinicname,patient),
     });
 
     return true
@@ -28,21 +29,21 @@ const appMail = async (userEmail,time) => {
     return false
   }
 }
-const appCancel = async (userEmail,time,number) => {
+const appCancel = async (businessMail,appCode,userEmail,time,number) => {
   try {
     const transporter = nodemailer.createTransport({
       port: 465,
       host: "smtp.gmail.com",
       service: "Gmail",
       auth: {
-        user: process.env.NODE_MAILER_USER,
-        pass: process.env.NODE_MAILER_PASS,
+        user: businessMail,
+        pass: appCode,
       },
       secure: true,
     });
 
     await transporter.sendMail({
-      from: "zainyshorts@gmail.com",
+      from: businessMail,
       to: userEmail,
       subject: "Appointment",
       html: appointmentCancelled(time,number),
@@ -53,21 +54,21 @@ const appCancel = async (userEmail,time,number) => {
     return false
   }
 }
-const appUpdate = async (userEmail,prevt,newt,number) => {
+const appUpdate = async (businessMail,appCode,userEmail,prevt,newt,number) => {
   try {
     const transporter = nodemailer.createTransport({
       port: 465,
       host: "smtp.gmail.com",
       service: "Gmail",
       auth: {
-        user: process.env.NODE_MAILER_USER,
-        pass: process.env.NODE_MAILER_PASS,
+        user: businessMail,
+        pass: appCode,
       },
       secure: true,
     });
 
     await transporter.sendMail({
-      from: "zainyshorts@gmail.com",
+      from: businessMail,
       to: userEmail,
       subject: "Appointment",
       html: appointmentUpdate(prevt,newt,number),
@@ -78,21 +79,21 @@ const appUpdate = async (userEmail,prevt,newt,number) => {
     return false
   }
 }
-const addPatient = async (userEmail,link) => {
+const addPatient = async (businessMail,appCode,userEmail,link) => {
   try {
     const transporter = nodemailer.createTransport({
       port: 465,
       host: "smtp.gmail.com",
       service: "Gmail",
       auth: {
-        user: process.env.NODE_MAILER_USER,
-        pass: process.env.NODE_MAILER_PASS,
+        user: businessMail,
+        pass: appCode,
       },
       secure: true,
     });
 
     await transporter.sendMail({
-      from: "zainyshorts@gmail.com",
+      from: businessMail,
       to: userEmail,
       subject: "Appointment",
       html: addInstantPatient(link),

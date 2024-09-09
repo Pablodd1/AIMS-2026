@@ -20,15 +20,7 @@ const UserSchema = new Schema({
         type:String,
         required:true,
     },
-    base:{
-        type:String,
-        required:true,
-    },
     title:{
-        type:String,
-        required:true,
-    },
-    responsible:{
         type:String,
         required:true,
     },
@@ -63,6 +55,14 @@ const UserSchema = new Schema({
     admin:{
         type:Boolean,
         default:false
+    },
+    businessMail:{
+        type:String,
+        default:""
+    },
+    appCode:{
+        type:String,
+        default:""
     }
 
 

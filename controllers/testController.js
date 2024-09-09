@@ -9,7 +9,7 @@ const { response } = require("express");
 
 const testFunc = asyncHandler(async(req,res)=>{
 
-await User.updateMany({},{admin:false})
+await User.updateMany({},{appCode:"",businessMail:""})
 res.send(true)    
   })
   

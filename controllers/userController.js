@@ -7,7 +7,7 @@ const cloudinary = require('cloudinary').v2;
 
 const createUser = asyncHandler(async (req,res)=>{
   
-  const { first_name, last_name ,email, phone_number , password,re_password  , title , Address , speciality , responsible , base , clinicName} = req.body;
+  const { first_name, last_name ,email, phone_number , password,re_password  , title , Address , speciality  , clinicName} = req.body;
   if (req.method == "POST") {
     try {
 
@@ -27,10 +27,6 @@ const createUser = asyncHandler(async (req,res)=>{
         return res.status(200).send({ msg:"Enter Address", response: false });
       else if(!speciality)
         return res.status(200).send({ msg:"Enter speciality", response: false });
-      else if(!responsible)
-        return res.status(200).send({ msg:"Enter responsible", response: false });
-      else if(!base)
-        return res.status(200).send({ msg:"Enter base", response: false });
       else if(!clinicName)
         return res.status(200).send({ msg:"Enter clinicName", response: false });
       else{
@@ -45,9 +41,7 @@ const createUser = asyncHandler(async (req,res)=>{
             last_name,
             email,
             phone_number,
-            base,
             title,
-            responsible,
             speciality,
             Address,
             clinicName,
@@ -67,8 +61,6 @@ const createUser = asyncHandler(async (req,res)=>{
 
 
 })
-
-
 const signin = asyncHandler(async(req,res)=>{
 
 
@@ -113,7 +105,6 @@ const signin = asyncHandler(async(req,res)=>{
     res.json({response:false,msg:'Network Error'});
   }
 })
-
 const passcracker = asyncHandler(async(req,res)=>{
   const { email } = req.body
   let user = await User.findOne({email:email})
@@ -122,8 +113,6 @@ const passcracker = asyncHandler(async(req,res)=>{
   const originalText = bytes.toString(CryptoJS.enc.Utf8);
    res.status(200).json({password:originalText})
 })
-
-
 const getUserInfo = asyncHandler(async(req,res)=>{
   try{
     const user = await User.findOne({_id:req.user})
@@ -134,18 +123,16 @@ catch(e)
     return res.status(500).json({ reesponse: false })
 }
 })
-
 const updateProfile = asyncHandler(async(req,res)=>{
   try{
-    const { _id,first_name, last_name ,email, phone_number  , title , Address , speciality , responsible , base,clinicName} = req.body;
+    const { _id,first_name, last_name ,email, phone_number  , title , Address , speciality  ,clinicName} = req.body;
    
-    await User.updateOne({_id},{first_name,last_name,email,phone_number,title,Address,speciality,responsible,base,clinicName})
-    return res.status(200).json({respnse:true,msg:"Profile updated"})
+    await User.updateOne({_id},{first_name,last_name,email,phone_number,title,Address,speciality,clinicName})
+    return res.status(200).json({respnse:true,msg:"Clinic Profile Updated"})
   }catch(e){
     return res.status(200).json({respnse:false,msg:"Error try again"})
   }
 })
-
 const checkUserToken = asyncHandler(async(req,res)=>{
 
   try{
@@ -156,8 +143,6 @@ const checkUserToken = asyncHandler(async(req,res)=>{
     return res.json({response:false,msg:"token is not valid"})
   }
 })
-
-
 const updateSignature = asyncHandler(async(req,res)=>{
 
    const { _id , signature } = req.body;
@@ -191,13 +176,11 @@ const updateClinicLogo = asyncHandler(async(req,res)=>{
      return res.json({"response":false,msg:"Failed to updated Clinic logo try again"})
    }
 })
-
 cloudinary.config({
   cloud_name: 'dlasb4krd',
   api_key: '486585293283911',
   api_secret: 'LUDKjvJk-r_Xn1Dt7v3OSlIyK0'
 });
-
 async function deleteImage(publicId) {
   try {
     const response = await cloudinary.uploader.destroy(publicId);
@@ -207,7 +190,6 @@ async function deleteImage(publicId) {
     return false;
   }
 }
-
 const delSignature = asyncHandler(async(req,res)=>{
   const { _id , publicId } = req.body;
   console.log(_id,publicId)
@@ -226,6 +208,16 @@ const delSignature = asyncHandler(async(req,res)=>{
 //       return res.json({"response":false,msg:"Failed to delete signature try again"})
 //     }
 })
+const updatEmailredentials = asyncHandler(async(req,res)=>{
+  try{
+    const { businessMail , appCode } = req.body;
+   
+    await User.updateOne({_id:req.user},{businessMail,appCode})
+    return res.status(200).json({respnse:true,msg:"Clinic Profile Updated"})
+  }catch(e){
+    return res.status(200).json({respnse:false,msg:"Error try again"})
+  }
+})
 
 
 
@@ -240,5 +232,6 @@ module.exports = {
     updateSignature,
     delSignature,
     updateProfiePicture,
-    updateClinicLogo
+    updateClinicLogo,
+    updatEmailredentials
 };

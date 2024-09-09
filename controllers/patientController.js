@@ -46,10 +46,10 @@ const createPatient = asyncHandler(async(req,res)=>{
 
    
   try {
-    const patientExists = await Patient.findOne({ email });
-    if (patientExists) {
-        return res.status(200).json({ response: false, msg: "Patient with this email address is already registered. Please enter a new email address for new registration." });
-    }
+    // const patientExists = await Patient.findOne({ email });
+    // if (patientExists) {
+    //     return res.status(200).json({ response: false, msg: "Patient with this email address is already registered. Please enter a new email address for new registration." });
+    // }
 
     // Create new patient
     const newPatient = new Patient({
@@ -258,28 +258,34 @@ const addInstantPatient = asyncHandler(async(req,res)=>{
   const {
     name,
     email,
+    number,
+    businessMail,
+    appCode
 } = req.body;
   
-  
-
+ 
    
   try {
-    const patientExists = await Patient.findOne({ email });
-    if (patientExists) {
-        return res.status(200).json({ response: false, msg: "Patient with this email address is already registered. Please enter a new email address for new registration." });
-    }
 
     // Create new patient
     const newPatient = new Patient({
         doc_id:req.user,
         fullName:name,
+        phoneNumber:number,
         email
+        
     });
+
 
     // Save patient to database
     const patient =  await newPatient.save();
     const link = `https://www.aiscribers.com/updatePatient/${patient._id}`
-    await addPatient(email,link)
+    if(businessMail=="" || appCode == "")
+    {
+      await addPatient(process.env.NODE_MAILER_USER,process.env.NODE_MAILER_PASS,email,link)
+    }else{
+      await addPatient(businessMail,appCode,email,link)
+    }
 
     res.status(200).json({ response: true, msg: "Patient registered" });
 } catch (error) {

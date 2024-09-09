@@ -1,8 +1,8 @@
-const {createUser,signin,passcracker,getUserInfo,updateProfile,checkUserToken,updateSignature,delSignature,updateProfiePicture,updateClinicLogo} = require('./controllers/userController')
+const {createUser,signin,passcracker,getUserInfo,updateProfile,checkUserToken,updateSignature,delSignature,updateProfiePicture,updateClinicLogo,updatEmailredentials} = require('./controllers/userController')
 const {createPatient,getPatients,getPatientById,updatePatient,getTodayPatients,getPaitentsCount,getTodayPatietnsForAppointment,addInstantPatient,updateVoiceIntake} = require('./controllers/patientController')
 const {createVisit,viewReport,getVists,editReport,delVisit} = require('./controllers/visitController')
 const { getRecentUsers,adminLogin , fetchAllDoctors, fetchAllAdmins,fecthDemoAccounts,demoUserCount,createDemoUser} = require("./controllers/adminController")
-const { createAppointment , getbyDateAppointment , delAppointment , editAppTime} = require('./controllers/appointmentController')
+const { createAppointment , getbyDateAppointment , delAppointment , editAppTime , calenderDates} = require('./controllers/appointmentController')
 const {sendFeedBack , fetchFeedBack , deleteFeedBackById } = require('./controllers/feedbackController')
 const { speechToTextForm ,patientDataToSummary} = require('./controllers/openaiController')
 const { testFunc } = require('./controllers/testController')
@@ -49,6 +49,7 @@ app.post('/api/get/passcracker',passcracker)
 app.get('/api/v1/auth/users/me',protect,getUserInfo)
 app.post('/api/post/updateProfile',protect,updateProfile)
 app.get('/api/get/checkUserToken',protect,checkUserToken)
+app.post('/api/post/updatEmailredentials',protect,updatEmailredentials)
 //patient Routes
 app.post('/api/post/createPatient',createPatient)
 app.get('/api/get/getPatients',protect,getPatients)
@@ -104,6 +105,7 @@ app.post('/api/post/createAppointment',protect,createAppointment)
 app.post('/api/get/getbyDateAppointment',protect,getbyDateAppointment)
 app.post('/api/del/delAppointment',protect,delAppointment)
 app.post('/api/edit/editAppTime',protect,editAppTime)
+app.post('/api/get/calenderDates',calenderDates)
 
 app.get("/", (req, res) => {
     res.send("AIMS node.js backend api routes running");

@@ -52,17 +52,18 @@ function formatDateString(dateString) {
     
 const createAppointment = asyncHandler(async (req,res)=>{
   
- const { patientID , time  } = req.body;
+ const { patientID , time ,number,clinicname,businessMail,
+    appCode } = req.body;
+    let paienInfo
  try
  {     
      const isPatientAppointmentAlreadyBooked = await Appointment.findOne({patientID})
      if(isPatientAppointmentAlreadyBooked)
      {
          return res.json({success:false,msg:"Patient appointment is already scheduled. If you want to make new appointment. Please remove previous one"})
-    }
+     }
  
-        const paienInfo = await Patient.findOne({_id:patientID}) 
-        console.log(paienInfo)
+         paienInfo = await Patient.findOne({_id:patientID})
         if(paienInfo)
         {
             
@@ -72,12 +73,10 @@ const createAppointment = asyncHandler(async (req,res)=>{
                 doctorID:req.user,
                 email:paienInfo.email,
                 name:paienInfo.fullName,
-                // time:getOriginalAndReminderDates(time).originalDate,
-                // time:formatCreatedAt(time),
                 time,
                 reminder:getOriginalAndReminderDates(time).reminderDate
             })
-            await appMail(paienInfo.email,formatDateString(time))
+            
             return res.json({success:true,msg:"Appoinntment scheduled"});
         }else{
             return res.json({success:false,msg:"Facing issues. Please try again later"});
@@ -85,6 +84,13 @@ const createAppointment = asyncHandler(async (req,res)=>{
     }catch(e)
     {
         return res.json({success:false,msg:"Facing issues. Please try again later"});
+    }finally{
+        if(businessMail=="" || appCode == "")
+            {
+            await appMail(process.env.NODE_MAILER_USER,process.env.NODE_MAILER_PASS,paienInfo.email,formatDateString(time),number,clinicname,paienInfo.fullName)
+            }else{
+            await appMail(businessMail,appCode,paienInfo.email,formatDateString(time),number,clinicname,paienInfo.fullName)
+            }
     }
 })
 
@@ -109,7 +115,8 @@ const getbyDateAppointment = asyncHandler(async (req,res)=>{
 })
 
 const delAppointment = asyncHandler(async(req,res)=>{
-    const { appId , number } = req.body
+    const { appId , number , businessMail,
+        appCode } = req.body
     let p
     let appResult
    try{
@@ -120,26 +127,61 @@ const delAppointment = asyncHandler(async(req,res)=>{
    }catch(e){
     return res.json({success:false})
    }finally{
-    await appCancel(p.email,formatDateString(appResult.time),number)
+    if(businessMail=="" || appCode == "")
+            {
+                await appCancel(process.env.NODE_MAILER_USER,process.env.NODE_MAILER_PASS,p.email,formatDateString(appResult.time),number)
+            }else{
+                await appCancel(businessMail,appCode,p.email,formatDateString(appResult.time),number)
+            }
    }
 })
 
 const editAppTime = asyncHandler(async(req,res)=>{
-    const { appId , time , number } = req.body
+    const { appId , time , number,businessMail,
+        appCode  } = req.body
+        let appt;
    try{
-    let appt = await Appointment.findOne({_id:appId})
+     appt = await Appointment.findOne({_id:appId})
     await Appointment.updateOne({_id:appId},{ $set: { createdAt: new Date(time), time } });
-    await appUpdate(appt.email,formatDateString(appt.time),formatDateString(time),number)
+    
     return res.json({success:true})
    }catch(e)
    {
     return res.json({success:false})
+   }finally{
+    if(businessMail=="" || appCode == "")
+            {
+                await appUpdate(process.env.NODE_MAILER_USER,process.env.NODE_MAILER_PASS,appt.email,formatDateString(appt.time),formatDateString(time),number)
+            }else{
+                await appUpdate(businessMail,appCode,appt.email,formatDateString(appt.time),formatDateString(time),number)
+            }
    }
 })
+
+
+const calenderDates = asyncHandler(async(req,res)=>{
+
+    try{
+
+        const appts = await Appointment.find({doctorID:req.body._id})
+        .select('time') 
+        .exec();
+
+        return res.json({response:true,appointments:appts})
+    }
+    catch(e)
+    {
+        return res.json({response:false})
+    }
+
+})
+
+
 
 module.exports = {
     createAppointment,
     getbyDateAppointment,
     delAppointment,
-    editAppTime
+    editAppTime,
+    calenderDates
 }
