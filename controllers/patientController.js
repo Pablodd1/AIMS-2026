@@ -256,6 +256,8 @@ const getTodayPatietnsForAppointment = asyncHandler(async (req, res) => {
 
 const addInstantPatient = asyncHandler(async(req,res)=>{
   const {
+    clinic,
+    website,
     name,
     email,
     number,
@@ -282,9 +284,9 @@ const addInstantPatient = asyncHandler(async(req,res)=>{
     const link = `https://www.aiscribers.com/updatePatient/${patient._id}`
     if(businessMail=="" || appCode == "")
     {
-      await addPatient(process.env.NODE_MAILER_USER,process.env.NODE_MAILER_PASS,email,link)
+      await addPatient(process.env.NODE_MAILER_USER,process.env.NODE_MAILER_PASS,email,link,name,number,clinic,website)
     }else{
-      await addPatient(businessMail,appCode,email,link)
+      await addPatient(businessMail,appCode,email,link,name,number,clinic,website)
     }
 
     res.status(200).json({ response: true, msg: "Patient registered" });

@@ -48,9 +48,15 @@ const UserSchema = new Schema({
         type:String,
         default:""
     },
+   
     signature:{
         type:String,
         default:""
+    },
+    publicIds:{
+        signature_publicId:"",
+        clinic_logo_publicId:"",
+        signature_publicId:""
     },
     admin:{
         type:Boolean,
@@ -61,6 +67,10 @@ const UserSchema = new Schema({
         default:""
     },
     appCode:{
+        type:String,
+        default:""
+    },
+    website:{
         type:String,
         default:""
     }

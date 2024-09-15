@@ -456,7 +456,6 @@ async function extractAnswersforUpdate(text){
 
 async function extractSummary(text){
     try {
-        console.log(text)
         const response = await openai.chat.completions.create({
             model: "gpt-4o",
             temperature: 0,
@@ -527,6 +526,8 @@ const patientDataToSummary =  asyncHandler(async(req,res)=>{
     }
     
 })
+
+
 
 
 

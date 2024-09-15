@@ -1,9 +1,9 @@
+const cloudinary = require('cloudinary').v2;
 const asyncHandler = require("express-async-handler");
 const User = require('../models/User')
 const generateToken = require('../config/generateToken')
 const CryptoJS = require("crypto-js");
-const { sign } = require("jsonwebtoken");
-const cloudinary = require('cloudinary').v2;
+// const { sign } = require("jsonwebtoken");
 
 const createUser = asyncHandler(async (req,res)=>{
   
@@ -156,9 +156,9 @@ const updateSignature = asyncHandler(async(req,res)=>{
 })
 const updateProfiePicture = asyncHandler(async(req,res)=>{
 
-  const { _id , profile_picture } = req.body;
+  const { _id , profile_picture , pic_public_Id } = req.body;
   try{
-    await User.updateOne({_id},{profile_picture})
+    await User.updateOne({_id},{profile_picture,pic_public_Id})
     return res.json({"response":true,msg:"Profile picture updated"})
    }catch(e)
    {
@@ -182,13 +182,15 @@ cloudinary.config({
   api_secret: 'LUDKjvJk-r_Xn1Dt7v3OSlIyK0'
 });
 async function deleteImage(publicId) {
-  try {
-    const response = await cloudinary.uploader.destroy(publicId);
-    console.log(response)
-    return true;
-  } catch (error) {
-    return false;
-  }
+  await cloudinary.uploader.destroy(company.imagePublicId, (error, result) => {
+    if (error) {
+      console.error('Error deleting previous image:', error);
+      return false
+    } else {
+      console.log('Previous image deleted:', result);
+      return true
+    }
+  });
 }
 const delSignature = asyncHandler(async(req,res)=>{
   const { _id , publicId } = req.body;
@@ -218,6 +220,39 @@ const updatEmailredentials = asyncHandler(async(req,res)=>{
     return res.status(200).json({respnse:false,msg:"Error try again"})
   }
 })
+const updatewebsiteURL = asyncHandler(async(req,res)=>{
+  try{
+    const { website } = req.body;
+   
+    await User.updateOne({_id:req.user},{website})
+    return res.status(200).json({respnse:true,msg:"Clinic Profile Updated"})
+  }catch(e){
+    return res.status(200).json({respnse:false,msg:"Error try again"})
+  }
+})
+
+const setEmptyPic = asyncHandler(async(req,res)=>{
+  const { publicId } = req.body
+  console.log('hit')
+
+  try{
+
+    
+    const res = await deleteImage(publicId)
+    
+    if(res==true)
+    {
+      // await User.updateOne({_id:req.user},{title:"",name:""})
+      return res.json({"response":true})
+    }
+    return res.json({"response":false})
+  }catch(e){
+    return res.json({"response":true})
+  }
+
+
+  
+})
 
 
 
@@ -233,5 +268,7 @@ module.exports = {
     delSignature,
     updateProfiePicture,
     updateClinicLogo,
-    updatEmailredentials
+    updatEmailredentials,
+    updatewebsiteURL,
+    setEmptyPic
 };

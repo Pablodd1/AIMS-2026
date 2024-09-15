@@ -1,161 +1,195 @@
-// function appointmentCreated(time) {
-//     return `
-//     <!DOCTYPE html>
+
+// function appointmentCreated(time, number, clinicname, patientName, website, address, pic) {
+//   return `
+//   <!DOCTYPE html>
 // <html lang="en">
 // <head>
-//     <meta charset="UTF-8">
-//     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-//     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-//     <style>
-//         body {
-//             font-family: Arial, sans-serif;
-//             color: #333;
-//             line-height: 1.6;
-//         }
-//         .container {
-//             max-width: 600px;
-//             margin: 0 auto;
-//             padding: 20px;
-//             border: 1px solid #ddd;
-//             border-radius: 5px;
-//             background-color: #f9f9f9;
-//         }
-//         .header {
-//             text-align: center;
-//             margin-bottom: 20px;
-//         }
-//         .header img {
-//             max-width: 150px;
-//         }
-//         .header h1 {
-//             font-size: 24px;
-//             margin: 0;
-//             color: #0056b3;
-//         }
-//         .content {
-//             margin-bottom: 20px;
-//         }
-//         .content p {
-//             margin: 0 0 10px;
-//         }
-//         .footer {
-//             text-align: center;
-//             font-size: 12px;
-//             color: #777;
-//         }
-//         .footer a {
-//             color: #0056b3;
-//             text-decoration: none;
-//         }
-//     </style>
-//     <title>Email Template</title>
+// <meta charset="UTF-8">
+// <meta name="viewport" content="width=device-width, initial-scale=1.0">
+// <title>Appointment Confirmation</title>
+// <style>
+//   body {
+//     background-color: #1E293B; /* slate-900 */
+//     color: white;
+//     font-family: Arial, sans-serif;
+//     padding: 0;
+//     margin: 0;
+//     display: flex;
+//     justify-content: center;
+//     align-items: center;
+//     height: 100vh;
+//   }
+//   .container {
+//     background-color: #ffffff;
+//     color: #000000;
+//     border-radius: 8px;
+//     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+//     padding: 20px;
+//     max-width: 700px;
+//     width: 100%;
+//     text-align: center;
+//   }
+//   .header {
+//     margin-bottom: 40px;
+//   }
+//   .logo {
+//     max-height: 60px;
+//   }
+//   .subject {
+//     font-size: 24px;
+//     font-weight: bold;
+//     margin-bottom: 20px;
+//   }
+//   .content {
+//     margin-bottom: 20px;
+//     text-align: left;
+//   }
+//   .footer {
+//     margin-top: 40px;
+//     font-size: 14px;
+//     color: #D1D5DB; /* slate-300 */
+//   }
+//   .link {
+//     color: #FFDB1A; /* gold */
+//     text-decoration: underline;
+//   }
+//   p {
+//     color: black;
+//   }
+// </style>
 // </head>
 // <body>
-//     <div class="container">
-//         <div class="header">
-//             <img src="https://res.cloudinary.com/dlasb4krd/image/upload/v1725280173/mhxcy03vi7mi0r1lybmm.png" alt="iCare Mobile Medicine Logo">
-//             <h1>AIMS</h1>
-//         </div>
-//         <div class="content">
-//             <p>Dear Patient,</p>
-//             <p>We are pleased to inform you that your appointment has been scheduled on <strong>${time}</strong>.</p>
-//             <p>Please arrive 10 minutes early to complete any necessary paperwork.</p>
-//         </div>
-//         <div class="footer">
-//             <p>&copy; 2024 AIMS. All rights reserved.</p>
-//             <p><a href="https://www.aiscribers.com" target="_blank">AIMS - www.aidemoscribers.com</a></p>
-//         </div>
-//     </div>
+// <div class="container">
+//   <div class="header">
+//     <img src=${pic} alt="${clinicname}" class="logo">
+//   </div>
+
+//   <div class="subject">
+//     Appointment Confirmation - Innovative Medical Wellness
+//   </div>
+
+//   <div class="content">
+//     <p>Dear ${patientName},</p>
+//     <p>We’re happy to confirm your appointment for <strong>${time}</strong>. Please plan to arrive 10 minutes early to complete any necessary medical paperwork.</p>
+
+//     <p>In the meantime, if you haven’t filled out the patient intake form yet, we sent it to you when we added you to the system. You should have received an email with the form. Please check it out.</p>
+    
+//     <p>If you have any questions, please don’t hesitate to reach out.</p>
+
+//     <p>Thank you, and we look forward to seeing you soon!</p>
+//   </div>
+
+//   <div class="footer">
+//     <p>${clinicname}</p>
+//     <p>Phone: ${number}</p>
+//     <p>Address: ${address}</p>
+//     <p>Website: <a href=${website}>${website === "" ? '(link unavailable)' : website}</a></p>
+//     <p>©️ 2024 ${clinicname}. All rights reserved.</p>
+//   </div>
+// </div>
 // </body>
 // </html>
-
-//     `;
+//   `;
 // }
-  
-// module.exports = {
-//     appointmentCreated
-// };
 
 
-function appointmentCreated(time,number,clinicname,patientName) {
-    return `
-    <!DOCTYPE html>
-<html lang="en">
-<head>
+function appointmentCreated(time, number, clinicname, patientName, website, address, pic){
+  return `
+
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
     <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Appointment Confirmation</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            color: #333;
-            line-height: 1.6;
-        }
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            background-color: #f9f9f9;
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        .header img {
-            max-width: 150px;
-        }
-        .header h1 {
-            font-size: 24px;
-            margin: 0;
-            color: #0056b3;
-        }
-        .content {
-            margin-bottom: 20px;
-        }
-        .content p {
-            margin: 0 0 10px;
-        }
-        .footer {
-            text-align: center;
-            font-size: 12px;
-            color: #777;
-        }
-        .footer a {
-            color: #0056b3;
-            text-decoration: none;
-        }
+      body {
+        background-color: #1E293B; /* slate-900 */
+        color: white;
+        font-family: Arial, sans-serif;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+      }
+      .container {
+        background-color: #ffffff;
+        color: #000000;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+        max-width: 700px;
+        width: 100%;
+        text-align: center;
+      }
+      .header {
+        margin-bottom: 40px;
+      }
+      .logo {
+        max-height: 60px;
+      }
+      .subject {
+        font-size: 24px;
+        font-weight: bold;
+        margin-bottom: 20px;
+      }
+      .content {
+        margin-bottom: 20px;
+        text-align: left;
+      }
+      .footer {
+        margin-top: 40px;
+        font-size: 14px;
+        color: #D1D5DB; /* slate-300 */
+      }
+      .link {
+        color: #FFDB1A; /* gold */
+        text-decoration: underline;
+      }
+      p {
+        color: black;
+      }
     </style>
-    <title>Email Template</title>
-</head>
-<body>
+  </head>
+  <body>
     <div class="container">
-        <div class="header">
-            <img src="https://res.cloudinary.com/dlasb4krd/image/upload/v1725280173/mhxcy03vi7mi0r1lybmm.png" alt="AIMS">
-            <h1>AIMS</h1>
-        </div>
-        <div class="content">
-            <p>Dear ${patientName},</p>
-            <p>We are pleased to inform you that your appointment is confirmed on <strong>${time}</strong>. Please arrive 10 minutes earlier to finalize any necessary medical paperwork.</p>
-            <br/>
-            <p>For your convenience, please fill out the following medical intake form using either your voice or typing for accuracy. Follow the instructions provided, and rest assured, your documentation will be securely encrypted.</p>
-            <br/>
-            <p>If you have any questions, feel free to contact us.</p>
-            <p>${clinicname}</p>
-            <p>Phone: ${number}</p>
-        </div>
-        <div class="footer">
-            <p>&copy; 2024 AIMS. All rights reserved.</p>
-            <p><a href="https://www.aiscribers.com" target="_blank">AIMS - www.aidemoscribers.com</a></p>
-        </div>
+      <div class="header">
+        <img src=${pic} alt="${clinicname}" class="logo">
+      </div>
+  
+      <div class="subject">
+        Appointment Confirmation - Innovative Medical Wellness
+      </div>
+  
+      <div class="content">
+        <p>Dear ${patientName},</p>
+        <p>We’re happy to confirm your appointment for <strong>${time}</strong>. Please plan to arrive 10 minutes early to complete any necessary medical paperwork.</p>
+  
+        <p>In the meantime, if you haven’t filled out the patient intake form yet, we sent it to you when we added you to the system. You should have received an email with the form. Please check it out.</p>
+        
+        <p>If you have any questions, please don’t hesitate to reach out.</p>
+  
+        <p>Thank you, and we look forward to seeing you soon!</p>
+      </div>
+  
+      <div class="footer">
+        <p>${clinicname}</p>
+        <p>Phone: ${number}</p>
+        <p>Address: ${address}</p>
+        <p>Website: <a href=${website}>${website === "" ? '(link unavailable)' : website}</a></p>
+        <p>©️ 2024 ${clinicname}. All rights reserved.</p>
+      </div>
     </div>
-</body>
-</html>
-    `;
+  </body>
+  </html>
+      `;
+  
+  
 }
 
 module.exports = {
-    appointmentCreated
+  appointmentCreated
 };
 

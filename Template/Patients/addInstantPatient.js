@@ -1,76 +1,86 @@
-function addInstantPatient(link) {
+function addInstantPatient(link,name,number,clinic,website)
+{
     return `
     <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta http-equiv="X-UA-Compatible" content="IE=edge">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <style>
-            body {
-                font-family: Arial, sans-serif;
-                color: #333;
-                line-height: 1.6;
-            }
-            .container {
-                max-width: 600px;
-                margin: 0 auto;
-                padding: 20px;
-                border: 1px solid #ddd;
-                border-radius: 5px;
-                background-color: #f9f9f9;
-            }
-            .header {
-                text-align: center;
-                margin-bottom: 20px;
-            }
-            .header img {
-                max-width: 150px;
-            }
-            .header h1 {
-                font-size: 24px;
-                margin: 0;
-                color: #0056b3;
-            }
-            .content {
-                margin-bottom: 20px;
-            }
-            .content p {
-                margin: 0 0 10px;
-            }
-            .footer {
-                text-align: center;
-                font-size: 12px;
-                color: #777;
-            }
-            .footer a {
-                color: #0056b3;
-                text-decoration: none;
-            }
-        </style>
-        <title>Email Template</title>
-    </head>
-    <body>
-        <div class="container">
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to Innovative Medical Wellness</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #;
+        }
+        .container {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            padding: 20px;
+            background-color: #1e293b;
+            color: white;
+            border-radius: 10px 10px 0 0;
+        }
+        .content {
+            padding: 20px;
+            line-height: 1.6;
+            color: #333333;
+        }
+        .footer {
+            padding: 10px;
+            text-align: center;
+            background-color: #f4f4f4;
+            border-radius: 0 0 10px 10px;
+        }
+        a {
+            color: #4CAF50;
+            text-decoration: none;
+        }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            margin: 10px 0;
+            background-color: #1e293b;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
         <div class="header">
-        <img src="https://res.cloudinary.com/dlasb4krd/image/upload/v1725280173/mhxcy03vi7mi0r1lybmm.png" alt="AIMS">
-        <h1>AIMS</h1>
-    </div>
-            <div class="content">
-                <p>We are pleased to inform you that you can now complete your patient intake form online. Please use the link below to navigate to the form:</p>
-                <p><a href=${link} target="_blank">Click Me :)</a></p>
-                <p>If you have any questions or need assistance, feel free to contact us.</p>
-            </div>
-            <div class="footer">
-                <p>&copy; 2024 AIMS. All rights reserved.</p>
-                <p><a href="https://www.aidemoscriber.com" target="_blank">AIMS - www.aidemoscriber.com</a></p>
-            </div>
+            <h1>Welcome to ${clinic}!</h1>
         </div>
-    </body>
-    </html>
-    `;
+        <div class="content">
+            <p>Dear ${name},</p>
+            <p>We are thrilled to welcome you to ${clinic}! We are excited to have you on board and look forward to providing you with exceptional care and service.</p>
+            <p>We have successfully added you to our registration system, and you are now a part of our community. If you have any questions or need assistance, please don't hesitate to reach out to us.</p>
+            <p>For your convenience, our contact information is:</p>
+            <p><strong>Website:</strong><a href=${website}>${website==""?'(link unavailable)':website}</a><br>
+               <strong>Phone Number:</strong> ${number}</p>
+            <p>Please click the button below to navigate to the form and complete your preferences.</p>
+
+            <a href=${link} class="button">Click me 👀</a>
+            <p>Thank you for choosing ${clinic}. We look forward to serving you!</p>
+        </div>
+    </div>
+</body>
+</html>
+
+    `
 }
-  
+
 module.exports = {
     addInstantPatient
 };
+

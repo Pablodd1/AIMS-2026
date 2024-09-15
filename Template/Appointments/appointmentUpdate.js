@@ -1,83 +1,172 @@
-function appointmentUpdate(prevt,newt,number)
-{
+// function appointmentUpdate(newt,number,website,clinic,name) {
+//     return `
+//     <!DOCTYPE html>
+// <html lang="en">
+// <head>
+//     <meta charset="UTF-8">
+//     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+//     <title>Appointment Time Changed - ${clinic}</title>
+//     <style>
+//         body {
+//             font-family: Arial, sans-serif;
+//             margin: 0;
+//             padding: 0;
+//             background-color: #f4f4f4;
+//         }
+//         .container {
+//             width: 100%;
+//             max-width: 600px;
+//             margin: 0 auto;
+//             background-color: #ffffff;
+//             padding: 20px;
+//             border-radius: 10px;
+//             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+//         }
+//         .header {
+//             text-align: center;
+//             padding: 20px;
+//             background-color: #1e293b;
+//             color: white;
+//             border-radius: 10px 10px 0 0;
+//         }
+//         .content {
+//             padding: 20px;
+//             line-height: 1.6;
+//             color: #333333;
+//         }
+//         .footer {
+//             padding: 10px;
+//             text-align: center;
+//             background-color: #f4f4f4;
+//             border-radius: 0 0 10px 10px;
+//         }
+//         a {
+//             color: #4CAF50;
+//             text-decoration: none;
+//         }
+//         .button {
+//             display: inline-block;
+//             padding: 10px 20px;
+//             margin: 10px 0;
+//             background-color: #1e293b;
+//             color: white;
+//             text-decoration: none;
+//             border-radius: 5px;
+//         }
+//     </style>
+// </head>
+// <body>
+//     <div class="container">
+//         <div class="header">
+//             <h1>Appointment Time Changed</h1>
+//         </div>
+//         <div class="content">
+//             <p>Dear ${name},</p>
+//             <p>We would like to inform you that the time for your appointment at <strong>${clinic}</strong> has been changed.</p>
+//             <p>Your new appointment time is <strong>${newt}</strong>.</p>
+//             <p>If this time is not convenient for you or if you have any questions, please feel free to contact us.</p>
+//             <p><strong>Website:</strong> <a href="${website}">${website === "" ? '(link unavailable)' : website}</a><br>
+//                <strong>Phone Number:</strong> ${number}</p>
+           
+//            <br/>
+//             <p>We look forward to seeing you soon.</p>
+//         </div>
+//     </div>
+// </body>
+// </html>
+
+//     `;
+// }
+
+// module.exports = {
+//     appointmentUpdate
+// };
+
+function appointmentUpdate(newt, number, website, clinic, name) {
     return `
     <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta http-equiv="X-UA-Compatible" content="IE=edge">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <style>
-            body {
-                font-family: Arial, sans-serif;
-                color: #333;
-                line-height: 1.6;
-            }
-            .container {
-                max-width: 600px;
-                margin: 0 auto;
-                padding: 20px;
-                border: 1px solid #ddd;
-                border-radius: 5px;
-                background-color: #f9f9f9;
-            }
-            .header {
-                text-align: center;
-                margin-bottom: 20px;
-            }
-            .header img {
-                max-width: 150px;
-            }
-            .header h1 {
-                font-size: 24px;
-                margin: 0;
-                color: #0056b3;
-            }
-            .content {
-                margin-bottom: 20px;
-            }
-            .content p {
-                margin: 0 0 10px;
-            }
-            .footer {
-                text-align: center;
-                font-size: 12px;
-                color: #777;
-            }
-            .footer a {
-                color: #0056b3;
-                text-decoration: none;
-            }
-        </style>
-        <title>Appointment Update</title>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <img src="https://res.cloudinary.com/dlasb4krd/image/upload/v1725280173/mhxcy03vi7mi0r1lybmm.png" alt="AIMS">
-                <h1>AIMS</h1>
-            </div>
-            <div class="content">
-                <p>We wanted to inform you that your appointment time has been updated.</p>
-                <p>Previous time: <strong>${prevt}</strong></p>
-                <p>New time: <strong>${newt}</strong></p>
-                <p>Please arrive at the new time. If you have any questions or need to reschedule, feel free to contact us at <strong>${number}</strong>.</p>
-                <p>Thank you for your understanding.</p>
-            </div>
-            <div class="footer">
-                <p>&copy; 2024 AIMS. All rights reserved.</p>
-                <p><a href="https://www.aiscribers.com" target="_blank">AIMS - www.aidemoscribers.com</a></p>
-            </div>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Appointment Time Changed - ${clinic}</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f4f4f4;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+        .header {
+            padding: 20px;
+            background-color: #1e293b;
+            color: white;
+            border-radius: 10px 10px 0 0;
+        }
+        .content {
+            padding: 20px;
+            line-height: 1.6;
+            color: #333333;
+            text-align: left;
+        }
+        .footer {
+            padding: 10px;
+            text-align: center;
+            background-color: #f4f4f4;
+            border-radius: 0 0 10px 10px;
+        }
+        a {
+            color: #4CAF50;
+            text-decoration: none;
+        }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            margin: 10px 0;
+            background-color: #1e293b;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Appointment Time Changed</h1>
         </div>
-    </body>
-    </html>
-   
-  
-        
+        <div class="content">
+            <p>Dear ${name},</p>
+            <p>We would like to inform you that the time for your appointment at <strong>${clinic}</strong> has been changed.</p>
+            <p>Your new appointment time is <strong>${newt}</strong>.</p>
+            <p>If this time is not convenient for you or if you have any questions, please feel free to contact us.</p>
+            <p><strong>Website:</strong> <a href="${website}">${website === "" ? '(link unavailable)' : website}</a><br>
+               <strong>Phone Number:</strong> ${number}</p>
+           
+           <br/>
+            <p>We look forward to seeing you soon.</p>
+        </div>
+    </div>
+</body>
+</html>
 
-    `
+    `;
 }
 
 module.exports = {
     appointmentUpdate
-}
+};
+

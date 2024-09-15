@@ -23,8 +23,10 @@ const createVisit = asyncHandler(async (req, res) => {
             icdCodes,
             dxCodes,
             Plan,
+            Rationale,
             mode
         } = req.body;
+
         if(mode == "generate")
         {
             
@@ -46,7 +48,8 @@ const createVisit = asyncHandler(async (req, res) => {
                 cptCodes,
                 icdCodes,
                 dxCodes,
-                Plan
+                Plan,
+                Rationale
             });
 
             await visit.save();
@@ -68,7 +71,8 @@ const createVisit = asyncHandler(async (req, res) => {
                 cptCodes,
                 icdCodes,
                 dxCodes,
-                Plan
+                Plan,
+                Rationale
             });
 
 
@@ -143,7 +147,6 @@ const getVists = asyncHandler(async(req,res)=>{
 const delVisit = asyncHandler(async(req,res)=>{
     try
     {
-        console.log(req.query.id)
       await Visit.deleteOne({_id:req.query.id})
       res.status(200).json({response:true})
     }

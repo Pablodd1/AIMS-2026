@@ -4,7 +4,7 @@ const { appointmentCancelled } = require('../Template/Appointments/appointmentCa
 const { appointmentUpdate } = require('../Template/Appointments/appointmentUpdate');
 const { addInstantPatient } = require('../Template/Patients/addInstantPatient')
 
-const appMail = async (businessMail,appCode,userEmail,time,phone_number,clinicname,patient) => {
+const appMail = async (businessMail,appCode,userEmail,time,phone_number,clinicname,patient,website,address,pic) => {
   try {
     const transporter = nodemailer.createTransport({
       port: 465,
@@ -20,8 +20,8 @@ const appMail = async (businessMail,appCode,userEmail,time,phone_number,clinicna
     await transporter.sendMail({
       from: businessMail,
       to: userEmail,
-      subject: "Appointment",
-      html: appointmentCreated(time,phone_number,clinicname,patient),
+      subject: `Welcome to ${clinicname}`,
+      html: appointmentCreated(time,phone_number,clinicname,patient,website,address,pic),
     });
 
     return true
@@ -29,7 +29,7 @@ const appMail = async (businessMail,appCode,userEmail,time,phone_number,clinicna
     return false
   }
 }
-const appCancel = async (businessMail,appCode,userEmail,time,number) => {
+const appCancel = async (businessMail,appCode,userEmail,time,number,website,clinic,name) => {
   try {
     const transporter = nodemailer.createTransport({
       port: 465,
@@ -45,8 +45,8 @@ const appCancel = async (businessMail,appCode,userEmail,time,number) => {
     await transporter.sendMail({
       from: businessMail,
       to: userEmail,
-      subject: "Appointment",
-      html: appointmentCancelled(time,number),
+      subject: `Welcome to ${clinic}`,
+      html: appointmentCancelled(time,number,website,clinic,name),
     });
 
     return true
@@ -54,7 +54,7 @@ const appCancel = async (businessMail,appCode,userEmail,time,number) => {
     return false
   }
 }
-const appUpdate = async (businessMail,appCode,userEmail,prevt,newt,number) => {
+const appUpdate = async (businessMail,appCode,userEmail,newt,number,website,clinic,name) => {
   try {
     const transporter = nodemailer.createTransport({
       port: 465,
@@ -70,8 +70,8 @@ const appUpdate = async (businessMail,appCode,userEmail,prevt,newt,number) => {
     await transporter.sendMail({
       from: businessMail,
       to: userEmail,
-      subject: "Appointment",
-      html: appointmentUpdate(prevt,newt,number),
+      subject: `Welcome to ${clinic}`,
+      html: appointmentUpdate(newt,number,website,clinic,name),
     });
 
     return true
@@ -79,7 +79,7 @@ const appUpdate = async (businessMail,appCode,userEmail,prevt,newt,number) => {
     return false
   }
 }
-const addPatient = async (businessMail,appCode,userEmail,link) => {
+const addPatient = async (businessMail,appCode,userEmail,link,name,number,clinic,website) => {
   try {
     const transporter = nodemailer.createTransport({
       port: 465,
@@ -95,8 +95,8 @@ const addPatient = async (businessMail,appCode,userEmail,link) => {
     await transporter.sendMail({
       from: businessMail,
       to: userEmail,
-      subject: "Appointment",
-      html: addInstantPatient(link),
+      subject: `Welcome to ${clinic}`,
+      html: addInstantPatient(link,name,number,clinic,website),
     });
 
     return true

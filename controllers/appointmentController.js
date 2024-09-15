@@ -53,7 +53,9 @@ function formatDateString(dateString) {
 const createAppointment = asyncHandler(async (req,res)=>{
   
  const { patientID , time ,number,clinicname,businessMail,
-    appCode } = req.body;
+    appCode,website,address,pic } = req.body;
+    console.log(patientID , time ,number,clinicname,businessMail,
+        appCode,website,address,pic)
     let paienInfo
  try
  {     
@@ -87,9 +89,9 @@ const createAppointment = asyncHandler(async (req,res)=>{
     }finally{
         if(businessMail=="" || appCode == "")
             {
-            await appMail(process.env.NODE_MAILER_USER,process.env.NODE_MAILER_PASS,paienInfo.email,formatDateString(time),number,clinicname,paienInfo.fullName)
+            await appMail(process.env.NODE_MAILER_USER,process.env.NODE_MAILER_PASS,paienInfo.email,formatDateString(time),number,clinicname,paienInfo.fullName,website,address,pic)
             }else{
-            await appMail(businessMail,appCode,paienInfo.email,formatDateString(time),number,clinicname,paienInfo.fullName)
+            await appMail(businessMail,appCode,paienInfo.email,formatDateString(time),number,clinicname,paienInfo.fullName,website,address,pic)
             }
     }
 })
@@ -116,7 +118,7 @@ const getbyDateAppointment = asyncHandler(async (req,res)=>{
 
 const delAppointment = asyncHandler(async(req,res)=>{
     const { appId , number , businessMail,
-        appCode } = req.body
+        appCode,website,clinic } = req.body
     let p
     let appResult
    try{
@@ -129,16 +131,16 @@ const delAppointment = asyncHandler(async(req,res)=>{
    }finally{
     if(businessMail=="" || appCode == "")
             {
-                await appCancel(process.env.NODE_MAILER_USER,process.env.NODE_MAILER_PASS,p.email,formatDateString(appResult.time),number)
+                await appCancel(process.env.NODE_MAILER_USER,process.env.NODE_MAILER_PASS,p.email,formatDateString(appResult.time),number,website,clinic,p.fullName)
             }else{
-                await appCancel(businessMail,appCode,p.email,formatDateString(appResult.time),number)
+                await appCancel(businessMail,appCode,p.email,formatDateString(appResult.time),number,website,clinic,p.fullName)
             }
    }
 })
 
 const editAppTime = asyncHandler(async(req,res)=>{
     const { appId , time , number,businessMail,
-        appCode  } = req.body
+        appCode,website,clinic  } = req.body
         let appt;
    try{
      appt = await Appointment.findOne({_id:appId})
@@ -151,9 +153,9 @@ const editAppTime = asyncHandler(async(req,res)=>{
    }finally{
     if(businessMail=="" || appCode == "")
             {
-                await appUpdate(process.env.NODE_MAILER_USER,process.env.NODE_MAILER_PASS,appt.email,formatDateString(appt.time),formatDateString(time),number)
+                await appUpdate(process.env.NODE_MAILER_USER,process.env.NODE_MAILER_PASS,appt.email,formatDateString(time),number,website,clinic,appt.name)
             }else{
-                await appUpdate(businessMail,appCode,appt.email,formatDateString(appt.time),formatDateString(time),number)
+                await appUpdate(businessMail,appCode,appt.email,formatDateString(time),number,website,clinic,appt.name)
             }
    }
 })

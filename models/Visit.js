@@ -46,17 +46,15 @@ const VisitSchema = new Schema({
     med:{
         type:String,
     },
-    cptCodes:[{type:Object}],
-    icdCodes:[{type:Object}],
-    dxCodes: [{type:Object}],
     Plan:{
         type:String,
-    }
-
-
-
-    
-    
+    },
+    Rationale:{
+        type:String,
+    },
+    cptCodes:[{type:Object}],
+    icdCodes:[{type:Object}],
+    dxCodes: [{type:Object}]
 
     },{timestamps:true})
     mongoose.models={}
