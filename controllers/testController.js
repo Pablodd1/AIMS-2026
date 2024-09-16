@@ -1,36 +1,26 @@
 const asyncHandler = require("express-async-handler");
-const axios = require('axios');
+const cloudinary = require('cloudinary').v2;
 
-// Define the SMS API details
-const API_KEY = 'rKUpPqW6XnvOcS01';
-const SMS_API_URL = 'https://api.sendinblue.com/v3/transactionalSMS/sms';// Update this to the actual Mailin SMS API URL if different
 
-// Prepare the SMS data
-const smsData = {
-    to: '3364569588', // Recipient phone number
-    from: '3364569588', // Sender name or number (alphanumeric max length 11)
-    text: 'Text message to send', // Message content (160 characters max per SMS)
-    tag: 'Your tag name', // Custom tag for message tracking
-    type: '', // Optional: 'marketing' or 'transactional'
-    callback: 'http://callbackurl.com/' // Callback URL for delivery reports
-};
+cloudinary.config({
+    cloud_name: 'dklqbx5k0',
+    api_key: '586219556714458',
+    api_secret: 'JY7qKHk1QeMN5FqaW4lPf9N3k1E'
+});
 
 
 
 const testFunc = asyncHandler(async(req,res)=>{
-
-  try {
-    const response = await axios.post(SMS_API_URL, smsData, {
-        headers: {
-            'Authorization': `Bearer ${API_KEY}`, // Use Bearer token for authorization
-            'Content-Type': 'application/json'
+    await cloudinary.uploader.destroy('doctors_pdf_uploads/jcatipqoowmjp7rlol7x.pdf', (error, result) => {
+        if (error) {
+          console.error('Error deleting previous image:', error);
+          return false
+        } else {
+          console.log('Previous image deleted:', result);
+          return true
         }
-    });
-    
-    console.log('SMS Sent:', response.data);
-} catch (error) {
-    console.error('Error sending SMS:', error.response ? error.response.data : error.message);
-}
+      });
+
 res.send(true)    
   })
   

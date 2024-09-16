@@ -181,17 +181,7 @@ cloudinary.config({
   api_key: '486585293283911',
   api_secret: 'LUDKjvJk-r_Xn1Dt7v3OSlIyK0'
 });
-async function deleteImage(publicId) {
-  await cloudinary.uploader.destroy(company.imagePublicId, (error, result) => {
-    if (error) {
-      console.error('Error deleting previous image:', error);
-      return false
-    } else {
-      console.log('Previous image deleted:', result);
-      return true
-    }
-  });
-}
+
 const delSignature = asyncHandler(async(req,res)=>{
   const { _id , publicId } = req.body;
   console.log(_id,publicId)

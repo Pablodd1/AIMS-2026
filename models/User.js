@@ -53,11 +53,11 @@ const UserSchema = new Schema({
         type:String,
         default:""
     },
-    publicIds:{
-        signature_publicId:"",
-        clinic_logo_publicId:"",
-        signature_publicId:""
-    },
+    // publicIds:{
+    //     signature_publicId:"",
+    //     clinic_logo_publicId:"",
+    //     signature_publicId:""
+    // },
     admin:{
         type:Boolean,
         default:false

@@ -54,8 +54,6 @@ const createAppointment = asyncHandler(async (req,res)=>{
   
  const { patientID , time ,number,clinicname,businessMail,
     appCode,website,address,pic } = req.body;
-    console.log(patientID , time ,number,clinicname,businessMail,
-        appCode,website,address,pic)
     let paienInfo
  try
  {     

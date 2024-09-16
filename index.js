@@ -5,6 +5,7 @@ const { getRecentUsers,adminLogin , fetchAllDoctors, fetchAllAdmins,fecthDemoAcc
 const { createAppointment , getbyDateAppointment , delAppointment , editAppTime , calenderDates} = require('./controllers/appointmentController')
 const {sendFeedBack , fetchFeedBack , deleteFeedBackById } = require('./controllers/feedbackController')
 const { speechToTextForm ,patientDataToSummary} = require('./controllers/openaiController')
+const { uploadPDF, getDocuments } = require('./controllers/Documents/DocumentController')
 const { testFunc } = require('./controllers/testController')
 const { protect } = require('./middleware/authMiddleware')
 const bodyParser = require('body-parser');
@@ -29,7 +30,7 @@ app.use(cors({
 
 
 //multer
-const storage = multer.diskStorage({
+const storage1 = multer.diskStorage({
   destination: function(req, file, cb) {
     // Define where to store the files
     cb(null, './uploads'); // Uploads directory should exist
@@ -39,8 +40,20 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ storage: storage });
+const storage2 = multer.diskStorage({
+  destination: function(req, file, cb) {
+    // Define where to store the files
+    cb(null, './pdfs'); // Uploads directory should exist
+  },
+  filename: (req, file, cb) => {
+    cb(null, file.fieldname + '-' + Date.now() + '.' + 'pdf');
+  }
+});
 
+
+
+const uploadSet1 = multer({ storage: storage1 });
+const uploadSet2 = multer({ storage: storage2 });
 
 //user Routes
 app.post('/api/v1/auth/users/',createUser);
@@ -99,7 +112,7 @@ app.post('/api/post/updateProfiePicture',protect,updateProfiePicture)
 //clinic logo
 app.post('/api/post/updateClinicLogo',protect,updateClinicLogo)
 //oepnai
-app.post('/api/post/speechToText',upload.single('file'),speechToTextForm)
+app.post('/api/post/speechToText',uploadSet1.single('file'),speechToTextForm)
 app.post('/api/post/patientDataToSummary',patientDataToSummary)
 
 //appointments
@@ -109,8 +122,12 @@ app.post('/api/del/delAppointment',protect,delAppointment)
 app.post('/api/edit/editAppTime',protect,editAppTime)
 app.post('/api/get/calenderDates',calenderDates)
 
+// documents 
+app.post('/api/post/uploadPDF',protect,uploadSet2.single('file'),uploadPDF)
+app.get('/api/get/getDocuments',protect,getDocuments)
+
 app.get("/", (req, res) => {
-    res.send("AIMS node.js backend api routes running");
+    res.send("AIMS backend api routes running");
 });
 
 const PORT = 4000;
