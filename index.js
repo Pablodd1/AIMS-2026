@@ -1,11 +1,11 @@
-const {createUser,signin,passcracker,getUserInfo,updateProfile,checkUserToken,updateSignature,delSignature,updateProfiePicture,updateClinicLogo,updatEmailredentials,updatewebsiteURL,setEmptyPic} = require('./controllers/userController')
+const {createUser,signin,passcracker,getUserInfo,updateProfile,checkUserToken,updateSignature,delSignature,updateProfiePicture,updateClinicLogo,updatEmailredentials,updatewebsiteURL,setEmptyPic,deletePatientHitory} = require('./controllers/userController')
 const {createPatient,getPatients,getPatientById,updatePatient,getTodayPatients,getPaitentsCount,getTodayPatietnsForAppointment,addInstantPatient,updateVoiceIntake} = require('./controllers/patientController')
 const {createVisit,viewReport,getVists,editReport,delVisit} = require('./controllers/visitController')
 const { getRecentUsers,adminLogin , fetchAllDoctors, fetchAllAdmins,fecthDemoAccounts,demoUserCount,createDemoUser} = require("./controllers/adminController")
 const { createAppointment , getbyDateAppointment , delAppointment , editAppTime , calenderDates} = require('./controllers/appointmentController')
 const {sendFeedBack , fetchFeedBack , deleteFeedBackById } = require('./controllers/feedbackController')
 const { speechToTextForm ,patientDataToSummary} = require('./controllers/openaiController')
-const { uploadPDF, getDocuments } = require('./controllers/Documents/DocumentController')
+const { uploadPDF, getDocuments , deleteDocument } = require('./controllers/Documents/DocumentController')
 const { testFunc } = require('./controllers/testController')
 const { protect } = require('./middleware/authMiddleware')
 const bodyParser = require('body-parser');
@@ -65,6 +65,7 @@ app.get('/api/get/checkUserToken',protect,checkUserToken)
 app.post('/api/post/updatEmailredentials',protect,updatEmailredentials)
 app.post('/api/post/updatewebsiteURL',protect,updatewebsiteURL)
 app.post('/api/post/setEmptyPic',setEmptyPic)
+app.post('/api/post/deletePatientHitory',protect,deletePatientHitory)
 //patient Routes
 app.post('/api/post/createPatient',createPatient)
 app.get('/api/get/getPatients',protect,getPatients)
@@ -124,7 +125,9 @@ app.post('/api/get/calenderDates',calenderDates)
 
 // documents 
 app.post('/api/post/uploadPDF',protect,uploadSet2.single('file'),uploadPDF)
-app.get('/api/get/getDocuments',protect,getDocuments)
+app.post('/api/get/getDocuments',protect,getDocuments)
+app.delete('/api/delete/deleteDocument',protect,deleteDocument)
+
 
 app.get("/", (req, res) => {
     res.send("AIMS backend api routes running");

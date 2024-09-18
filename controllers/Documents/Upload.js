@@ -33,8 +33,11 @@ const uploadPDFToCloudinary = async (file, options = {}) => {
 
 // Upload PDF and store info in DB
 const uploadPDF = asyncHandler(async (req, res) => {
+
     try {
+
         if (!req.file) {
+
             return res.status(400).json({ response: false, msg: 'No file provided' });
         }
 
@@ -44,23 +47,34 @@ const uploadPDF = asyncHandler(async (req, res) => {
         
 
         const doc = new Document({
+
             userId: req.user,
+            pId:req.body.pId,
+            fileOriginalName:req.file.originalname,
             publicId: response.public_id,
             secure_url: response.secure_url
+
         });
 
         doc.save()
 
         fs.unlink(filePath, (err) => {
+
           if (err) console.error('Failed to delete local file:', err);
+
         });
 
         if (doc) {
+
             return res.json({ response: true,msg:"Filed Uploaded"});
+
         } else {
+
             return res.json({ response: false });
+
         }
     } catch (error) {
+
         return res.status(500).json({ response: false});
     }
 });

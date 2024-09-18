@@ -6,6 +6,14 @@ const DocumentSchema = new Schema({
         type:String,
         required:true,
     },
+    fileOriginalName:{
+        type:String,
+        required:true,
+    },
+    pId:{
+        type:String,
+        required:true,
+    },
     publicId:{
         type:String,
         required:true,

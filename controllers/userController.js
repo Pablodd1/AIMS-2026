@@ -3,7 +3,10 @@ const asyncHandler = require("express-async-handler");
 const User = require('../models/User')
 const generateToken = require('../config/generateToken')
 const CryptoJS = require("crypto-js");
-// const { sign } = require("jsonwebtoken");
+const Patients = require('../models/Patients')
+const Visit = require('../models/Visit')
+const Document = require('../models/Document') 
+
 
 const createUser = asyncHandler(async (req,res)=>{
   
@@ -244,6 +247,46 @@ const setEmptyPic = asyncHandler(async(req,res)=>{
   
 })
 
+const deletePatientHitory = asyncHandler(async(req,res)=>{
+  const { pId , password } = req.body
+
+    try
+    {
+      // await Document.findOne({pId});
+
+    const user = await User.findOne({_id:req.user})
+
+    const bytes  = CryptoJS.AES.decrypt(user.password,  process.env.JWTSECRET)
+    const originalText = bytes.toString(CryptoJS.enc.Utf8);
+    console.log(originalText)
+    if(password != originalText)
+    {
+      return res.json({
+        response: false,
+        msg: "Invalid Password"
+      });
+    }
+
+      await Promise.all([
+         Patients.deleteOne({_id:pId}),
+         Visit.deleteMany({pId}),
+         Document.deleteMany({pId})
+      ])
+
+      return res.json({
+        response: true,
+        msg: "Successfully patient reccord deleted"
+      });
+    }
+    catch(e)
+    {
+      return res.json({
+        response: false,
+        msg: "Sever error"
+      });
+    }
+})
+
 
 
 
@@ -260,5 +303,6 @@ module.exports = {
     updateClinicLogo,
     updatEmailredentials,
     updatewebsiteURL,
-    setEmptyPic
+    setEmptyPic,
+    deletePatientHitory
 };

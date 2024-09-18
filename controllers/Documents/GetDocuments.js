@@ -4,12 +4,13 @@ const Document = require('../../models/Document');
 const getDocuments = asyncHandler(async(req,res)=>{
     try
     {
-      const docs = await Document.find({userId:req.user})
-      res.status(200).json({documents:docs,response:true})
+      const { pId } = req.body
+      const docs = await Document.find({pId})
+      return res.json({documents:docs,response:true})
     }
     catch(e)
     {
-      res.json({response:false})
+      return res.json({response:false})
     }
 })
 
