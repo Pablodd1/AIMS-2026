@@ -260,6 +260,7 @@ const addInstantPatient = asyncHandler(async(req,res)=>{
     website,
     name,
     email,
+    lastName,
     number,
     businessMail,
     appCode
@@ -269,10 +270,12 @@ const addInstantPatient = asyncHandler(async(req,res)=>{
    
   try {
 
+    const fullName = name + ' ' + lastName
+
     // Create new patient
     const newPatient = new Patient({
         doc_id:req.user,
-        fullName:name,
+        fullName:fullName,
         phoneNumber:number,
         email
         

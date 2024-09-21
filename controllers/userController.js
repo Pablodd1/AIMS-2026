@@ -6,7 +6,7 @@ const CryptoJS = require("crypto-js");
 const Patients = require('../models/Patients')
 const Visit = require('../models/Visit')
 const Document = require('../models/Document') 
-
+const { deleteAsset } = require('../controllers/Cloudinary/cloudinay')
 
 const createUser = asyncHandler(async (req,res)=>{
   
@@ -179,12 +179,6 @@ const updateClinicLogo = asyncHandler(async(req,res)=>{
      return res.json({"response":false,msg:"Failed to updated Clinic logo try again"})
    }
 })
-cloudinary.config({
-  cloud_name: 'dlasb4krd',
-  api_key: '486585293283911',
-  api_secret: 'LUDKjvJk-r_Xn1Dt7v3OSlIyK0'
-});
-
 const delSignature = asyncHandler(async(req,res)=>{
   const { _id , publicId } = req.body;
   console.log(_id,publicId)
@@ -252,13 +246,15 @@ const deletePatientHitory = asyncHandler(async(req,res)=>{
 
     try
     {
-      // await Document.findOne({pId});
+    
+
+     
 
     const user = await User.findOne({_id:req.user})
 
     const bytes  = CryptoJS.AES.decrypt(user.password,  process.env.JWTSECRET)
     const originalText = bytes.toString(CryptoJS.enc.Utf8);
-    console.log(originalText)
+
     if(password != originalText)
     {
       return res.json({
@@ -272,6 +268,13 @@ const deletePatientHitory = asyncHandler(async(req,res)=>{
          Visit.deleteMany({pId}),
          Document.deleteMany({pId})
       ])
+
+     const docs = await Document.find({pId});
+
+      for(let i=0;i<docs.length;i++)
+      {
+        await deleteAsset(docs[i].publicId)
+      }
 
       return res.json({
         response: true,

@@ -52,7 +52,7 @@ function formatDateString(dateString) {
     
 const createAppointment = asyncHandler(async (req,res)=>{
   
- const { patientID , time ,number,clinicname,businessMail,
+const { patientID , time ,number,clinicname,businessMail,
     appCode,website,address,pic } = req.body;
     let paienInfo
  try
@@ -94,13 +94,14 @@ const createAppointment = asyncHandler(async (req,res)=>{
     }
 })
 
+
 const getbyDateAppointment = asyncHandler(async (req,res)=>{
     try{
 
         let { date } = req.body
         
         date = date.slice(0,10)
-        const query = { time: {
+        const query = { status:'Scheduled', time: {
             $regex: `^${date}`
           }};
         const results = await Appointment.find(query)
@@ -158,14 +159,89 @@ const editAppTime = asyncHandler(async(req,res)=>{
    }
 })
 
-
 const calenderDates = asyncHandler(async(req,res)=>{
+    const { status } = req.body
+    try{
+        const appts = await Appointment.find({doctorID:req.body._id,status})
+        .select('time') 
+        .exec();
+
+        console.log(appts)
+        return res.json({response:true,appointments:appts})
+    }
+    catch(e)
+    {
+        return res.json({response:false})
+    }
+
+})
+
+const changeStatus = asyncHandler(async(req,res)=>{
 
     try{
 
-        const appts = await Appointment.find({doctorID:req.body._id})
-        .select('time') 
-        .exec();
+        const { appId , status} = req.body;
+        await Appointment.updateOne({_id:appId},{status})
+
+        return res.json({response:true})
+    }
+    catch(e)
+    {
+        return res.json({response:false})
+    }
+
+})
+
+const searchAppByName = asyncHandler(async (req, res) => {
+    try {
+        const { name } = req.body;
+
+        if(name.length == 0)
+        {
+            return res.json({ response: false, appointments: []}); 
+        }
+
+        // Create regex to match names starting with the first letter
+        const regex = new RegExp('^' + name, 'i'); // Case insensitive search
+
+        // Search the database for users matching the name and limit to 5 results
+        const appointments = await Appointment.find({doctorID:req.user, name: regex }).limit(5);
+
+        return res.json({ response: true, appointments });
+    } catch (e) {
+        console.error(e);
+        return res.json({ response: false, appointments: [] });
+    }
+});
+
+const searchAppByEmail = asyncHandler(async (req, res) => {
+    try {
+        const { email } = req.body;
+
+        if(email.length == 0)
+        {
+            return res.json({ response: false, appointments: []}); 
+        }
+
+        // Create regex to match names starting with the first letter
+        const regex = new RegExp('^' + email, 'i'); // Case insensitive search
+
+        // Search the database for users matching the name and limit to 5 results
+        const appointments = await Appointment.find({doctorID:req.user, name: regex }).limit(5);
+
+        return res.json({ response: true, appointments });
+    } catch (e) {
+        console.error(e);
+        return res.json({ response: false, appointments: []});
+    }
+});
+
+const getApptByStatus = asyncHandler(async(req,res)=>{
+
+    try{
+
+       const { status } = req.body;
+       const appts =  await Appointment.find({doctorID:req.user,status})
 
         return res.json({response:true,appointments:appts})
     }
@@ -178,10 +254,16 @@ const calenderDates = asyncHandler(async(req,res)=>{
 
 
 
+
+
 module.exports = {
     createAppointment,
     getbyDateAppointment,
     delAppointment,
     editAppTime,
-    calenderDates
+    calenderDates,
+    changeStatus,
+    searchAppByName,
+    searchAppByEmail,
+    getApptByStatus
 }

@@ -2,7 +2,7 @@ const {createUser,signin,passcracker,getUserInfo,updateProfile,checkUserToken,up
 const {createPatient,getPatients,getPatientById,updatePatient,getTodayPatients,getPaitentsCount,getTodayPatietnsForAppointment,addInstantPatient,updateVoiceIntake} = require('./controllers/patientController')
 const {createVisit,viewReport,getVists,editReport,delVisit} = require('./controllers/visitController')
 const { getRecentUsers,adminLogin , fetchAllDoctors, fetchAllAdmins,fecthDemoAccounts,demoUserCount,createDemoUser} = require("./controllers/adminController")
-const { createAppointment , getbyDateAppointment , delAppointment , editAppTime , calenderDates} = require('./controllers/appointmentController')
+const { createAppointment , getbyDateAppointment , delAppointment , editAppTime , calenderDates , changeStatus, searchAppByName,searchAppByEmail,getApptByStatus} = require('./controllers/appointmentController')
 const {sendFeedBack , fetchFeedBack , deleteFeedBackById } = require('./controllers/feedbackController')
 const { speechToTextForm ,patientDataToSummary} = require('./controllers/openaiController')
 const { uploadPDF, getDocuments , deleteDocument } = require('./controllers/Documents/DocumentController')
@@ -66,6 +66,7 @@ app.post('/api/post/updatEmailredentials',protect,updatEmailredentials)
 app.post('/api/post/updatewebsiteURL',protect,updatewebsiteURL)
 app.post('/api/post/setEmptyPic',setEmptyPic)
 app.post('/api/post/deletePatientHitory',protect,deletePatientHitory)
+
 //patient Routes
 app.post('/api/post/createPatient',createPatient)
 app.get('/api/get/getPatients',protect,getPatients)
@@ -100,6 +101,7 @@ app.get('/api/get/fetchAllAdmins',protect,fetchAllAdmins)
 //test routes
 app.get('/api/get/test',testFunc)
 
+
 // admin->demo
 app.post('/api/get/fecthDemoAccounts',fecthDemoAccounts)
 app.post('/api/get/demoUserCount',demoUserCount)
@@ -108,10 +110,12 @@ app.post('/api/post/createDemoUser',protect,createDemoUser)
 //signature
 app.post('/api/post/updateSignature',protect,updateSignature)
 app.post('/api/del/delSignature',protect,delSignature)
+
 //profie pic
 app.post('/api/post/updateProfiePicture',protect,updateProfiePicture)
 //clinic logo
 app.post('/api/post/updateClinicLogo',protect,updateClinicLogo)
+
 //oepnai
 app.post('/api/post/speechToText',uploadSet1.single('file'),speechToTextForm)
 app.post('/api/post/patientDataToSummary',patientDataToSummary)
@@ -121,7 +125,11 @@ app.post('/api/post/createAppointment',protect,createAppointment)
 app.post('/api/get/getbyDateAppointment',protect,getbyDateAppointment)
 app.post('/api/del/delAppointment',protect,delAppointment)
 app.post('/api/edit/editAppTime',protect,editAppTime)
+app.post('/api/post/changeStatus',protect,changeStatus)
 app.post('/api/get/calenderDates',calenderDates)
+app.post('/api/post/searchAppByName',protect,searchAppByName)
+app.post('/api/post/searchAppByEmail',protect,searchAppByEmail)
+app.post('/api/post/getApptByStatus',protect,getApptByStatus)
 
 // documents 
 app.post('/api/post/uploadPDF',protect,uploadSet2.single('file'),uploadPDF)

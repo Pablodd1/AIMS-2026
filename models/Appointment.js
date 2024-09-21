@@ -19,11 +19,6 @@ const AppointmentSchema = new Schema({
         required:true,
         trim:true,
     },
-    // phone_number:{
-    //     type:String,
-    //     required:true,
-    //     trim:true,
-    // },
     time:{
         type:String,
         required:true,
@@ -32,6 +27,11 @@ const AppointmentSchema = new Schema({
         type:String,
         required:true,
     },
+    status: {
+        type: String,
+        enum: ['Scheduled', 'Cancelled', 'Complete',], // enum for status field
+        default: 'Scheduled', // optional: set default value
+    }
     
     
 

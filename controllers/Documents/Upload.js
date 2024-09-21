@@ -43,7 +43,7 @@ const uploadPDF = asyncHandler(async (req, res) => {
 
         const filePath = path.resolve(__dirname, '../../pdfs/', req.file.filename);
 
-        const response = await uploadPDFToCloudinary(filePath, { folder: 'doctors_pdf_uploads' });
+        const response = await uploadPDFToCloudinary(filePath);
         
 
         const doc = new Document({
