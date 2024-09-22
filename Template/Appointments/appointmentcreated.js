@@ -167,7 +167,7 @@ function appointmentCreated(time, number, clinicname, patientName, website, addr
         <p>Dear ${patientName},</p>
         <p>We’re happy to confirm your appointment for <strong>${time}</strong>. Please plan to arrive 10 minutes early to complete any necessary medical paperwork.</p>
   
-        <p>In the meantime, if you haven’t filled out the patient intake form yet, we sent it to you when we added you to the system. You should have received an email with the form. Please check it out.</p>
+        <p>In the meantime, If you haven’t filled out the patient intake form yet, we have sent it to you via SMS on your number. You should have received an email with the form. Please check it out.</p>
         
         <p>If you have any questions, please don’t hesitate to reach out.</p>
   

@@ -1,7 +1,8 @@
 const asyncHandler = require("express-async-handler");
 const Appointment = require('../models/Appointment')
 const Patient = require('../models/Patients')
-const {appMail,appCancel,appUpdate} = require('./mailController')
+const {appMail,appCancel,appUpdate,onComplete} = require('./mailController')
+const { sendMessage } = require('../controllers/Twilio/twilio') 
 
 function getOriginalAndReminderDates(originalDateString) {
     // Parse the original date
@@ -55,6 +56,7 @@ const createAppointment = asyncHandler(async (req,res)=>{
 const { patientID , time ,number,clinicname,businessMail,
     appCode,website,address,pic } = req.body;
     let paienInfo
+
  try
  {     
      const isPatientAppointmentAlreadyBooked = await Appointment.findOne({patientID})
@@ -64,6 +66,7 @@ const { patientID , time ,number,clinicname,businessMail,
      }
  
          paienInfo = await Patient.findOne({_id:patientID})
+
         if(paienInfo)
         {
             
@@ -76,7 +79,9 @@ const { patientID , time ,number,clinicname,businessMail,
                 time,
                 reminder:getOriginalAndReminderDates(time).reminderDate
             })
-            
+            const link = `https://www.aiscribers.com/updatePatient/${patientID}`
+            const msg = `Hi ${paienInfo.fullName}, your appointment is confirmed  ${formatDateString(time)} To make your visit smoother, If you haven't filled out the intake form, please complete it in advance using this link: ${link}. The form supports multiple languages and allows you to use voice-to-text technology to fill it out using your voice. You can complete it from your phone or computer.Address: ${address}.Visit us at ${website}. Call ${number}`
+            sendMessage(msg,paienInfo.phoneNumber)
             return res.json({success:true,msg:"Appoinntment scheduled"});
         }else{
             return res.json({success:false,msg:"Facing issues. Please try again later"});
@@ -162,6 +167,7 @@ const editAppTime = asyncHandler(async(req,res)=>{
 const calenderDates = asyncHandler(async(req,res)=>{
     const { status } = req.body
     try{
+        console.log(status)
         const appts = await Appointment.find({doctorID:req.body._id,status})
         .select('time') 
         .exec();
@@ -178,80 +184,65 @@ const calenderDates = asyncHandler(async(req,res)=>{
 
 const changeStatus = asyncHandler(async(req,res)=>{
 
+    const { appId , status } = req.body;
     try{
-
-        const { appId , status} = req.body;
         await Appointment.updateOne({_id:appId},{status})
-
         return res.json({response:true})
     }
     catch(e)
     {
         return res.json({response:false})
     }
-
-})
-
-const searchAppByName = asyncHandler(async (req, res) => {
-    try {
-        const { name } = req.body;
-
-        if(name.length == 0)
+    finally{
+        if(status=="Complete")
         {
-            return res.json({ response: false, appointments: []}); 
+            const {businessMail, appCode, clinicName , address , website , number ,pic} = req.body 
+            const appt = await Appointment.findOne({_id:appId})
+            const paienInfo = await Patient.findOne({_id:appt.patientID})
+            const msg = `Thank you, ${paienInfo.fullName}, for visiting us today! We’d love to hear about your experience. Address: ${address}.Visit us at ${website}. Call ${number}. `
+            sendMessage(msg,paienInfo.phoneNumber)
+            if(businessMail=="" || appCode == "")
+            {
+            await onComplete(process.env.NODE_MAILER_USER,process.env.NODE_MAILER_PASS,paienInfo.email,formatDateString(time),number,clinicName,paienInfo.fullName,website,address,pic)
+            }else{
+            await onComplete(businessMail,appCode,paienInfo.email,number,clinicName,paienInfo.fullName,website,address,pic)
+            }
         }
-
-        // Create regex to match names starting with the first letter
-        const regex = new RegExp('^' + name, 'i'); // Case insensitive search
-
-        // Search the database for users matching the name and limit to 5 results
-        const appointments = await Appointment.find({doctorID:req.user, name: regex }).limit(5);
-
-        return res.json({ response: true, appointments });
-    } catch (e) {
-        console.error(e);
-        return res.json({ response: false, appointments: [] });
-    }
-});
-
-const searchAppByEmail = asyncHandler(async (req, res) => {
-    try {
-        const { email } = req.body;
-
-        if(email.length == 0)
-        {
-            return res.json({ response: false, appointments: []}); 
-        }
-
-        // Create regex to match names starting with the first letter
-        const regex = new RegExp('^' + email, 'i'); // Case insensitive search
-
-        // Search the database for users matching the name and limit to 5 results
-        const appointments = await Appointment.find({doctorID:req.user, name: regex }).limit(5);
-
-        return res.json({ response: true, appointments });
-    } catch (e) {
-        console.error(e);
-        return res.json({ response: false, appointments: []});
-    }
-});
-
-const getApptByStatus = asyncHandler(async(req,res)=>{
-
-    try{
-
-       const { status } = req.body;
-       const appts =  await Appointment.find({doctorID:req.user,status})
-
-        return res.json({response:true,appointments:appts})
-    }
-    catch(e)
-    {
-        return res.json({response:false})
     }
 
 })
 
+
+
+const filterAppointments = asyncHandler(async (req, res) => {
+    try {
+        const { name, email, status, time,} = req.body;
+
+        // Create a filter object to build dynamic query conditions
+        let filter = { doctorID: req.user };
+
+        // Conditionally add other filters based on input
+        if (status) {
+            filter.status = status;
+        }
+        if (name) {
+            filter['name'] = { $regex: `^${name}`, $options: 'i' };  // Start of string match for name
+        }
+        if (email) {
+            filter['email'] = { $regex: `^${email}`, $options: 'i' };  // Start of string match for email
+        }
+        if (time) {
+            filter.time = { $regex: `^${time}`, $options: 'i' };
+        }
+
+        // Fetch appointments based on the constructed filter
+        const appts = await Appointment.find(filter);
+
+        return res.json({ response: true, appointments: appts });
+    } catch (e) {
+        return res.json({ response: false, error: e.message });
+    }
+});
 
 
 
@@ -263,7 +254,5 @@ module.exports = {
     editAppTime,
     calenderDates,
     changeStatus,
-    searchAppByName,
-    searchAppByEmail,
-    getApptByStatus
+    filterAppointments
 }

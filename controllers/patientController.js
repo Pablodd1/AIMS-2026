@@ -2,6 +2,7 @@ const asyncHandler = require("express-async-handler");
 const Patient = require('../models/Patients')
 const Appointment = require('../models/Appointment');
 const { addPatient } = require('./mailController')
+const { sendMessage } = require('../controllers/Twilio/twilio') 
 
 const createPatient = asyncHandler(async(req,res)=>{
 
@@ -257,10 +258,12 @@ const getTodayPatietnsForAppointment = asyncHandler(async (req, res) => {
 const addInstantPatient = asyncHandler(async(req,res)=>{
   const {
     clinic,
+    address,
     website,
     name,
     email,
     lastName,
+    clinicNumber,
     number,
     businessMail,
     appCode
@@ -269,7 +272,7 @@ const addInstantPatient = asyncHandler(async(req,res)=>{
  
    
   try {
-
+    
     const fullName = name + ' ' + lastName
 
     // Create new patient
@@ -284,7 +287,10 @@ const addInstantPatient = asyncHandler(async(req,res)=>{
 
     // Save patient to database
     const patient =  await newPatient.save();
+    
     const link = `https://www.aiscribers.com/updatePatient/${patient._id}`
+    const msg = `Hi ${fullName}, welcome to ${clinic}! We are thrilled to have you.We have moved to ${address}. Same staff, same great service! Visit us at ${website}. Call ${clinicNumber}.`
+    sendMessage(msg,number)
     if(businessMail=="" || appCode == "")
     {
       await addPatient(process.env.NODE_MAILER_USER,process.env.NODE_MAILER_PASS,email,link,name,number,clinic,website)

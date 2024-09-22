@@ -3,6 +3,7 @@ const { appointmentCreated } = require('../Template/Appointments/appointmentcrea
 const { appointmentCancelled } = require('../Template/Appointments/appointmentCancelled');
 const { appointmentUpdate } = require('../Template/Appointments/appointmentUpdate');
 const { addInstantPatient } = require('../Template/Patients/addInstantPatient')
+const { appointmentComplete} = require('../Template/Appointments/appoitmentComplete')
 
 const appMail = async (businessMail,appCode,userEmail,time,phone_number,clinicname,patient,website,address,pic) => {
   try {
@@ -104,10 +105,38 @@ const addPatient = async (businessMail,appCode,userEmail,link,name,number,clinic
     return false
   }
 }
+const onComplete = async (businessMail,appCode,userEmail,number, clinicname, patientName, website, address, pic) => {
+  try {
+    const transporter = nodemailer.createTransport({
+      port: 465,
+      host: "smtp.gmail.com",
+      service: "Gmail",
+      auth: {
+        user: businessMail,
+        pass: appCode,
+      },
+      secure: true,
+    });
+
+    await transporter.sendMail({
+      from: businessMail,
+      to: userEmail,
+      subject: `Thank you for Visiting  ${clinicname}`,
+      html: appointmentComplete(number, clinicname, patientName, website, address, pic),
+    });
+
+    return true
+  } catch (error) {
+    return false
+  }
+}
+
+
 
 module.exports = {
     appMail,
     appCancel,
     appUpdate,
-    addPatient
+    addPatient,
+    onComplete
 };
