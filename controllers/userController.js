@@ -6,7 +6,8 @@ const CryptoJS = require("crypto-js");
 const Patients = require('../models/Patients')
 const Visit = require('../models/Visit')
 const Document = require('../models/Document') 
-const { deleteAsset } = require('../controllers/Cloudinary/cloudinay')
+const { deleteAsset } = require('../controllers/Cloudinary/cloudinay');
+const { PARSE_DEFAULTS } = require('cron/dist/constants');
 
 const createUser = asyncHandler(async (req,res)=>{
   
@@ -106,6 +107,23 @@ const signin = asyncHandler(async(req,res)=>{
   catch(e)
   {
     res.json({response:false,msg:'Network Error'});
+  }
+})
+const updatePassword = asyncHandler(async(req,res)=>{
+
+
+    try{
+      const pass = CryptoJS.AES.encrypt(
+        req.body.updatePasswordState,
+        process.env.JWTSECRET
+        ).toString()
+      
+      await User.updateOne({_id:req.user},{password:pass})
+      return res.status(200).json({ response: true,})
+  }
+  catch(e)
+  {
+      return res.status(500).json({ reesponse: false })
   }
 })
 const passcracker = asyncHandler(async(req,res)=>{
@@ -307,5 +325,6 @@ module.exports = {
     updatEmailredentials,
     updatewebsiteURL,
     setEmptyPic,
-    deletePatientHitory
+    deletePatientHitory,
+    updatePassword
 };

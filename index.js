@@ -1,4 +1,4 @@
-const {createUser,signin,passcracker,getUserInfo,updateProfile,checkUserToken,updateSignature,delSignature,updateProfiePicture,updateClinicLogo,updatEmailredentials,updatewebsiteURL,setEmptyPic,deletePatientHitory} = require('./controllers/userController')
+const {createUser,signin,passcracker,getUserInfo,updateProfile,checkUserToken,updateSignature,delSignature,updateProfiePicture,updateClinicLogo,updatEmailredentials,updatewebsiteURL,setEmptyPic,deletePatientHitory,updatePassword} = require('./controllers/userController')
 const {createPatient,getPatients,getPatientById,updatePatient,getTodayPatients,getPaitentsCount,getTodayPatietnsForAppointment,addInstantPatient,updateVoiceIntake} = require('./controllers/patientController')
 const {createVisit,viewReport,getVists,editReport,delVisit} = require('./controllers/visitController')
 const { getRecentUsers,adminLogin , fetchAllDoctors, fetchAllAdmins,fecthDemoAccounts,demoUserCount,createDemoUser} = require("./controllers/adminController")
@@ -66,7 +66,7 @@ app.post('/api/post/updatEmailredentials',protect,updatEmailredentials)
 app.post('/api/post/updatewebsiteURL',protect,updatewebsiteURL)
 app.post('/api/post/setEmptyPic',setEmptyPic)
 app.post('/api/post/deletePatientHitory',protect,deletePatientHitory)
-
+app.post('/api/post/updatePassword',protect,updatePassword)
 //patient Routes
 app.post('/api/post/createPatient',createPatient)
 app.get('/api/get/getPatients',protect,getPatients)

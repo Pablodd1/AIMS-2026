@@ -266,10 +266,12 @@ const addInstantPatient = asyncHandler(async(req,res)=>{
     clinicNumber,
     number,
     businessMail,
-    appCode
+    appCode,
+    smsChecked,
+    emailChecked
 } = req.body;
   
- 
+
    
   try {
     
@@ -290,13 +292,21 @@ const addInstantPatient = asyncHandler(async(req,res)=>{
     
     const link = `https://www.aiscribers.com/updatePatient/${patient._id}`
     const msg = `Hi ${fullName}, welcome to ${clinic}! We are thrilled to have you.We have moved to ${address}. Same staff, same great service! Visit us at ${website}. Call ${clinicNumber}.`
-    sendMessage(msg,number)
+    if(smsChecked)
+    {
+      sendMessage(msg,number)
+    }
+    if(emailChecked)
+    {
+
     if(businessMail=="" || appCode == "")
     {
-      await addPatient(process.env.NODE_MAILER_USER,process.env.NODE_MAILER_PASS,email,link,name,number,clinic,website)
+      addPatient(process.env.NODE_MAILER_USER,process.env.NODE_MAILER_PASS,email,link,name,number,clinic,website)
     }else{
-      await addPatient(businessMail,appCode,email,link,name,number,clinic,website)
+      addPatient(businessMail,appCode,email,link,name,number,clinic,website)
     }
+  }
+
 
     res.status(200).json({ response: true, msg: "Patient registered" });
 } catch (error) {

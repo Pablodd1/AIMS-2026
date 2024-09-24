@@ -81,7 +81,6 @@ const { patientID , time ,number,clinicname,businessMail,
             })
             const link = `https://www.aiscribers.com/updatePatient/${patientID}`
             const msg = `Hi ${paienInfo.fullName}, your appointment is confirmed  ${formatDateString(time)} To make your visit smoother, If you haven't filled out the intake form, please complete it in advance using this link: ${link}. The form supports multiple languages and allows you to use voice-to-text technology to fill it out using your voice. You can complete it from your phone or computer.Address: ${address}.Visit us at ${website}. Call ${number}`
-            sendMessage(msg,paienInfo.phoneNumber)
             return res.json({success:true,msg:"Appoinntment scheduled"});
         }else{
             return res.json({success:false,msg:"Facing issues. Please try again later"});
@@ -90,11 +89,13 @@ const { patientID , time ,number,clinicname,businessMail,
     {
         return res.json({success:false,msg:"Facing issues. Please try again later"});
     }finally{
+        sendMessage(msg,paienInfo.phoneNumber)
+
         if(businessMail=="" || appCode == "")
             {
-            await appMail(process.env.NODE_MAILER_USER,process.env.NODE_MAILER_PASS,paienInfo.email,formatDateString(time),number,clinicname,paienInfo.fullName,website,address,pic)
+                appMail(process.env.NODE_MAILER_USER,process.env.NODE_MAILER_PASS,paienInfo.email,formatDateString(time),number,clinicname,paienInfo.fullName,website,address,pic)
             }else{
-            await appMail(businessMail,appCode,paienInfo.email,formatDateString(time),number,clinicname,paienInfo.fullName,website,address,pic)
+                appMail(businessMail,appCode,paienInfo.email,formatDateString(time),number,clinicname,paienInfo.fullName,website,address,pic)
             }
     }
 })
@@ -203,9 +204,9 @@ const changeStatus = asyncHandler(async(req,res)=>{
             sendMessage(msg,paienInfo.phoneNumber)
             if(businessMail=="" || appCode == "")
             {
-            await onComplete(process.env.NODE_MAILER_USER,process.env.NODE_MAILER_PASS,paienInfo.email,formatDateString(time),number,clinicName,paienInfo.fullName,website,address,pic)
+                onComplete(process.env.NODE_MAILER_USER,process.env.NODE_MAILER_PASS,paienInfo.email,formatDateString(time),number,clinicName,paienInfo.fullName,website,address,pic)
             }else{
-            await onComplete(businessMail,appCode,paienInfo.email,number,clinicName,paienInfo.fullName,website,address,pic)
+                onComplete(businessMail,appCode,paienInfo.email,number,clinicName,paienInfo.fullName,website,address,pic)
             }
         }
     }

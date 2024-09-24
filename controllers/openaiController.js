@@ -76,8 +76,8 @@ async function extractAnswers(text){
                      },
                      {
                          "id": 2,
-                         "question": "What is your date of birth?",
-                         "answer": 'null'
+                         "question": "What is your date of birth? format YYYY-MM-DD",
+                         "answer": 'YYYY-MM-DD'
                      },
                      {
                          "id": 3,
@@ -87,12 +87,12 @@ async function extractAnswers(text){
                     {
                          "id": 4,
                          "question": "What is your email address?",
-                         "answer": 'null'
+                         "answer": 'Miami beach'
                      },
                      {
                          "id": 5,
                          "question": "What is your phone number?",
-                         "answer": "123-456-7890"
+                         "answer": "3364569588"
                      },
                      {
                          "id": 6,
