@@ -1,4 +1,4 @@
-function addInstantPatient(link,name,number,clinic,website)
+function addInstantPatient(link,name,number,clinic,website,address,clinicNumber)
 {
     return `
     <!DOCTYPE html>
@@ -63,12 +63,24 @@ function addInstantPatient(link,name,number,clinic,website)
         </div>
         <div class="content">
             <p>Dear ${name},</p>
-            <p>We are thrilled to welcome you to ${clinic}! We are excited to have you on board and look forward to providing you with exceptional care and service.</p>
-            <p>We have successfully added you to our registration system, and you are now a part of our community. If you have any questions or need assistance, please don't hesitate to reach out to us.</p>
-            <p>For your convenience, our contact information is:</p>
-            <p><strong>Website:</strong><a href=${website}>${website==""?'(link unavailable)':website}</a><br>
-               <strong>Phone Number:</strong> ${number}</p>
-            <p>Please click the button below to navigate to the form and complete your preferences.</p>
+            <br/>
+            <p>We are delighted to welcome you to ${clinic}, where we combine alternative and holistic approaches, guided by expert doctors. Our mission is to help you achieve your wellness goals with personalized care.</p>
+            <br/>
+            <p>We are excited to inform you that we have moved from our Bay Harbor location to our new address at ${address}. While our location has changed, you can expect the same staff, the same excellent customer service, and the same cutting-edge technology in medicine, all under the expertise of Dr. Jeffrey Draesel JR.</p>
+            <br/>
+            <p>If you have any questions or would like to schedule an appointment, feel free to reach us at ${number}. You can also visit our website at ${website}.</p>
+            <br/>
+               <p>We look forward to working with you on your wellness journey.</p>
+               <p>Best regards,</p>
+               <br/>
+               <p>Contact Us:</p>
+               <p>${address}</p>
+               <p>United States</p>
+               <br/>
+               <p>Hours of Operation:</p>
+               <p>Mon-Fri: 9:00 AM – 6:00 PM</p>
+               <p>Sat: 9:00 AM – 1:00 PM (With appointment only)</p>
+            
 
             <a href=${link} class="button">Click me 👀</a>
             <p>Thank you for choosing ${clinic}. We look forward to serving you!</p>

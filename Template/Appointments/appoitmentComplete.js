@@ -70,7 +70,7 @@ function appointmentComplete(number, clinicname, patientName, website, address, 
     
         <div class="content">
           <p>Dear ${patientName},</p>
-          <p>We would like to sincerely thank you for choosing <strong>Innovative Medical Wellness</strong> for your care. We hope your experience was positive, and we are here for any follow-ups you may need.</p>
+          <p>We would like to sincerely thank you for choosing <strong>${clinicname}</strong> for your care. We hope your experience was positive, and we are here for any follow-ups you may need.</p>
   
           <p>We kindly ask you to leave us a review on Google under <strong>${clinicname}</strong>. Your feedback helps us improve and serve you better.</p>
     

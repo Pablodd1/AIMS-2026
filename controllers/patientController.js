@@ -285,13 +285,11 @@ const addInstantPatient = asyncHandler(async(req,res)=>{
         email
         
     });
-
-
     // Save patient to database
     const patient =  await newPatient.save();
     
     const link = `https://www.aiscribers.com/updatePatient/${patient._id}`
-    const msg = `Hi ${fullName}, welcome to ${clinic}! We are thrilled to have you.We have moved to ${address}. Same staff, same great service! Visit us at ${website}. Call ${clinicNumber}.`
+    const msg = `Hi ${fullName}, welcome to ${clinic}! We are thrilled to have you.We have moved from Bay Harbor to ${address}. Same staff, same great service! Visit us at ${website}. Call ${clinicNumber}.`
     if(smsChecked)
     {
       sendMessage(msg,number)
@@ -301,9 +299,9 @@ const addInstantPatient = asyncHandler(async(req,res)=>{
 
     if(businessMail=="" || appCode == "")
     {
-      addPatient(process.env.NODE_MAILER_USER,process.env.NODE_MAILER_PASS,email,link,name,number,clinic,website)
+      addPatient(process.env.NODE_MAILER_USER,process.env.NODE_MAILER_PASS,email,link,name,number,clinic,website,address)
     }else{
-      addPatient(businessMail,appCode,email,link,name,number,clinic,website)
+      addPatient(businessMail,appCode,email,link,name,number,clinic,website,address)
     }
   }
 
@@ -412,6 +410,59 @@ const updateVoiceIntake = asyncHandler(async(req,res)=>{
 }
 })
 
+const searchPatientsByAlphabet = asyncHandler(async (req, res) => {
+  try {
+    const { query } = req.body;
+
+    // Search for patients whose full name starts with the query
+    const patients = await Patient.find({doc_id:req.user},{
+      fullName: { $regex: `^${query}`, $options: 'i' }  // Case-insensitive search
+    });
+
+    if (!patients.length) {
+      return res.status(404).json({ response: false, msg: "No patients found" });
+    }
+
+    res.status(200).json({ response: true, patients });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ response: false, msg: "Server error" });
+  }
+});
+
+const searchPatientsByType = asyncHandler(async (req, res) => {
+  try {
+    const { type, query } = req.body;
+
+    // Validate type input
+    if (type !== 'name' && type !== 'email') {
+      return res.status(400).json({ response: false, msg: "Invalid search type" });
+    }
+
+    // Build the search filter based on the type (name or email)
+    let filter = {};
+    if (type === 'name') {
+      filter = { fullName: { $regex: `^${query}`, $options: 'i' } }; // Case-insensitive regex search
+    } else if (type === 'email') {
+      filter = { email: { $regex: `^${query}`, $options: 'i' } }; // Case-insensitive regex search for email
+    }
+
+    // Search patients in the database
+    const patients = await Patient.find({doc_id:req.user},filter);
+
+    if (!patients.length) {
+      return res.status(404).json({ response: false, msg: "No patients found" });
+    }
+
+    res.status(200).json({ response: true, patients });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ response: false, msg: "Server error" });
+  }
+});
+
+
+
 
 
 
@@ -426,5 +477,7 @@ module.exports = {
     getPaitentsCount,
     getTodayPatietnsForAppointment,
     addInstantPatient,
-    updateVoiceIntake
+    updateVoiceIntake,
+    searchPatientsByAlphabet,
+    searchPatientsByType
 };

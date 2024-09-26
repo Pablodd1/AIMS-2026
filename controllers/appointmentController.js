@@ -56,7 +56,8 @@ const createAppointment = asyncHandler(async (req,res)=>{
 const { patientID , time ,number,clinicname,businessMail,
     appCode,website,address,pic } = req.body;
     let paienInfo
-
+    let link 
+    let msg
  try
  {     
      const isPatientAppointmentAlreadyBooked = await Appointment.findOne({patientID})
@@ -79,8 +80,13 @@ const { patientID , time ,number,clinicname,businessMail,
                 time,
                 reminder:getOriginalAndReminderDates(time).reminderDate
             })
-            const link = `https://www.aiscribers.com/updatePatient/${patientID}`
-            const msg = `Hi ${paienInfo.fullName}, your appointment is confirmed  ${formatDateString(time)} To make your visit smoother, If you haven't filled out the intake form, please complete it in advance using this link: ${link}. The form supports multiple languages and allows you to use voice-to-text technology to fill it out using your voice. You can complete it from your phone or computer.Address: ${address}.Visit us at ${website}. Call ${number}`
+             link = `https://www.aiscribers.com/updatePatient/${patientID}`
+             msg = `Hi ${paienInfo.fullName}, your appointment is confirmed  ${formatDateString(time)} To make your visit smoother, If you haven't filled out the intake form, please complete it in advance using this link: ${link}. The form supports multiple languages and allows you to use voice-to-text technology to fill it out using your voice. You can complete it from your phone or computer.
+             
+             Address: ${address}.
+             Visit us at ${website}.
+             Call ${number}
+             If you need to reschedule. To opt-out, reply STOP`
             return res.json({success:true,msg:"Appoinntment scheduled"});
         }else{
             return res.json({success:false,msg:"Facing issues. Please try again later"});
@@ -93,9 +99,9 @@ const { patientID , time ,number,clinicname,businessMail,
 
         if(businessMail=="" || appCode == "")
             {
-                appMail(process.env.NODE_MAILER_USER,process.env.NODE_MAILER_PASS,paienInfo.email,formatDateString(time),number,clinicname,paienInfo.fullName,website,address,pic)
+                appMail(process.env.NODE_MAILER_USER,process.env.NODE_MAILER_PASS,paienInfo.email,formatDateString(time),number,clinicname,paienInfo.fullName,website,address,pic,link)
             }else{
-                appMail(businessMail,appCode,paienInfo.email,formatDateString(time),number,clinicname,paienInfo.fullName,website,address,pic)
+                appMail(businessMail,appCode,paienInfo.email,formatDateString(time),number,clinicname,paienInfo.fullName,website,address,pic,link)
             }
     }
 })
@@ -200,7 +206,7 @@ const changeStatus = asyncHandler(async(req,res)=>{
             const {businessMail, appCode, clinicName , address , website , number ,pic} = req.body 
             const appt = await Appointment.findOne({_id:appId})
             const paienInfo = await Patient.findOne({_id:appt.patientID})
-            const msg = `Thank you, ${paienInfo.fullName}, for visiting us today! We’d love to hear about your experience. Address: ${address}.Visit us at ${website}. Call ${number}. `
+            const msg = `Thank you, ${paienInfo.fullName}, for visiting us today! We’d love to hear about your experience.Please leave us a review on Google under ${clinicName}. Address: ${address}.Visit us at ${website}. Call ${number}. To opt-out, reply STOP. `
             sendMessage(msg,paienInfo.phoneNumber)
             if(businessMail=="" || appCode == "")
             {

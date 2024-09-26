@@ -19,6 +19,8 @@ const uploadPDFToCloudinary = async (file, options = {}) => {
             resource_type: 'raw',  // 'raw' is used for non-image assets like PDF, ZIP, etc.
             ...options             // Additional options like folder, tags, etc.
         });
+
+        console.log(result)
         // console.log(result)
         // Return secure_url and public_id
         return {
