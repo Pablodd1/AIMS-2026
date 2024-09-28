@@ -1,4 +1,5 @@
 const nodemailer = require("nodemailer");
+const QRCode = require('qrcode');
 const { appointmentCreated } = require('../Template/Appointments/appointmentcreated');
 const { appointmentCancelled } = require('../Template/Appointments/appointmentCancelled');
 const { appointmentUpdate } = require('../Template/Appointments/appointmentUpdate');
@@ -130,6 +131,47 @@ const onComplete = async (businessMail,appCode,userEmail,number, clinicname, pat
     return false
   }
 }
+const sendQrCodeToPatient = async (businessMail, appCode, link, userEmail) => {
+  try {
+    const qrCodeDataUrl = await QRCode.toDataURL(link);
+
+    // Convert the Data URL to a buffer
+    const base64Data = qrCodeDataUrl.replace(/^data:image\/png;base64,/, "");
+    const imageBuffer = Buffer.from(base64Data, 'base64');
+
+    const transporter = nodemailer.createTransport({
+      port: 465,
+      host: "smtp.gmail.com",
+      service: "Gmail",
+      auth: {
+        user: businessMail,
+        pass: appCode,
+      },
+      secure: true,
+    });
+
+    await transporter.sendMail({
+      from: businessMail,
+      to: userEmail,
+      subject: `Your QR Code`,
+      html: `<h1>Your QR Code</h1><p>Here is your QR Code:</p><img src="cid:qrcode" alt="QR Code" />`,
+      attachments: [
+        {
+          filename: 'qrcode.png',
+          content: imageBuffer,
+          cid: 'qrcode', // same as the cid in the <img> tag
+        },
+      ],
+    });
+
+    console.log('QR code sent successfully to:', userEmail);
+    return true;
+  } catch (error) {
+    console.error('Error sending email:', error);
+    return false;
+  }
+};
+
 
 
 
@@ -138,5 +180,6 @@ module.exports = {
     appCancel,
     appUpdate,
     addPatient,
-    onComplete
+    onComplete,
+    sendQrCodeToPatient
 };

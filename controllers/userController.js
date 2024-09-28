@@ -8,7 +8,7 @@ const Visit = require('../models/Visit')
 const Document = require('../models/Document') 
 const { deleteAsset } = require('../controllers/Cloudinary/cloudinay');
 const { PARSE_DEFAULTS } = require('cron/dist/constants');
-
+const { sendQrCodeToPatient } = require('./mailController')
 const createUser = asyncHandler(async (req,res)=>{
   
   const { first_name, last_name ,email, phone_number , password,re_password  , title , Address , speciality  , clinicName} = req.body;
@@ -308,6 +308,32 @@ const deletePatientHitory = asyncHandler(async(req,res)=>{
     }
 })
 
+const sendQrCode = asyncHandler(async(req, res) => {
+  const { 
+    businessMail,
+    appCode, 
+    userEmail,
+    id
+  } = req.body;
+
+  try {
+    const link = `https://www.aidemoscriber.com/registerPatient/${id}`;
+    sendQrCodeToPatient(businessMail, appCode, link, userEmail);
+    
+      return res.json({
+        response: true,
+        msg: "Email has been sent to the patient address"
+      });
+    
+  } catch (e) {
+    return res.json({
+      response: false,
+      msg: "There was an error while sending mail to the patient"
+    });
+  }
+});
+
+
 
 
 
@@ -326,5 +352,7 @@ module.exports = {
     updatewebsiteURL,
     setEmptyPic,
     deletePatientHitory,
-    updatePassword
+    updatePassword,
+    sendQrCode
+    
 };

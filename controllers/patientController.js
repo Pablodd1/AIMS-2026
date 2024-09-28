@@ -289,7 +289,21 @@ const addInstantPatient = asyncHandler(async(req,res)=>{
     const patient =  await newPatient.save();
     
     const link = `https://www.aiscribers.com/updatePatient/${patient._id}`
-    const msg = `Hi ${fullName}, welcome to ${clinic}! We are thrilled to have you.We have moved from Bay Harbor to ${address}. Same staff, same great service! Visit us at ${website}. Call ${clinicNumber}.`
+    // const msg = `Hi ${fullName}, welcome to ${clinic}! We are thrilled to have you. We have moved from Bay Harbor to ${address}. Same staff, same great service! Visit us at ${website}. Call ${clinicNumber}.`
+    const msg = `Hi ${fullName}, 
+
+    welcome to ${clinic}! 
+
+    We are thrilled to have you. 
+
+    We have moved from Bay Harbor to ${address}. 
+
+    Same staff, same great service! 
+
+    Visit us at ${website}. 
+
+    Call ${clinicNumber}.`;
+
     if(smsChecked)
     {
       sendMessage(msg,number)
@@ -414,8 +428,11 @@ const searchPatientsByAlphabet = asyncHandler(async (req, res) => {
   try {
     const { query } = req.body;
 
-    // Search for patients whose full name starts with the query
-    const patients = await Patient.find({doc_id:req.user},{
+    console.log(query);
+
+    // Search for patients whose full name starts with the query (regex for case-insensitive search)
+    const patients = await Patient.find({
+      doc_id: req.user, 
       fullName: { $regex: `^${query}`, $options: 'i' }  // Case-insensitive search
     });
 
@@ -429,6 +446,7 @@ const searchPatientsByAlphabet = asyncHandler(async (req, res) => {
     res.status(500).json({ response: false, msg: "Server error" });
   }
 });
+
 
 const searchPatientsByType = asyncHandler(async (req, res) => {
   try {
@@ -448,7 +466,10 @@ const searchPatientsByType = asyncHandler(async (req, res) => {
     }
 
     // Search patients in the database
-    const patients = await Patient.find({doc_id:req.user},filter);
+    const patients = await Patient.find({
+      doc_id: req.user,
+      ...filter  // Spread the filter object directly here
+    });
 
     if (!patients.length) {
       return res.status(404).json({ response: false, msg: "No patients found" });
@@ -460,6 +481,7 @@ const searchPatientsByType = asyncHandler(async (req, res) => {
     res.status(500).json({ response: false, msg: "Server error" });
   }
 });
+
 
 
 

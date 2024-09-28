@@ -81,12 +81,22 @@ const { patientID , time ,number,clinicname,businessMail,
                 reminder:getOriginalAndReminderDates(time).reminderDate
             })
              link = `https://www.aiscribers.com/updatePatient/${patientID}`
-             msg = `Hi ${paienInfo.fullName}, your appointment is confirmed  ${formatDateString(time)} To make your visit smoother, If you haven't filled out the intake form, please complete it in advance using this link: ${link}. The form supports multiple languages and allows you to use voice-to-text technology to fill it out using your voice. You can complete it from your phone or computer.
-             
-             Address: ${address}.
-             Visit us at ${website}.
-             Call ${number}
-             If you need to reschedule. To opt-out, reply STOP`
+            //  msg = `Hi ${paienInfo.fullName}, your appointment is confirmed  ${formatDateString(time)} To make your visit smoother, If you haven't filled out the intake form, please complete it in advance using this link: ${link}. The form supports multiple languages and allows you to use voice-to-text technology to fill it out using your voice. You can complete it from your phone or computer. Address: ${address}. Visit us at ${website}. Call ${number}. If you need to reschedule. To opt-out, reply STOP`
+            msg = `Hi ${paienInfo.fullName},
+
+            Your appointment is confirmed for ${formatDateString(time)}.
+            
+            To make your visit smoother, if you haven't filled out the intake form, please complete it in advance using this link: ${link}. 
+            
+            The form supports multiple languages and allows you to use voice-to-text technology to fill it out using your voice. You can complete it from your phone or computer.
+            
+            Address: ${address}
+            Visit us at: ${website}
+            Call: ${number}
+            
+            If you need to reschedule.
+            
+            To opt-out, reply STOP.`;
             return res.json({success:true,msg:"Appoinntment scheduled"});
         }else{
             return res.json({success:false,msg:"Facing issues. Please try again later"});
@@ -206,7 +216,21 @@ const changeStatus = asyncHandler(async(req,res)=>{
             const {businessMail, appCode, clinicName , address , website , number ,pic} = req.body 
             const appt = await Appointment.findOne({_id:appId})
             const paienInfo = await Patient.findOne({_id:appt.patientID})
-            const msg = `Thank you, ${paienInfo.fullName}, for visiting us today! We’d love to hear about your experience.Please leave us a review on Google under ${clinicName}. Address: ${address}.Visit us at ${website}. Call ${number}. To opt-out, reply STOP. `
+            // const msg = `Thank you, ${paienInfo.fullName}, for visiting us today! We’d love to hear about your experience.Please leave us a review on Google under ${clinicName}. Address: ${address}.Visit us at ${website}. Call ${number}. To opt-out, reply STOP. `
+            const msg = `Thank you, ${paienInfo.fullName}, for visiting us today! 
+
+                We’d love to hear about your experience. 
+
+                Please leave us a review on Google under ${clinicName}. 
+
+                Address: ${address}. 
+
+                Visit us at ${website}. 
+
+                Call ${number}. 
+
+                To opt-out, reply STOP.`;
+
             sendMessage(msg,paienInfo.phoneNumber)
             if(businessMail=="" || appCode == "")
             {
