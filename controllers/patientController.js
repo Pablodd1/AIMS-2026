@@ -290,19 +290,7 @@ const addInstantPatient = asyncHandler(async(req,res)=>{
     
     const link = `https://www.aiscribers.com/updatePatient/${patient._id}`
     // const msg = `Hi ${fullName}, welcome to ${clinic}! We are thrilled to have you. We have moved from Bay Harbor to ${address}. Same staff, same great service! Visit us at ${website}. Call ${clinicNumber}.`
-    const msg = `Hi ${fullName}, 
-
-    welcome to ${clinic}! 
-
-    We are thrilled to have you. 
-
-    We have moved from Bay Harbor to ${address}. 
-
-    Same staff, same great service! 
-
-    Visit us at ${website}. 
-
-    Call ${clinicNumber}.`;
+    const msg = `Hi ${fullName},\nwelcome to ${clinic}! We are thrilled to have you.\nWe have moved from Bay Harbor to ${address}. Same staff, same great service!\nVisit us at ${website}.\nCall ${clinicNumber}.`;
 
     if(smsChecked)
     {
