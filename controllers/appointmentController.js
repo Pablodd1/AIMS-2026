@@ -54,7 +54,9 @@ function formatDateString(dateString) {
 const createAppointment = asyncHandler(async (req,res)=>{
   
 const { patientID , time ,number,clinicname,businessMail,
-    appCode,website,address,pic } = req.body;
+    appCode,website,address,pic,
+    smsChecked,emailChecked
+ } = req.body;
     let paienInfo
     let link 
     let msg
@@ -91,14 +93,22 @@ const { patientID , time ,number,clinicname,businessMail,
     {
         return res.json({success:false,msg:"Facing issues. Please try again later"});
     }finally{
-        sendMessage(msg,paienInfo.phoneNumber)
-
-        if(businessMail=="" || appCode == "")
+            if(smsChecked)
             {
-                appMail(process.env.NODE_MAILER_USER,process.env.NODE_MAILER_PASS,paienInfo.email,formatDateString(time),number,clinicname,paienInfo.fullName,website,address,pic,link)
-            }else{
-                appMail(businessMail,appCode,paienInfo.email,formatDateString(time),number,clinicname,paienInfo.fullName,website,address,pic,link)
+                sendMessage(msg,paienInfo.phoneNumber)
             }
+
+            if(emailChecked)
+            {
+
+        
+            if(businessMail=="" || appCode == "")
+            {
+                    appMail(process.env.NODE_MAILER_USER,process.env.NODE_MAILER_PASS,paienInfo.email,formatDateString(time),number,clinicname,paienInfo.fullName,website,address,pic,link)
+            }else{
+                    appMail(businessMail,appCode,paienInfo.email,formatDateString(time),number,clinicname,paienInfo.fullName,website,address,pic,link)
+            }
+        }
     }
 })
 
