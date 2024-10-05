@@ -25,8 +25,6 @@ function getOriginalAndReminderDates(originalDateString) {
     };
 }
 
-
-
 function formatDateString(dateString) {
     // Parse the input date string
     const date = new Date(dateString);
@@ -49,8 +47,8 @@ function formatDateString(dateString) {
     const formattedDate = `${dayOfWeek} ${month} ${day.toString().padStart(2, '0')} ${year} ${hours}:${minutes} ${amOrPm}`;
   
     return formattedDate;
-  }
-    
+}
+
 const createAppointment = asyncHandler(async (req,res)=>{
   
 const { patientID , time ,number,clinicname,businessMail,
@@ -111,7 +109,6 @@ const { patientID , time ,number,clinicname,businessMail,
         }
     }
 })
-
 
 const getbyDateAppointment = asyncHandler(async (req,res)=>{
     try{
@@ -227,8 +224,6 @@ const changeStatus = asyncHandler(async(req,res)=>{
 
 })
 
-
-
 const filterAppointments = asyncHandler(async (req, res) => {
     try {
         const { name, email, status, time,} = req.body;
@@ -258,8 +253,6 @@ const filterAppointments = asyncHandler(async (req, res) => {
         return res.json({ response: false, error: e.message });
     }
 });
-
-
 
 
 module.exports = {

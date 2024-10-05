@@ -274,6 +274,12 @@ const addInstantPatient = asyncHandler(async(req,res)=>{
 
    
   try {
+
+    const patientExists = await Patient.findOne({doc_id:req.user,email})
+    if(patientExists)
+    {
+      return res.status(200).json({ response: false, msg: "Patient already exists in your patients list"});
+    }
     
     const fullName = name + ' ' + lastName
 
@@ -289,7 +295,6 @@ const addInstantPatient = asyncHandler(async(req,res)=>{
     const patient =  await newPatient.save();
     
     const link = `https://www.aiscribers.com/updatePatient/${patient._id}`
-    // const msg = `Hi ${fullName}, welcome to ${clinic}! We are thrilled to have you. We have moved from Bay Harbor to ${address}. Same staff, same great service! Visit us at ${website}. Call ${clinicNumber}.`
     const msg = `Hi ${fullName},\nwelcome to ${clinic}! We are thrilled to have you.\nWe have moved from Bay Harbor to ${address}. Same staff, same great service!\nVisit us at ${website}.\nCall ${clinicNumber}.`;
 
     if(smsChecked)
@@ -308,10 +313,10 @@ const addInstantPatient = asyncHandler(async(req,res)=>{
   }
 
 
-    res.status(200).json({ response: true, msg: "Patient registered" });
+    return res.status(200).json({ response: true, msg: "Patient registered" });
 } catch (error) {
     console.error(error);
-    res.status(500).json({ response: false, msg: "Server error" });
+    return res.status(500).json({ response: false, msg: "Server error" });
 }
 })
 
