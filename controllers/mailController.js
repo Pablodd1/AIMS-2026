@@ -19,13 +19,12 @@ const appMail = async (businessMail,appCode,userEmail,time,phone_number,clinicna
       secure: true,
     });
 
-    const confirmLink = `https://codevengers.services/api/get/userResponseFromEmail?statuss=Scheduled&apptId=${apptID}`
-    const canceledLink = `https://codevengers.services/api/get/userResponseFromEmail?statuss=Cancelled&apptId=${apptID}`
+    const confirmLink = `https://www.aiscribers.com/AppointmentConfirmation?appId=${apptID}`
       await transporter.sendMail({
         from: businessMail,
         to: userEmail,
         subject: `Your Appointment is Confirmed`,
-        html: appointmentCreated(time,phone_number,clinicname,patient,website,address,pic,link,confirmLink,canceledLink),
+        html: appointmentCreated(time,phone_number,clinicname,patient,website,address,pic,link,confirmLink),
       });
     
 

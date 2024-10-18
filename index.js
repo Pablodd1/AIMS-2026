@@ -132,7 +132,8 @@ app.post('/api/edit/editAppTime',protect,editAppTime)
 app.post('/api/post/changeStatus',protect,changeStatus)
 app.post('/api/get/calenderDates',calenderDates)
 app.post('/api/post/filterAppointments',protect,filterAppointments)
-app.get('/api/get/userResponseFromEmail',userResponseFromEmail)
+app.post('/api/post/userResponseFromEmail',userResponseFromEmail) // change status
+app.get('/api/get/userResponseFromEmail',userResponseFromEmail) /// allow to user to change status
 // documents 
 app.post('/api/post/uploadPDF',protect,uploadSet2.single('file'),uploadPDF)
 app.post('/api/get/getDocuments',protect,getDocuments)

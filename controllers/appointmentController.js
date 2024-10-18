@@ -274,20 +274,36 @@ const filterAppointments = asyncHandler(async (req, res) => {
 });
 
 const userResponseFromEmail = asyncHandler(async (req,res)=>{
-  
     try{
-        const { apptId ,  status } = req.query
+    if(req.method=='GET')
+    {
+            const { appId } = req.query
+            const isDoneConfirmation = await Appointment.findOne({_id:appId,status:"Pending"})
+            if(isDoneConfirmation) {
+                return res.send(true)
+            }
+            else{
+                return res.send(false)
+            } 
 
-        await Appointment.updateOne({_id:apptId,status})
+            
 
-        return res.send(true)
+    }else{
+
+            const { appId ,  status } = req.body
+            await Appointment.updateOne({_id:appId},{status})
+            return res.send(true)
+            
         
+    }
     }catch(e){
         console.log('user request failed')
         return res.send(false)
     }
 
 })
+
+
 
 module.exports = {
     createAppointment,

@@ -1,4 +1,4 @@
-function appointmentCreated(time, number, clinicname, patientName, website, address, pic, link,confirmLink,canceledLink) {
+function appointmentCreated(time, number, clinicname, patientName, website, address, pic, link,confirmLink) {
   return `
   <!DOCTYPE html>
   <html lang="en">
@@ -93,9 +93,7 @@ function appointmentCreated(time, number, clinicname, patientName, website, addr
         <p>Best regards,</p>
         <p>The ${clinicname} Team</p>
   
-        <!-- Buttons for confirmation and cancellation -->
         <a href="${confirmLink}" class="button confirm-button">Confirm Appointment</a>
-        <a href="${canceledLink}" class="button cancel-button">Cancel Appointment</a>
       </div>
     </div>
   </body>
