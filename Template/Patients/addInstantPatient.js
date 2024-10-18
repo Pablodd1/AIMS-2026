@@ -92,7 +92,97 @@ function addInstantPatient(link,name,number,clinic,website,address,clinicNumber)
     `
 }
 
+function addInstantPatientICare(link, name, clinic, phone, email) {
+    return `
+    <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to ${clinic}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            padding: 20px;
+            background-color: #1e293b;
+            color: white;
+            border-radius: 10px 10px 0 0;
+        }
+        .content {
+            padding: 20px;
+            line-height: 1.6;
+            color: #333333;
+        }
+        .footer {
+            padding: 10px;
+            text-align: center;
+            background-color: #f4f4f4;
+            border-radius: 0 0 10px 10px;
+        }
+        a {
+            color: #4CAF50;
+            text-decoration: none;
+        }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            margin: 10px 0;
+            background-color: #1e293b;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Welcome to ${clinic}!</h1>
+        </div>
+        <div class="content">
+            <p>Dear ${name},</p>
+            <br/>
+            <p>You have successfully registered with our system. If you'd like to withdraw your registration, please click the link below or respond with an affirmative confirmation ("yes") to continue receiving updates about our services.</p>
+            <br/>
+            <p>We are excited to announce our new services! At ${clinic}, our dedicated team is committed to providing exceptional healthcare with the convenience and care you deserve. We offer advanced technologies to ensure accurate diagnoses and effective treatments in the comfort of your own home.</p>
+            <br/>
+            <p>To make it easier for you to connect with us, here’s our updated contact information:</p>
+            <p>- Phone: ${phone}</p>
+            <p>- Email: ${email}</p>
+            <br/>
+            <p>We appreciate your trust in us and look forward to being your healthcare partner. If you have any questions or need help scheduling appointments, feel free to reach out!</p>
+            <br/>
+            <p>Sincerely,</p>
+            <p>The ${clinic} Team</p>
+            <br/>
+            <a href=${link} class="button">Click here to manage your registration</a>
+        </div>
+    </div>
+</body>
+</html>
+    `;
+}
+
+
+
+
 module.exports = {
-    addInstantPatient
+    addInstantPatient,
+    addInstantPatientICare
 };
 

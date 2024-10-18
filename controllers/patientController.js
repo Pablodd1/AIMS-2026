@@ -295,7 +295,20 @@ const addInstantPatient = asyncHandler(async(req,res)=>{
     const patient =  await newPatient.save();
     
     const link = `https://www.aiscribers.com/updatePatient/${patient._id}`
-    const msg = `Hi ${fullName},\nwelcome to ${clinic}! We are thrilled to have you.\nWe have moved from Bay Harbor to ${address}. Same staff, same great service!\nVisit us at ${website}.\nCall ${clinicNumber}.`;
+    let msg=""
+    
+    if(clinic == "Icare" || clinic == "icare" || clinic == "Icare Mobile Medicine")
+    {
+       msg = `Please accept this text as your registration with ${clinic} or reply "STOP" to opt out.\n
+Hi ${fullName},\n
+Welcome to ${clinic}! We're excited to serve you with high-quality healthcare wherever you are.\n
+Call ${clinicNumber} or visit ${website} to learn more.\n
+To opt out, reply STOP.`;
+
+    }else{
+
+      msg = `Hi ${fullName},\nwelcome to ${clinic}! We are thrilled to have you.\nWe have moved from Bay Harbor to ${address}. Same staff, same great service!\nVisit us at ${website}.\nCall ${clinicNumber}.`;
+    }
 
     if(smsChecked)
     {

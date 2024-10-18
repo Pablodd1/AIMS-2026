@@ -29,8 +29,8 @@ const AppointmentSchema = new Schema({
     },
     status: {
         type: String,
-        enum: ['Scheduled', 'Cancelled', 'Complete',], // enum for status field
-        default: 'Scheduled', // optional: set default value
+        enum: ['Scheduled', 'Cancelled', 'Complete','Pending'], // enum for status field
+        default: 'Pending', // optional: set default value
     }
     
     

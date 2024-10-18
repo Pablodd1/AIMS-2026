@@ -55,34 +55,45 @@ const { patientID , time ,number,clinicname,businessMail,
     appCode,website,address,pic,
     smsChecked,emailChecked
  } = req.body;
-    let paienInfo
+    let patientInfo
     let link 
-    let msg
+    let msg =""
+    let newAppointment 
  try
- {     
-     const isPatientAppointmentAlreadyBooked = await Appointment.findOne({patientID})
+ {  
+    
+       
+     const isPatientAppointmentAlreadyBooked = await Appointment.findOne({
+        patientID,
+        status: { $in: ['Scheduled', 'Pending'] }
+    })
+
      if(isPatientAppointmentAlreadyBooked)
      {
-         return res.json({success:false,msg:"Patient appointment is already scheduled. If you want to make new appointment. Please remove previous one"})
+         return res.json({success:false,msg:"Patient appointment is already scheduled. If you want to make new appointment. Please change the status of previous one"})
      }
  
-         paienInfo = await Patient.findOne({_id:patientID})
-
-        if(paienInfo)
+        patientInfo = await Patient.findOne({_id:patientID})
+        if(patientInfo)
         {
             
 
-            await Appointment.create({
+            newAppointment =  await Appointment.create({
                 patientID,
                 doctorID:req.user,
-                email:paienInfo.email,
-                name:paienInfo.fullName,
+                email:patientInfo.email,
+                name:patientInfo.fullName,
                 time,
                 reminder:getOriginalAndReminderDates(time).reminderDate
             })
              link = `https://www.aiscribers.com/updatePatient/${patientID}`
-            //  msg = `Hi ${paienInfo.fullName}, your appointment is confirmed  ${formatDateString(time)} To make your visit smoother, If you haven't filled out the intake form, please complete it in advance using this link: ${link}. The form supports multiple languages and allows you to use voice-to-text technology to fill it out using your voice. You can complete it from your phone or computer. Address: ${address}. Visit us at ${website}. Call ${number}. If you need to reschedule. To opt-out, reply STOP`
-            msg = `Hi ${paienInfo.fullName},\nYour appointment is confirmed for ${formatDateString(time)}.\nTo make your visit smoother, if you haven't filled out the intake form, please complete it in advance using this link: ${link}.\nThe form supports multiple languages and allows you to use voice-to-text technology to fill it out using your voice. You can complete it from your phone or computer.\nAddress: ${address}\nVisit us at: ${website}\nCall: ${number}\n\nIf you need to reschedule.\nTo opt-out, reply STOP.`;
+            if(clinicname == "Icare" || clinicname == "icare" || clinicname == "Icare Mobile Medicine")
+            {
+                 msg = `Hi ${patientInfo.fullName},\n\nYour appointment is confirmed for ${formatDateString(time)}.\n\nPlease complete the intake form ahead of time using this link: ${link}.\n\nThe form is voice-to-text enabled and works on both your phone and computer.\n\nCall us at ${number} if you need to reschedule.\n\nAddress: ${address}\nVisit us at: ${website}\nTo opt out, reply STOP.`;
+
+            }else{
+                msg = `Hi ${patientInfo.fullName},\nYour appointment is confirmed for ${formatDateString(time)}.\nTo make your visit smoother, if you haven't filled out the intake form, please complete it in advance using this link: ${link}.\nThe form supports multiple languages and allows you to use voice-to-text technology to fill it out using your voice. You can complete it from your phone or computer.\nAddress: ${address}\nVisit us at: ${website}\nCall: ${number}\n\nIf you need to reschedule.\nTo opt-out, reply STOP.`;
+            }
             return res.json({success:true,msg:"Appoinntment scheduled"});
         }else{
             return res.json({success:false,msg:"Facing issues. Please try again later"});
@@ -93,7 +104,7 @@ const { patientID , time ,number,clinicname,businessMail,
     }finally{
             if(smsChecked)
             {
-                sendMessage(msg,paienInfo.phoneNumber)
+                sendMessage(msg,patientInfo.phoneNumber)
             }
 
             if(emailChecked)
@@ -102,9 +113,9 @@ const { patientID , time ,number,clinicname,businessMail,
         
             if(businessMail=="" || appCode == "")
             {
-                    appMail(process.env.NODE_MAILER_USER,process.env.NODE_MAILER_PASS,paienInfo.email,formatDateString(time),number,clinicname,paienInfo.fullName,website,address,pic,link)
+                    appMail(process.env.NODE_MAILER_USER,process.env.NODE_MAILER_PASS,patientInfo.email,formatDateString(time),number,clinicname,patientInfo.fullName,website,address,pic,link,newAppointment._id)
             }else{
-                    appMail(businessMail,appCode,paienInfo.email,formatDateString(time),number,clinicname,paienInfo.fullName,website,address,pic,link)
+                    appMail(businessMail,appCode,patientInfo.email,formatDateString(time),number,clinicname,patientInfo.fullName,website,address,pic,link,newAppointment._id)
             }
         }
     }
@@ -208,16 +219,24 @@ const changeStatus = asyncHandler(async(req,res)=>{
         {
             const {businessMail, appCode, clinicName , address , website , number ,pic} = req.body 
             const appt = await Appointment.findOne({_id:appId})
-            const paienInfo = await Patient.findOne({_id:appt.patientID})
+            const patientInfo = await Patient.findOne({_id:appt.patientID})
             // const msg = `Thank you, ${paienInfo.fullName}, for visiting us today! We’d love to hear about your experience.Please leave us a review on Google under ${clinicName}. Address: ${address}.Visit us at ${website}. Call ${number}. To opt-out, reply STOP. `
-            const msg = `Thank you, ${paienInfo.fullName}, for visiting us today!\nWe’d love to hear about your experience.\nPlease leave us a review on Google under ${clinicName}.\nAddress: ${address}.\nVisit us at ${website}.\nCall ${number}.\nTo opt-out, reply STOP.`;
+            let msg =""
+            if(clinicName == "Icare" || clinicName == "icare" || clinicName == "Icare Mobile Medicine")
+            {
+                 msg = `Thank you, ${patientInfo.fullName}, for visiting ${clinicName}!\n\nWe’d love to hear your feedback.\n\nPlease leave us a review on Google under "${clinicName}".\n\nCall ${number} for any follow-ups.\n\nAddress: ${address}\nVisit us at: ${website}\nTo opt out, reply STOP.`;
 
-            sendMessage(msg,paienInfo.phoneNumber)
+            }else{
+
+                 msg = `Thank you, ${patientInfo.fullName}, for visiting us today!\nWe’d love to hear about your experience.\nPlease leave us a review on Google under ${clinicName}.\nAddress: ${address}.\nVisit us at ${website}.\nCall ${number}.\nTo opt-out, reply STOP.`;
+            }
+
+            sendMessage(msg,patientInfo.phoneNumber)
             if(businessMail=="" || appCode == "")
             {
-                onComplete(process.env.NODE_MAILER_USER,process.env.NODE_MAILER_PASS,paienInfo.email,formatDateString(time),number,clinicName,paienInfo.fullName,website,address,pic)
+                onComplete(process.env.NODE_MAILER_USER,process.env.NODE_MAILER_PASS,patientInfo.email,formatDateString(time),number,clinicName,patientInfo.fullName,website,address,pic)
             }else{
-                onComplete(businessMail,appCode,paienInfo.email,number,clinicName,paienInfo.fullName,website,address,pic)
+                onComplete(businessMail,appCode,patientInfo.email,number,clinicName,patientInfo.fullName,website,address,pic)
             }
         }
     }
@@ -254,6 +273,21 @@ const filterAppointments = asyncHandler(async (req, res) => {
     }
 });
 
+const userResponseFromEmail = asyncHandler(async (req,res)=>{
+  
+    try{
+        const { apptId ,  status } = req.query
+
+        await Appointment.updateOne({_id:apptId,status})
+
+        return res.send(true)
+        
+    }catch(e){
+        console.log('user request failed')
+        return res.send(false)
+    }
+
+})
 
 module.exports = {
     createAppointment,
@@ -262,5 +296,6 @@ module.exports = {
     editAppTime,
     calenderDates,
     changeStatus,
-    filterAppointments
+    filterAppointments,
+    userResponseFromEmail
 }

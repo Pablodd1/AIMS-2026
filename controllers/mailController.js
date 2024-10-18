@@ -3,10 +3,10 @@ const QRCode = require('qrcode');
 const { appointmentCreated } = require('../Template/Appointments/appointmentcreated');
 const { appointmentCancelled } = require('../Template/Appointments/appointmentCancelled');
 const { appointmentUpdate } = require('../Template/Appointments/appointmentUpdate');
-const { addInstantPatient } = require('../Template/Patients/addInstantPatient')
+const { addInstantPatient , addInstantPatientICare } = require('../Template/Patients/addInstantPatient')
 const { appointmentComplete} = require('../Template/Appointments/appoitmentComplete')
 
-const appMail = async (businessMail,appCode,userEmail,time,phone_number,clinicname,patient,website,address,pic,link) => {
+const appMail = async (businessMail,appCode,userEmail,time,phone_number,clinicname,patient,website,address,pic,link,apptID) => {
   try {
     const transporter = nodemailer.createTransport({
       port: 465,
@@ -19,12 +19,15 @@ const appMail = async (businessMail,appCode,userEmail,time,phone_number,clinicna
       secure: true,
     });
 
-    await transporter.sendMail({
-      from: businessMail,
-      to: userEmail,
-      subject: `Your Appointment is Confirmed`,
-      html: appointmentCreated(time,phone_number,clinicname,patient,website,address,pic,link),
-    });
+    const confirmLink = `https://codevengers.services/api/get/userResponseFromEmail?statuss=Scheduled&apptId=${apptID}`
+    const canceledLink = `https://codevengers.services/api/get/userResponseFromEmail?statuss=Cancelled&apptId=${apptID}`
+      await transporter.sendMail({
+        from: businessMail,
+        to: userEmail,
+        subject: `Your Appointment is Confirmed`,
+        html: appointmentCreated(time,phone_number,clinicname,patient,website,address,pic,link,confirmLink,canceledLink),
+      });
+    
 
     return true
   } catch (error) {
@@ -94,12 +97,25 @@ const addPatient = async (businessMail,appCode,userEmail,link,name,number,clinic
       secure: true,
     });
 
-    await transporter.sendMail({
-      from: businessMail,
-      to: userEmail,
-      subject: `Welcome to ${clinic}`,
-      html: addInstantPatient(link,name,number,clinic,website,address,clinicNumber),
-    });
+    
+    if(clinic == "Icare" || clinic == "icare" || clinic == "Icare Mobile Medicine")
+    {
+      await transporter.sendMail({
+        from: businessMail,
+        to: userEmail,
+        subject: `Welcome to ${clinic}`,
+        html: addInstantPatientICare(link,name,clinic,number,website,address,clinicNumber),
+      });
+
+    }else
+    {
+      await transporter.sendMail({
+        from: businessMail,
+        to: userEmail,
+        subject: `Welcome to ${clinic}`,
+        html: addInstantPatient(link,name,number,clinic,website,address,clinicNumber),
+      });
+    }
 
     return true
   } catch (error) {
