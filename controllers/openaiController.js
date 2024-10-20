@@ -97,7 +97,7 @@ async function extractAnswers(text){
                      {
                          "id": 6,
                          "question": "Please provide the phone number of an emergency contact.",
-                         "answer": 'null'
+                         "answer": '3364569588'
                      },
                      {
                          "id": 7,
@@ -255,7 +255,7 @@ async function extractAnswersforUpdate(text){
                     role: "system",
                     content: `Extracts answers and formats them into JSON. Return a null answer if you don't find the answer to that question in the provided text.output must be in english language
                     "questions": [
-                     { "id": 1, "question": "What is your date of birth?" },
+                     { "id": 1, "question": "What is your date of birth? format YYYY-MM-DD" },
                      { "id": 2, "question": "What is your gender?" },
                      { "id": 3, "question": "What is your phone number?" },
                      { "id": 4, "question": "Please provide the phone number of an emergency contact." },
@@ -289,8 +289,8 @@ async function extractAnswersforUpdate(text){
                  "example": [
                      {
                          "id": 1,
-                         "question": "What is your date of birth?",
-                         "answer": 'null'
+                         "question": "What is your date of birth? format YYYY-MM-DD",
+                         "answer": 'YYYY-MM-DD'
                      },
                      {
                          "id": 2,
@@ -300,12 +300,12 @@ async function extractAnswersforUpdate(text){
                      {
                          "id": 3,
                          "question": "What is your phone number?",
-                         "answer": "123-456-7890"
+                         "answer": "3364569588"
                      },
                      {
                          "id": 4,
                          "question": "Please provide the phone number of an emergency contact.",
-                         "answer": 'null'
+                         "answer": '3364569588'
                      },
                      {
                          "id": 5,
@@ -475,7 +475,6 @@ async function extractSummary(text){
         return { error: "Error processing" };
     }
 }
-
 
 const speechToTextForm =  asyncHandler(async(req,res)=>{
     try

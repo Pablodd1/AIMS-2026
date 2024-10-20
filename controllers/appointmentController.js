@@ -275,6 +275,7 @@ const filterAppointments = asyncHandler(async (req, res) => {
 
 const userResponseFromEmail = asyncHandler(async (req,res)=>{
     try{
+        console.log(req.method)
     if(req.method=='GET')
     {
             const { appId } = req.query
@@ -285,9 +286,7 @@ const userResponseFromEmail = asyncHandler(async (req,res)=>{
             else{
                 return res.send(false)
             } 
-
             
-
     }else{
 
             const { appId ,  status } = req.body
