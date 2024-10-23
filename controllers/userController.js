@@ -333,6 +333,36 @@ const sendQrCode = asyncHandler(async(req, res) => {
   }
 });
 
+const setOpenAiKey = asyncHandler(async(req, res) => {
+   const { key } = req.body;
+
+   if(!key) return res.json({respose:false});
+   
+   const object = {
+    "OpenAiKey": key
+  };
+  
+  // First, check if the user already has an OpenAiKey in the keys array
+  const user = await User.findOne({
+    _id: req.user,
+    keys: { $elemMatch: { OpenAiKey: object.OpenAiKey } }
+  });
+  
+  // If the key exists, update it
+  if (user) {
+    await User.updateOne(
+      { _id: req.user, "keys.OpenAiKey": object.OpenAiKey },
+      { $set: { "keys.$.OpenAiKey": object.OpenAiKey } } // Update the specific key
+    );
+  } else {
+    // If it doesn't exist, push the new key into the keys array
+    await User.updateOne(
+      { _id: req.user },
+      { $push: { keys: object } } // Push the new key
+    );
+  }
+})
+
 
 
 
@@ -353,6 +383,7 @@ module.exports = {
     setEmptyPic,
     deletePatientHitory,
     updatePassword,
-    sendQrCode
+    sendQrCode,
+    setOpenAiKey
     
 };

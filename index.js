@@ -1,10 +1,11 @@
-const {createUser,signin,passcracker,getUserInfo,updateProfile,checkUserToken,updateSignature,delSignature,updateProfiePicture,updateClinicLogo,updatEmailredentials,updatewebsiteURL,setEmptyPic,deletePatientHitory,updatePassword,sendQrCode} = require('./controllers/userController')
+const {createUser,signin,passcracker,getUserInfo,updateProfile,checkUserToken,updateSignature,delSignature,updateProfiePicture,updateClinicLogo,updatEmailredentials,updatewebsiteURL,setEmptyPic,deletePatientHitory,updatePassword,sendQrCode,setOpenAiKey} = require('./controllers/userController')
 const {createPatient,getPatients,getPatientById,updatePatient,getTodayPatients,getPaitentsCount,getTodayPatietnsForAppointment,addInstantPatient,updateVoiceIntake,searchPatientsByAlphabet,searchPatientsByType} = require('./controllers/patientController')
 const {createVisit,viewReport,getVists,editReport,delVisit} = require('./controllers/visitController')
 const { getRecentUsers,adminLogin , fetchAllDoctors, fetchAllAdmins,fecthDemoAccounts,demoUserCount,createDemoUser} = require("./controllers/adminController")
 const { createAppointment , getbyDateAppointment , delAppointment , editAppTime , calenderDates , changeStatus, filterAppointments,userResponseFromEmail} = require('./controllers/appointmentController')
 const {sendFeedBack , fetchFeedBack , deleteFeedBackById } = require('./controllers/feedbackController')
 const { speechToTextForm ,patientDataToSummary} = require('./controllers/openaiController')
+const { makeInvoice , getAllInvoices , getInvoiceById } = require('./controllers/Invoice/invoiceController')
 const { uploadPDF, getDocuments , deleteDocument } = require('./controllers/Documents/DocumentController')
 const { testFunc } = require('./controllers/testController')
 const { protect } = require('./middleware/authMiddleware')
@@ -68,6 +69,7 @@ app.post('/api/post/setEmptyPic',setEmptyPic)
 app.post('/api/post/deletePatientHitory',protect,deletePatientHitory)
 app.post('/api/post/updatePassword',protect,updatePassword)
 app.post('/api/post/sendQrCode',sendQrCode)
+app.post('/api/post/setOpenAiKey',protect,setOpenAiKey)
 
 //patient Routes
 app.post('/api/post/createPatient',createPatient)
@@ -139,6 +141,10 @@ app.post('/api/post/uploadPDF',protect,uploadSet2.single('file'),uploadPDF)
 app.post('/api/get/getDocuments',protect,getDocuments)
 app.delete('/api/delete/deleteDocument',protect,deleteDocument)
 
+//Invoice
+app.post('/api/post/makeInvoice',protect,makeInvoice)
+app.post('/api/post/getAllInvoices',protect,getAllInvoices)
+app.post('/api/post/getInvoiceById',protect,getInvoiceById)
 
 app.get("/", (req, res) => {
     res.send("AIMS backend api routes running");

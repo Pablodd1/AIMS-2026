@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const { Schema } = mongoose;
+const { getCurrentDateGlobally , getCurrentTimeGlobally } = require('../Helper/getLocalDates')
 
 const UserSchema = new Schema({
     first_name:{
@@ -53,11 +54,6 @@ const UserSchema = new Schema({
         type:String,
         default:""
     },
-    // publicIds:{
-    //     signature_publicId:"",
-    //     clinic_logo_publicId:"",
-    //     signature_publicId:""
-    // },
     admin:{
         type:Boolean,
         default:false
@@ -70,10 +66,9 @@ const UserSchema = new Schema({
         type:String,
         default:""
     },
-    website:{
-        type:String,
-        default:""
-    }
+    apiCredentials:[],
+    date:{type:String},
+    time:{type:String}
 
 
     
@@ -81,6 +76,15 @@ const UserSchema = new Schema({
 
     },{timestamps:true})
     mongoose.models={}
+
+        // Middleware to set getLocalDate before saving the document
+        UserSchema.pre('save', function (next) {
+    if (this.isNew) {
+        this.time = getCurrentTimeGlobally()// Set to current local date
+        this.date = getCurrentDateGlobally() 
+    }
+    next();
+});
 
 const User = mongoose.model("User", UserSchema);
 

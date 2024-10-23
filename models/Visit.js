@@ -1,65 +1,98 @@
 const mongoose = require('mongoose');
-const { required } = require('nodemon/lib/config');
 const { Schema } = mongoose;
+const { getCurrentDateGlobally, getCurrentTimeGlobally } = require('../Helper/getLocalDates');
 
 const VisitSchema = new Schema({
-    pId:{
-        type:String,
-        required:true,
-    },
-    doc_id:{
-        type:String,
-    },
-    all:{
-        type:String,
-    },
-    soapNotesSummary:{
-        type:String,
-    },
-    subjective:{
-        type:String,
-    },
-    objective:{
-        type:String,
-    },
-    chiefComplaint:{
-        type:String,
-    },
-    HPI:{
-        type:String,
-    },
-    PMH:{
-        type:String,
-    },
-    Allergy:{
-        type:String,
-    },
-    ROS:{
-        type:String,
-    },
-    physicalExamination:{
-        type:String,
-    },
-    Assessment:{
-        type:String,
-    },
-    med:{
-        type:String,
-    },
-    Plan:{
-        type:String,
-    },
-    Rationale:{
-        type:String,
-    },
-    cptCodes:[{type:Object}],
-    icdCodes:[{type:Object}],
-    dxCodes: [{type:Object}]
+  pId: {
+    type: String,
+    required: true,
+  },
+  doc_id: {
+    type: String,
+  },
+  all: {
+    type: String,
+  },
+  soapNotesSummary: {
+    type: String,
+  },
+  subjective: {
+    type: String,
+  },
+  objective: {
+    type: String,
+  },
+  chiefComplaint: {
+    type: String,
+  },
+  HPI: {
+    type: String,
+  },
+  PMH: {
+    type: String,
+  },
+  Allergy: {
+    type: String,
+  },
+  ROS: {
+    type: String,
+  },
+  physicalExamination: {
+    type: String,
+  },
+  Assessment: {
+    type: String,
+  },
+  med: {
+    type: String,
+  },
+  Plan: {
+    type: String,
+  },
+  Rationale: {
+    type: String,
+  },
+  cptCodes: [{
+    type: Object,
+  }],
+  icdCodes: [{
+    type: Object,
+  }],
+  dxCodes: [{
+    type: Object,
+  }],
+  date: {
+    type: String,
+    default: () => getCurrentDateGlobally(), // Default to current date
+  },
+  time: {
+    type: String,
+    default: () => getCurrentTimeGlobally(), // Default to current time
+  },
+}, { timestamps: true });
 
-    },{timestamps:true})
-    mongoose.models={}
+mongoose.models = {};
+
+// Middleware to set date and time before saving the document
+VisitSchema.pre('save', function (next) {
+  console.log('Pre-save middleware executed for Visit');
+  
+  // Set date and time only for new documents
+  if (this.isNew) {
+    const currentDate = getCurrentDateGlobally();
+    const currentTime = getCurrentTimeGlobally();
+
+    if (!currentDate || !currentTime) {
+      console.error('Error: Date or time is undefined');
+    } else {
+      this.date = currentDate;
+      this.time = currentTime;
+      console.log(`Date set to: ${currentDate}, Time set to: ${currentTime}`);
+    }
+  }
+  next();
+});
 
 const Visit = mongoose.model("Visit", VisitSchema);
 
 module.exports = Visit;
-

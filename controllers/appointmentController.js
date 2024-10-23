@@ -83,7 +83,6 @@ const { patientID , time ,number,clinicname,businessMail,
                 doctorID:req.user,
                 email:patientInfo.email,
                 name:patientInfo.fullName,
-                time,
                 reminder:getOriginalAndReminderDates(time).reminderDate
             })
              link = `https://www.aiscribers.com/updatePatient/${patientID}`

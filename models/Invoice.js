@@ -2,12 +2,8 @@ const mongoose = require('mongoose');
 const { Schema } = mongoose;
 const { getCurrentDateGlobally, getCurrentTimeGlobally } = require('../Helper/getLocalDates');
 
-const DocumentSchema = new Schema({
-  userId: {
-    type: String,
-    required: true,
-  },
-  fileOriginalName: {
+const InvoiceSchema = new Schema({
+  docId: {
     type: String,
     required: true,
   },
@@ -15,12 +11,12 @@ const DocumentSchema = new Schema({
     type: String,
     required: true,
   },
-  publicId: {
-    type: String,
-    required: true,
+  item: {
+    type: Array,
+    default: [], // Default to an empty array if not provided
   },
-  secure_url: {
-    type: String,
+  subTotal: {
+    type: Number,
     required: true,
   },
   date: {
@@ -36,8 +32,8 @@ const DocumentSchema = new Schema({
 mongoose.models = {};
 
 // Middleware to set date and time before saving the document
-DocumentSchema.pre('save', function (next) {
-  console.log('Pre-save middleware executed for Document');
+InvoiceSchema.pre('save', function (next) {
+  console.log('Pre-save middleware executed for Invoice');
 
   // Set date and time only for new documents
   if (this.isNew) {
@@ -55,4 +51,4 @@ DocumentSchema.pre('save', function (next) {
   next();
 });
 
-module.exports = mongoose.model('Document', DocumentSchema);
+module.exports = mongoose.model('Invoice', InvoiceSchema);

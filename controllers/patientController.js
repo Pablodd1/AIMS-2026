@@ -275,10 +275,13 @@ const addInstantPatient = asyncHandler(async(req,res)=>{
    
   try {
 
-    const patientExists = await Patient.findOne({doc_id:req.user,email})
-    if(patientExists)
+    if(email)
     {
-      return res.status(200).json({ response: false, msg: "Patient already exists in your patients list"});
+      const patientExists = await Patient.findOne({doc_id:req.user,email})
+      if(patientExists)
+      {
+        return res.status(200).json({ response: false, msg: "Patient already exists in your patients list"});
+      }
     }
     
     const fullName = name + ' ' + lastName
@@ -288,7 +291,7 @@ const addInstantPatient = asyncHandler(async(req,res)=>{
         doc_id:req.user,
         fullName:fullName,
         phoneNumber:number,
-        email
+        email:email
         
     });
     // Save patient to database
