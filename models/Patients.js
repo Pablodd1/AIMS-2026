@@ -10,6 +10,7 @@ const PatientSchema = new Schema({
   email: { type: String },
   phoneNumber: { type: String },
   emergencyContactPhoneNumber: { type: String, required: false },
+  address: { type: String, required: false },
   insuranceProvider: { type: String, required: false },
   insurancePolicyNumber: { type: String, required: false },
   policyHolderName: { type: String, required: false },

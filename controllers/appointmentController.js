@@ -67,7 +67,6 @@ const { patientID , time ,number,clinicname,businessMail,
         patientID,
         status: { $in: ['Scheduled', 'Pending'] }
     })
-
      if(isPatientAppointmentAlreadyBooked)
      {
          return res.json({success:false,msg:"Patient appointment is already scheduled. If you want to make new appointment. Please change the status of previous one"})
@@ -76,8 +75,10 @@ const { patientID , time ,number,clinicname,businessMail,
         patientInfo = await Patient.findOne({_id:patientID})
         if(patientInfo)
         {
-            
-
+            if(!patientInfo.email || !patientInfo.email){
+                return res.json({success:false,msg:"Please complete the patient information before creating an appointment."});
+            }
+        
             newAppointment =  await Appointment.create({
                 patientID,
                 doctorID:req.user,
@@ -93,7 +94,7 @@ const { patientID , time ,number,clinicname,businessMail,
             }else{
                 msg = `Hi ${patientInfo.fullName},\nYour appointment is confirmed for ${formatDateString(time)}.\nTo make your visit smoother, if you haven't filled out the intake form, please complete it in advance using this link: ${link}.\nThe form supports multiple languages and allows you to use voice-to-text technology to fill it out using your voice. You can complete it from your phone or computer.\nAddress: ${address}\nVisit us at: ${website}\nCall: ${number}\n\nIf you need to reschedule.\nTo opt-out, reply STOP.`;
             }
-            return res.json({success:true,msg:"Appoinntment scheduled"});
+            return res.json({success:true,msg:"Appointment scheduled"});
         }else{
             return res.json({success:false,msg:"Facing issues. Please try again later"});
         }

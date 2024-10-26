@@ -14,6 +14,7 @@ const createPatient = asyncHandler(async(req,res)=>{
     email,
     phoneNumber,
     emergencyContactPhoneNumber,
+    address,
     insuranceProvider,
     insurancePolicyNumber,
     policyHolderName,
@@ -62,6 +63,7 @@ const createPatient = asyncHandler(async(req,res)=>{
         email,
         phoneNumber,
         emergencyContactPhoneNumber,
+        address,
 
         insuranceProvider,
         insurancePolicyNumber,
@@ -344,6 +346,7 @@ const updateVoiceIntake = asyncHandler(async(req,res)=>{
     gender,
     phoneNumber,
     emergencyContactPhoneNumber,
+    address,
     insuranceProvider,
     insurancePolicyNumber,
     policyHolderName,
@@ -389,6 +392,7 @@ const updateVoiceIntake = asyncHandler(async(req,res)=>{
         gender,
         phoneNumber,
         emergencyContactPhoneNumber,
+        address,
 
         insuranceProvider,
         insurancePolicyNumber,

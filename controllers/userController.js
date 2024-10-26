@@ -317,7 +317,7 @@ const sendQrCode = asyncHandler(async(req, res) => {
   } = req.body;
 
   try {
-    const link = `https://www.aidemoscriber.com/registerPatient/${id}`;
+    const link = `https://www.aidemoscriber.com/updatePatient/${id}`;
     sendQrCodeToPatient(businessMail, appCode, link, userEmail);
     
       return res.json({

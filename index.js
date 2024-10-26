@@ -37,7 +37,8 @@ const storage1 = multer.diskStorage({
     cb(null, './uploads'); // Uploads directory should exist
   },
   filename: (req, file, cb) => {
-    cb(null, file.fieldname + '-' + Date.now() + path.extname('audio.webm'));
+    const ext = file.mimetype.split('/')[1]
+    cb(null, file.fieldname + '-' + Date.now() + '.' + ext);
   }
 });
 
