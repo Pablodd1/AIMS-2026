@@ -3,8 +3,8 @@ function getClientTimeZone() {
     return Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
 
-function getCurrentDateGlobally() {
-    const timeZone = getClientTimeZone();  // Get the client's time zone
+function getCurrentDateGlobally(userTimezone) {
+    const timeZone = userTimezone || getClientTimeZone();  // Get the client's time zone
     const options = { 
         year: 'numeric', 
         month: '2-digit', 
@@ -19,8 +19,8 @@ function getCurrentDateGlobally() {
     return `${month}-${day}-${year}`; // Return in MM-DD-YYYY format
 }
 
-function getCurrentTimeGlobally() {
-    const timeZone = getClientTimeZone();  // Get the client's time zone
+function getCurrentTimeGlobally(userTimezone) {
+    const timeZone = userTimezone || getClientTimeZone();  // Get the client's time zone
     const options = { 
         hour: '2-digit', 
         minute: '2-digit', 

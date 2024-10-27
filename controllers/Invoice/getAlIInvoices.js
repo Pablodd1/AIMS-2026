@@ -5,7 +5,7 @@ const getAllInvoices = asyncHandler(async(req,res)=>{
     try
     {
       const {pId} =  req.body
-      
+      console.log(pId)
       const result = await Invoice.find({
         docId:req.user,
         pId,

@@ -53,7 +53,7 @@ const createAppointment = asyncHandler(async (req,res)=>{
   
 const { patientID , time ,number,clinicname,businessMail,
     appCode,website,address,pic,
-    smsChecked,emailChecked
+    smsChecked,emailChecked,userTimezone
  } = req.body;
     let patientInfo
     let link 
@@ -84,7 +84,8 @@ const { patientID , time ,number,clinicname,businessMail,
                 doctorID:req.user,
                 email:patientInfo.email,
                 name:patientInfo.fullName,
-                reminder:getOriginalAndReminderDates(time).reminderDate
+                reminder:getOriginalAndReminderDates(time).reminderDate,
+                userTimezone
             })
              link = `https://www.aiscribers.com/updatePatient/${patientID}`
             if(clinicname == "Icare" || clinicname == "icare" || clinicname == "Icare Mobile Medicine")

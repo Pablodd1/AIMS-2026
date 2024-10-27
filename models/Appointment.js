@@ -22,7 +22,6 @@ const AppointmentSchema = new Schema({
   },
   time: {
     type: String,
-    default: () => `${getCurrentDateGlobally()} ${getCurrentTimeGlobally()}`, // Default to current date and time
   },
   reminder: {
     type: String,
@@ -32,7 +31,12 @@ const AppointmentSchema = new Schema({
     type: String,
     enum: ['Scheduled', 'Cancelled', 'Complete', 'Pending'], // Enum for status field
     default: 'Pending', // Optional: set default value
-  }
+  },
+  userTimezone: {
+    type: String, // Store the timezone
+    required: true, // Ensure it's always provided
+}
+
 }, { timestamps: true });
 
 mongoose.models = {};
@@ -43,8 +47,8 @@ AppointmentSchema.pre('save', function (next) {
 
   // Set date and time only for new documents
   if (this.isNew) {
-    const currentDate = getCurrentDateGlobally();
-    const currentTime = getCurrentTimeGlobally();
+    const currentDate = getCurrentDateGlobally(this.userTimezone);
+    const currentTime = getCurrentTimeGlobally(this.userTimezone);
 
     if (!currentDate || !currentTime) {
       console.error('Error: Date or time is undefined');

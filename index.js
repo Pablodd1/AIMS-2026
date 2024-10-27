@@ -5,7 +5,7 @@ const { getRecentUsers,adminLogin , fetchAllDoctors, fetchAllAdmins,fecthDemoAcc
 const { createAppointment , getbyDateAppointment , delAppointment , editAppTime , calenderDates , changeStatus, filterAppointments,userResponseFromEmail} = require('./controllers/appointmentController')
 const {sendFeedBack , fetchFeedBack , deleteFeedBackById } = require('./controllers/feedbackController')
 const { speechToTextForm ,patientDataToSummary} = require('./controllers/openaiController')
-const { makeInvoice , getAllInvoices , getInvoiceById } = require('./controllers/Invoice/invoiceController')
+const { makeInvoice , getAllInvoices , getInvoiceById , getInvoiceAnalyitcs } = require('./controllers/Invoice/invoiceController')
 const { uploadPDF, getDocuments , deleteDocument } = require('./controllers/Documents/DocumentController')
 const { testFunc } = require('./controllers/testController')
 const { protect } = require('./middleware/authMiddleware')
@@ -146,6 +146,7 @@ app.delete('/api/delete/deleteDocument',protect,deleteDocument)
 app.post('/api/post/makeInvoice',protect,makeInvoice)
 app.post('/api/post/getAllInvoices',protect,getAllInvoices)
 app.post('/api/post/getInvoiceById',protect,getInvoiceById)
+app.post('/api/post/getInvoiceAnalyitcs',protect,getInvoiceAnalyitcs)
 
 app.get("/", (req, res) => {
     res.send("AIMS backend api routes running");

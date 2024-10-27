@@ -270,7 +270,8 @@ const addInstantPatient = asyncHandler(async(req,res)=>{
     businessMail,
     appCode,
     smsChecked,
-    emailChecked
+    emailChecked,
+    userTimezone
 } = req.body;
   
 
@@ -293,7 +294,8 @@ const addInstantPatient = asyncHandler(async(req,res)=>{
         doc_id:req.user,
         fullName:fullName,
         phoneNumber:number,
-        email:email
+        email:email,
+        
         
     });
     // Save patient to database
