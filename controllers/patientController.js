@@ -462,7 +462,6 @@ const searchPatientsByAlphabet = asyncHandler(async (req, res) => {
   }
 });
 
-
 const searchPatientsByType = asyncHandler(async (req, res) => {
   try {
     const { type, query } = req.body;
@@ -497,6 +496,44 @@ const searchPatientsByType = asyncHandler(async (req, res) => {
   }
 });
 
+const searchPatientsByTypeAndLimit5 = asyncHandler(async (req, res) => {
+  try {
+    const { type, query } = req.body;
+
+    // Validate type input
+    if (type !== 'name' && type !== 'email') {
+      return res.status(400).json({ response: false, msg: "Invalid search type" });
+    }
+
+    // Build the search filter based on the type (name or email)
+    let filter = {};
+    if (type === 'name') {
+      filter = { fullName: { $regex: `^${query}`, $options: 'i' } }; // Case-insensitive regex search
+    } else if (type === 'email') {
+      filter = { email: { $regex: `^${query}`, $options: 'i' } }; // Case-insensitive regex search for email
+    }
+
+    // Search patients in the database
+    const patients = await Patient.find({
+      doc_id: req.user,
+      ...filter
+    })
+    .select('fullName email _id')  // Specify the fields you want to include
+    .limit(5);
+    
+
+    if (!patients.length) {
+      return res.status(404).json({ response: false, msg: "No patients found" });
+    }
+
+    res.status(200).json({ response: true, patients });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ response: false, msg: "Server error" });
+  }
+});
+
+
 
 
 
@@ -516,5 +553,6 @@ module.exports = {
     addInstantPatient,
     updateVoiceIntake,
     searchPatientsByAlphabet,
-    searchPatientsByType
+    searchPatientsByType,
+    searchPatientsByTypeAndLimit5
 };

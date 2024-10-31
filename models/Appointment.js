@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { getCurrentDateGlobally, getCurrentTimeGlobally } = require('../Helper/getLocalDates');
+// const { getCurrentDateGlobally, getCurrentTimeGlobally } = require('../Helper/getLocalDates');
 const { Schema } = mongoose;
 
 const AppointmentSchema = new Schema({
@@ -42,23 +42,22 @@ const AppointmentSchema = new Schema({
 mongoose.models = {};
 
 // Middleware to set date and time before saving the document
-AppointmentSchema.pre('save', function (next) {
-  console.log('Pre-save middleware executed for Appointment');
+// AppointmentSchema.pre('save', function (next) {
+//   console.log('Pre-save middleware executed for Appointment');
+  
+//   if (this.isNew) {
+//     const currentDate = getCurrentDateGlobally(this.userTimezone);
+//     const currentTime = getCurrentTimeGlobally(this.userTimezone);
 
-  // Set date and time only for new documents
-  if (this.isNew) {
-    const currentDate = getCurrentDateGlobally(this.userTimezone);
-    const currentTime = getCurrentTimeGlobally(this.userTimezone);
-
-    if (!currentDate || !currentTime) {
-      console.error('Error: Date or time is undefined');
-    } else {
-      this.time = `${currentDate} ${currentTime}`;
-      console.log(`Date and time set to: ${this.time}`);
-    }
-  }
-  next();
-});
+//     if (!currentDate || !currentTime) {
+//       console.error('Error: Date or time is undefined');
+//     } else {
+//       this.time = `${this.time} ${currentTime}`;
+//       console.log(`Date and time set to: ${this.time}`);
+//     }
+//   }
+//   next();
+// });
 
 const Appointment = mongoose.model("Appointment", AppointmentSchema);
 

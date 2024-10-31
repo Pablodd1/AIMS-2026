@@ -156,6 +156,29 @@ const delVisit = asyncHandler(async(req,res)=>{
     }
 })
 
+const updateVisitDate = asyncHandler(async(req,res)=>{
+    try
+    {
+      const { id, date } =  req.body
+
+      await Visit.updateOne(
+        {
+        _id:id
+       },{
+        $set:{
+            date
+        }
+       })
+
+      return res.json({response:true,msg:"Visit date changed"})
+      
+    }
+    catch(e)
+    {
+      return res.json({response:false})
+    }
+})
+
 
 
 
@@ -167,5 +190,6 @@ module.exports = {
     viewReport,
     getVists,
     editReport,
-    delVisit
+    delVisit,
+    updateVisitDate
 };

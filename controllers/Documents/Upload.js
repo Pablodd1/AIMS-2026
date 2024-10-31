@@ -54,7 +54,8 @@ const uploadPDF = asyncHandler(async (req, res) => {
             pId:req.body.pId,
             fileOriginalName:req.file.originalname,
             publicId: response.public_id,
-            secure_url: response.secure_url
+            secure_url: response.secure_url,
+            userTimezone:req.body
 
         });
 

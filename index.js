@@ -1,12 +1,12 @@
 const {createUser,signin,passcracker,getUserInfo,updateProfile,checkUserToken,updateSignature,delSignature,updateProfiePicture,updateClinicLogo,updatEmailredentials,updatewebsiteURL,setEmptyPic,deletePatientHitory,updatePassword,sendQrCode,setOpenAiKey} = require('./controllers/userController')
-const {createPatient,getPatients,getPatientById,updatePatient,getTodayPatients,getPaitentsCount,getTodayPatietnsForAppointment,addInstantPatient,updateVoiceIntake,searchPatientsByAlphabet,searchPatientsByType} = require('./controllers/patientController')
-const {createVisit,viewReport,getVists,editReport,delVisit} = require('./controllers/visitController')
+const {createPatient,getPatients,getPatientById,updatePatient,getTodayPatients,getPaitentsCount,getTodayPatietnsForAppointment,addInstantPatient,updateVoiceIntake,searchPatientsByAlphabet,searchPatientsByType,searchPatientsByTypeAndLimit5} = require('./controllers/patientController')
+const {createVisit,viewReport,getVists,editReport,delVisit , updateVisitDate} = require('./controllers/visitController')
 const { getRecentUsers,adminLogin , fetchAllDoctors, fetchAllAdmins,fecthDemoAccounts,demoUserCount,createDemoUser} = require("./controllers/adminController")
-const { createAppointment , getbyDateAppointment , delAppointment , editAppTime , calenderDates , changeStatus, filterAppointments,userResponseFromEmail} = require('./controllers/appointmentController')
+const { createAppointment , getbyDateAppointment , delAppointment , editAppTime , calenderDates , changeStatus, filterAppointments,userResponseFromEmail,appointmentReport} = require('./controllers/appointmentController')
 const {sendFeedBack , fetchFeedBack , deleteFeedBackById } = require('./controllers/feedbackController')
 const { speechToTextForm ,patientDataToSummary} = require('./controllers/openaiController')
-const { makeInvoice , getAllInvoices , getInvoiceById , getInvoiceAnalyitcs } = require('./controllers/Invoice/invoiceController')
-const { uploadPDF, getDocuments , deleteDocument } = require('./controllers/Documents/DocumentController')
+const { makeInvoice , getAllInvoices , getInvoiceById , getInvoiceAnalyitcs , updateInvoice , deleteInvoice } = require('./controllers/Invoice/invoiceController')
+const { uploadPDF, getDocuments , deleteDocument, updateDocumentDate } = require('./controllers/Documents/DocumentController')
 const { testFunc } = require('./controllers/testController')
 const { protect } = require('./middleware/authMiddleware')
 const bodyParser = require('body-parser');
@@ -85,12 +85,14 @@ app.post('/api/post/addInstantPatient',protect,addInstantPatient)
 app.post('/api/post/updateVoiceIntake',updateVoiceIntake)
 app.post('/api/post/searchPatientsByAlphabet',protect,searchPatientsByAlphabet)
 app.post('/api/post/searchPatientsByType',protect,searchPatientsByType)
+app.post('/api/post/searchPatientsByTypeAndLimit5',protect,searchPatientsByTypeAndLimit5)
 
 //visit routes
 app.post('/api/post/createVisit',protect,createVisit);
 app.get("/api/get/viewReport",protect,viewReport)
 app.get('/api/get/getVists',protect,getVists)
 app.delete('/api/del/delVisit',protect,delVisit)
+app.post('/api/post/updateVisitDate',protect,updateVisitDate)
 
 //admin routes
 app.get('/api/get/getRecentUsers',protect,getRecentUsers)
@@ -137,16 +139,20 @@ app.post('/api/get/calenderDates',calenderDates)
 app.post('/api/post/filterAppointments',protect,filterAppointments)
 app.post('/api/post/userResponseFromEmail',userResponseFromEmail) // change status
 app.get('/api/get/userResponseFromEmail',userResponseFromEmail) /// allow to user to change status
+app.get('/api/get/appointmentReport',protect,appointmentReport)
 // documents 
 app.post('/api/post/uploadPDF',protect,uploadSet2.single('file'),uploadPDF)
 app.post('/api/get/getDocuments',protect,getDocuments)
 app.delete('/api/delete/deleteDocument',protect,deleteDocument)
+app.post('/api/post/updateDocumentDate',protect,updateDocumentDate)
 
 //Invoice
 app.post('/api/post/makeInvoice',protect,makeInvoice)
 app.post('/api/post/getAllInvoices',protect,getAllInvoices)
 app.post('/api/post/getInvoiceById',protect,getInvoiceById)
 app.post('/api/post/getInvoiceAnalyitcs',protect,getInvoiceAnalyitcs)
+app.post('/api/post/updateInvoice',protect,updateInvoice)
+app.delete('/api/delete/deleteInvoice',protect,deleteInvoice)
 
 app.get("/", (req, res) => {
     res.send("AIMS backend api routes running");

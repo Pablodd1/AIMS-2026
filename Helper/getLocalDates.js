@@ -16,7 +16,7 @@ function getCurrentDateGlobally(userTimezone) {
     const formattedDate = new Intl.DateTimeFormat('en-US', options).format(date);
     const [month, day, year] = formattedDate.split('/');
 
-    return `${month}-${day}-${year}`; // Return in MM-DD-YYYY format
+    return `${year}-${month}-${day}`; // Return in MM-DD-YYYY format
 }
 
 function getCurrentTimeGlobally(userTimezone) {

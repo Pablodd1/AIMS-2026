@@ -63,12 +63,13 @@ const VisitSchema = new Schema({
   }],
   date: {
     type: String,
-    default: () => getCurrentDateGlobally(), // Default to current date
   },
   time: {
     type: String,
-    default: () => getCurrentTimeGlobally(), // Default to current time
   },
+  userTimezone: {
+    type: String, // Store the timezone
+}
 }, { timestamps: true });
 
 mongoose.models = {};
@@ -79,8 +80,8 @@ VisitSchema.pre('save', function (next) {
   
   // Set date and time only for new documents
   if (this.isNew) {
-    const currentDate = getCurrentDateGlobally();
-    const currentTime = getCurrentTimeGlobally();
+    const currentDate = getCurrentDateGlobally(this.userTimezone);
+    const currentTime = getCurrentTimeGlobally(this.userTimezone);
 
     if (!currentDate || !currentTime) {
       console.error('Error: Date or time is undefined');

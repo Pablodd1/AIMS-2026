@@ -2,7 +2,7 @@ const asyncHandler = require("express-async-handler");
 const Appointment = require('../models/Appointment')
 const Patient = require('../models/Patients')
 const {appMail,appCancel,appUpdate,onComplete} = require('./mailController')
-const { sendMessage } = require('../controllers/Twilio/twilio') 
+const { sendMessage } = require('../controllers/Twilio/twilio'); 
 
 function getOriginalAndReminderDates(originalDateString) {
     // Parse the original date
@@ -48,7 +48,23 @@ function formatDateString(dateString) {
   
     return formattedDate;
 }
-
+function userInpuDateintoReadableFormat(dateTime,userTimeZone)
+{
+    const formattedDate = new Date(dateTime).toLocaleString('en-US', {
+        timeZone: userTimeZone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      });
+      
+      // Modify the output to match the format YYYY-MM-DD HH:MM AM/PM
+      const [date, time] = formattedDate.split(', ');
+      const [month, day, year] = date.split('/');
+      return `${year}-${month}-${day} ${time}`;
+}
 const createAppointment = asyncHandler(async (req,res)=>{
   
 const { patientID , time ,number,clinicname,businessMail,
@@ -85,6 +101,7 @@ const { patientID , time ,number,clinicname,businessMail,
                 email:patientInfo.email,
                 name:patientInfo.fullName,
                 reminder:getOriginalAndReminderDates(time).reminderDate,
+                time:userInpuDateintoReadableFormat(time,userTimezone),
                 userTimezone
             })
              link = `https://www.aiscribers.com/updatePatient/${patientID}`
@@ -189,12 +206,12 @@ const editAppTime = asyncHandler(async(req,res)=>{
 const calenderDates = asyncHandler(async(req,res)=>{
     const { status } = req.body
     try{
-        console.log(status)
+        // console.log(status)
         const appts = await Appointment.find({doctorID:req.body._id,status})
         .select('time') 
         .exec();
 
-        console.log(appts)
+        // console.log(appts) 
         return res.json({response:true,appointments:appts})
     }
     catch(e)
@@ -252,7 +269,7 @@ const filterAppointments = asyncHandler(async (req, res) => {
         let filter = { doctorID: req.user };
 
         // Conditionally add other filters based on input
-        if (status) {
+        if (status && status!='All') {
             filter.status = status;
         }
         if (name) {
@@ -266,7 +283,7 @@ const filterAppointments = asyncHandler(async (req, res) => {
         }
 
         // Fetch appointments based on the constructed filter
-        const appts = await Appointment.find(filter);
+        const appts = await Appointment.find(filter).sort({ createdAt: -1 }).limit(10);
 
         return res.json({ response: true, appointments: appts });
     } catch (e) {
@@ -276,7 +293,7 @@ const filterAppointments = asyncHandler(async (req, res) => {
 
 const userResponseFromEmail = asyncHandler(async (req,res)=>{
     try{
-        console.log(req.method)
+        // console.log(req.method)
     if(req.method=='GET')
     {
             const { appId } = req.query
@@ -297,11 +314,36 @@ const userResponseFromEmail = asyncHandler(async (req,res)=>{
         
     }
     }catch(e){
-        console.log('user request failed')
+        // console.log('user request failed')
         return res.send(false)
     }
 
 })
+
+const appointmentReport = asyncHandler(async (req, res) => {
+    let report;
+    try {
+      const [Scheduled, Cancelled, Complete, Pending] = await Promise.all([
+        Appointment.find({ doctorID: req.user, status: 'Scheduled' }).countDocuments(),
+        Appointment.find({ doctorID: req.user, status: 'Cancelled' }).countDocuments(),
+        Appointment.find({ doctorID: req.user, status: 'Complete' }).countDocuments(),
+        Appointment.find({ doctorID: req.user, status: 'Pending' }).countDocuments()
+      ]);
+  
+      console.log(Scheduled, Cancelled, Complete, Pending);
+      
+      const All = Scheduled + Cancelled + Complete + Pending;
+      report = { Scheduled, Cancelled, Complete, Pending, All };
+      return res.json({ response: true, report });
+    } catch (e) {
+      report = { Scheduled: 0, Cancelled: 0, Complete: 0, Pending: 0, All: 0 };
+      return res.json({ response: false, report });
+    }
+  });
+
+
+
+  
 
 
 
@@ -313,5 +355,7 @@ module.exports = {
     calenderDates,
     changeStatus,
     filterAppointments,
-    userResponseFromEmail
+    userResponseFromEmail,
+    appointmentReport,
+    
 }
