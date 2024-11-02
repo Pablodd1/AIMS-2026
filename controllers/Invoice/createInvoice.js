@@ -4,14 +4,15 @@ const Invoice = require('../../models/Invoice')
 const makeInvoice = asyncHandler(async(req,res)=>{
     try
     {
-      const { pId , items , subTotal } =  req.body
+      const { pId , items , subTotal,userTimezone} =  req.body
 
-      
+   
       await Invoice.create({
         docId:req.user,
         pId,
         item:items,
-        subTotal
+        subTotal,
+        userTimezone
       })
 
       return res.json({response:true,msg:"Invoice assigned to patient"})

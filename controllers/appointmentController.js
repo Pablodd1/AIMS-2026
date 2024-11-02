@@ -67,9 +67,9 @@ function userInpuDateintoReadableFormat(dateTime,userTimeZone)
 }
 const createAppointment = asyncHandler(async (req,res)=>{
   
-const { patientID , time ,number,clinicname,businessMail,
-    appCode,website,address,pic,
-    smsChecked,emailChecked,userTimezone
+let { patientID , time ,number,clinicname,businessMail,
+        appCode,website,address,pic,
+        smsChecked,emailChecked,userTimezone
  } = req.body;
     let patientInfo
     let link 
@@ -85,32 +85,46 @@ const { patientID , time ,number,clinicname,businessMail,
     })
      if(isPatientAppointmentAlreadyBooked)
      {
-         return res.json({success:false,msg:"Patient appointment is already scheduled. If you want to make new appointment. Please change the status of previous one"})
+
+         const apptDate = isPatientAppointmentAlreadyBooked.time || isPatientAppointmentAlreadyBooked.createdAt.slice(0,10)
+         if(isPatientAppointmentAlreadyBooked.status == 'Scheduled')
+         {
+            return res.json({success:false,msg:`The patient appointment is already scheduled for ${apptDate}. If you wish to make a new appointment, please change the status of the previous one.`})
+         }else{
+            return res.json({success:false,msg:`The patient appointment has been scheduled by the doctor for ${apptDate} but is currently in pending status, as the patient has neither confirmed nor rejected the appointment yet. If you wish to schedule a new appointment, please change the status of the previous one.`})
+         }
      }
  
         patientInfo = await Patient.findOne({_id:patientID})
         if(patientInfo)
         {
-            if(!patientInfo.email || !patientInfo.email){
-                return res.json({success:false,msg:"Please complete the patient information before creating an appointment."});
+            if(!patientInfo.email){
+                emailChecked = false;
             }
+
+            if(!patientInfo.phoneNumber){
+                smsChecked   = false; 
+            }
+
+
         
             newAppointment =  await Appointment.create({
                 patientID,
                 doctorID:req.user,
-                email:patientInfo.email,
+                email:patientInfo.email || 'N/A',
                 name:patientInfo.fullName,
                 reminder:getOriginalAndReminderDates(time).reminderDate,
                 time:userInpuDateintoReadableFormat(time,userTimezone),
                 userTimezone
             })
              link = `https://www.aiscribers.com/updatePatient/${patientID}`
+             const confirmLink = `https://www.aiscribers.com/AppointmentConfirmation/${newAppointment._id}`
             if(clinicname == "Icare" || clinicname == "icare" || clinicname == "Icare Mobile Medicine")
             {
-                 msg = `Hi ${patientInfo.fullName},\n\nYour appointment is confirmed for ${formatDateString(time)}.\n\nPlease complete the intake form ahead of time using this link: ${link}.\n\nThe form is voice-to-text enabled and works on both your phone and computer.\n\nCall us at ${number} if you need to reschedule.\n\nAddress: ${address}\nVisit us at: ${website}\nTo opt out, reply STOP.`;
+                 msg = `Hi ${patientInfo.fullName},\n\nYour appointment is confirmed for ${formatDateString(time)}.\n\nPlease complete the intake form ahead of time using this link: ${link}.\n\nThe form is voice-to-text enabled and works on both your phone and computer.\n\nCall us at ${number} if you need to reschedule.\n\nAddress: ${address}\nVisit us at: ${website}\nTo opt out, reply STOP.\nConfirm your appointment using this -> link\n${confirmLink} `;
 
             }else{
-                msg = `Hi ${patientInfo.fullName},\nYour appointment is confirmed for ${formatDateString(time)}.\nTo make your visit smoother, if you haven't filled out the intake form, please complete it in advance using this link: ${link}.\nThe form supports multiple languages and allows you to use voice-to-text technology to fill it out using your voice. You can complete it from your phone or computer.\nAddress: ${address}\nVisit us at: ${website}\nCall: ${number}\n\nIf you need to reschedule.\nTo opt-out, reply STOP.`;
+                 msg = `Hi ${patientInfo.fullName},\nYour appointment is confirmed for ${formatDateString(time)}.\nTo make your visit smoother, if you haven't filled out the intake form, please complete it in advance using this link: ${link}.\nThe form supports multiple languages and allows you to use voice-to-text technology to fill it out using your voice. You can complete it from your phone or computer.\nAddress: ${address}\nVisit us at: ${website}\nCall: ${number}\n\nIf you need to reschedule.\nTo opt-out, reply STOP.\nConfirm your appointment using this -> link\n${confirmLink}`;
             }
             return res.json({success:true,msg:"Appointment scheduled"});
         }else{

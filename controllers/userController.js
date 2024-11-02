@@ -235,7 +235,6 @@ const updatewebsiteURL = asyncHandler(async(req,res)=>{
     return res.status(200).json({respnse:false,msg:"Error try again"})
   }
 })
-
 const setEmptyPic = asyncHandler(async(req,res)=>{
   const { publicId } = req.body
   console.log('hit')
@@ -258,7 +257,6 @@ const setEmptyPic = asyncHandler(async(req,res)=>{
 
   
 })
-
 const deletePatientHitory = asyncHandler(async(req,res)=>{
   const { pId , password } = req.body
 
@@ -307,7 +305,6 @@ const deletePatientHitory = asyncHandler(async(req,res)=>{
       });
     }
 })
-
 const sendQrCode = asyncHandler(async(req, res) => {
   const { 
     businessMail,
@@ -332,7 +329,6 @@ const sendQrCode = asyncHandler(async(req, res) => {
     });
   }
 });
-
 const setOpenAiKey = asyncHandler(async(req, res) => {
    const { key } = req.body;
 

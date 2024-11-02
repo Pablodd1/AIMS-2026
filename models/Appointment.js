@@ -17,7 +17,6 @@ const AppointmentSchema = new Schema({
   },
   email: {
     type: String,
-    required: true,
     trim: true,
   },
   time: {

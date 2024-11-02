@@ -41,7 +41,8 @@ const createPatient = asyncHandler(async(req,res)=>{
     gastrointestinalHistory,
     musculoskeletalHistory,
     neurologicalHistory,
-    summary
+    summary,
+    userTimezone
 } = req.body;
   
   
@@ -56,6 +57,7 @@ const createPatient = asyncHandler(async(req,res)=>{
     // Create new patient
     const newPatient = new Patient({
         doc_id,
+        userTimezone,
 
         fullName,
         dateOfBirth,
@@ -258,7 +260,7 @@ const getTodayPatietnsForAppointment = asyncHandler(async (req, res) => {
 });
 
 const addInstantPatient = asyncHandler(async(req,res)=>{
-  const {
+  let {
     clinic,
     address,
     website,
@@ -286,6 +288,16 @@ const addInstantPatient = asyncHandler(async(req,res)=>{
         return res.status(200).json({ response: false, msg: "Patient already exists in your patients list"});
       }
     }
+
+    if(!email)
+    {
+      emailChecked = false;
+    }
+
+    if(!number)
+    {
+      smsChecked = false
+    }
     
     const fullName = name + ' ' + lastName
 
@@ -295,6 +307,7 @@ const addInstantPatient = asyncHandler(async(req,res)=>{
         fullName:fullName,
         phoneNumber:number,
         email:email,
+        userTimezone
         
         
     });
