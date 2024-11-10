@@ -1,7 +1,13 @@
+const moment = require('moment-timezone');
+
 // Function to get the client's local time zone
 function getClientTimeZone() {
     return Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
+function getTodayDateInTimeZone(timeZone) {
+    const todayDate = moment.tz(timeZone).format('YYYY-MM-DD');
+    return todayDate;
+  }
 
 function getCurrentDateGlobally(userTimezone) {
     const timeZone = userTimezone || getClientTimeZone();  // Get the client's time zone
@@ -35,5 +41,6 @@ function getCurrentTimeGlobally(userTimezone) {
 module.exports={
     getCurrentDateGlobally,
     getCurrentTimeGlobally,
-    getClientTimeZone
+    getClientTimeZone,
+    getTodayDateInTimeZone
 }

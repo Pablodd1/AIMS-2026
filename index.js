@@ -2,12 +2,13 @@ const {createUser,signin,passcracker,getUserInfo,updateProfile,checkUserToken,up
 const {createPatient,getPatients,getPatientById,updatePatient,getTodayPatients,getPaitentsCount,getTodayPatietnsForAppointment,addInstantPatient,updateVoiceIntake,searchPatientsByAlphabet,searchPatientsByType,searchPatientsByTypeAndLimit5} = require('./controllers/patientController')
 const {createVisit,viewReport,getVists,editReport,delVisit , updateVisitDate} = require('./controllers/visitController')
 const { getRecentUsers,adminLogin , fetchAllDoctors, fetchAllAdmins,fecthDemoAccounts,demoUserCount,createDemoUser} = require("./controllers/adminController")
-const { createAppointment , getbyDateAppointment , delAppointment , editAppTime , calenderDates , changeStatus, filterAppointments,userResponseFromEmail,appointmentReport} = require('./controllers/appointmentController')
+const { createAppointment , getbyDateAppointment , delAppointment , editAppTime , calenderDates , changeStatus, filterAppointments,userResponseFromEmail,appointmentReport,allAppointments} = require('./controllers/appointmentController')
 const {sendFeedBack , fetchFeedBack , deleteFeedBackById } = require('./controllers/feedbackController')
 const { speechToTextForm ,patientDataToSummary} = require('./controllers/openaiController')
 const { makeInvoice , getAllInvoices , getInvoiceById , getInvoiceAnalyitcs , updateInvoice , deleteInvoice } = require('./controllers/Invoice/invoiceController')
 const { uploadPDF, getDocuments , deleteDocument, updateDocumentDate } = require('./controllers/Documents/DocumentController')
 const { reportDocx , reportPdf } = require('./controllers/Downloads/downloadController')
+const { putObject } = require ('./controllers/AWS/AwsController')
 const { testFunc } = require('./controllers/testController')
 const { protect } = require('./middleware/authMiddleware')
 const bodyParser = require('body-parser');
@@ -141,6 +142,7 @@ app.post('/api/post/filterAppointments',protect,filterAppointments)
 app.post('/api/post/userResponseFromEmail',userResponseFromEmail) // change status
 app.get('/api/get/userResponseFromEmail',userResponseFromEmail) /// allow to user to change status
 app.get('/api/get/appointmentReport',protect,appointmentReport)
+app.get('/api/get/allAppointments',protect,allAppointments)
 // documents 
 app.post('/api/post/uploadPDF',protect,uploadSet2.single('file'),uploadPDF)
 app.post('/api/get/getDocuments',protect,getDocuments)
@@ -159,6 +161,11 @@ app.delete('/api/delete/deleteInvoice',protect,deleteInvoice)
 //Downloads (report,pdf)
 app.get('/api/get/reportDocx',protect,reportDocx)
 app.get('/api/get/reportPdf',protect,reportPdf)
+
+
+//AWS-S3
+app.get('/api/get/putObject',protect,putObject)
+
 
 app.get("/", (req, res) => {
     res.send("AIMS backend api routes running");

@@ -4,6 +4,7 @@ const Patient = require('../models/Patients')
 const {appMail,appCancel,appUpdate,onComplete} = require('./mailController')
 const { sendMessage } = require('../controllers/Twilio/twilio'); 
 
+const { getTodayDateInTimeZone } = require('../Helper/getLocalDates')
 function getOriginalAndReminderDates(originalDateString) {
     // Parse the original date
     const originalDate = new Date(originalDateString);
@@ -353,7 +354,28 @@ const appointmentReport = asyncHandler(async (req, res) => {
       report = { Scheduled: 0, Cancelled: 0, Complete: 0, Pending: 0, All: 0 };
       return res.json({ response: false, report });
     }
-  });
+});
+
+const allAppointments = asyncHandler(async(req,res)=>{
+    let appointments = []
+    try {
+        const { status , userTimeZone } = req.query
+        if(status == 'All')
+        {
+            appointments = await Appointment.find({doctorID:req.user}).sort({ createdAt: -1 }).select('status email name time')
+        }else if(status == 'Today') {
+
+            appointments = await Appointment.find({doctorID: userId,time: { $regex: `^${getTodayDateInTimeZone(userTimeZone)}` } // Match 'time' field starting with YYYY-MM-DD
+              }).sort({ createdAt: -1 }).select('status email name time');
+        }else{
+             appointments = await Appointment.find({doctorID:req.user,status:status}).sort({ createdAt: -1 }).select('status email name time')
+
+        }
+        return res.json({ response: true, appointments });
+      } catch (e) {
+        return res.json({ response: false, appointments });
+      }
+}) 
 
 
 
@@ -371,5 +393,6 @@ module.exports = {
     filterAppointments,
     userResponseFromEmail,
     appointmentReport,
+    allAppointments
     
 }
