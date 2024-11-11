@@ -7,8 +7,8 @@ const {sendFeedBack , fetchFeedBack , deleteFeedBackById } = require('./controll
 const { speechToTextForm ,patientDataToSummary} = require('./controllers/openaiController')
 const { makeInvoice , getAllInvoices , getInvoiceById , getInvoiceAnalyitcs , updateInvoice , deleteInvoice } = require('./controllers/Invoice/invoiceController')
 const { uploadPDF, getDocuments , deleteDocument, updateDocumentDate } = require('./controllers/Documents/DocumentController')
-const { reportDocx , reportPdf } = require('./controllers/Downloads/downloadController')
-const { putObject } = require ('./controllers/AWS/AwsController')
+const {  reportDocx , reportPdf } = require('./controllers/Downloads/downloadController')
+const {  getObject , getSignedUrlForUpload , deleteObject} = require ('./controllers/AWS/AwsController')
 const { testFunc } = require('./controllers/testController')
 const { protect } = require('./middleware/authMiddleware')
 const bodyParser = require('body-parser');
@@ -144,7 +144,7 @@ app.get('/api/get/userResponseFromEmail',userResponseFromEmail) /// allow to use
 app.get('/api/get/appointmentReport',protect,appointmentReport)
 app.get('/api/get/allAppointments',protect,allAppointments)
 // documents 
-app.post('/api/post/uploadPDF',protect,uploadSet2.single('file'),uploadPDF)
+app.post('/api/post/uploadPDF',protect,uploadPDF)
 app.post('/api/get/getDocuments',protect,getDocuments)
 app.delete('/api/delete/deleteDocument',protect,deleteDocument)
 app.post('/api/post/updateDocumentDate',protect,updateDocumentDate)
@@ -163,10 +163,14 @@ app.get('/api/get/reportDocx',protect,reportDocx)
 app.get('/api/get/reportPdf',protect,reportPdf)
 
 
+
 //AWS-S3
-app.get('/api/get/putObject',protect,putObject)
+app.get('/api/get/getSignedUrlForUpload',protect,getSignedUrlForUpload)
+app.get('/api/get/getObject',protect,getObject)
+app.delete('/api/delete/deleteObject',protect,deleteObject)
 
 
+// route 
 app.get("/", (req, res) => {
     res.send("AIMS backend api routes running");
 });

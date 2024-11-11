@@ -1,5 +1,9 @@
-const { putObject } = require('./PutObject')
-
+const { getSignedUrlForUpload } = require('./PutObject')
+const { deleteObject , deleteDocumentObject } = require('./DeleteObject')
+const { getObject } = require('./GetObject')
 module.exports={
-    putObject
+    getSignedUrlForUpload,
+    deleteObject,
+    getObject,
+    deleteDocumentObject
 }

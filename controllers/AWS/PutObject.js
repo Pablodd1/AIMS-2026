@@ -4,13 +4,13 @@ const { getSignedUrl } = require('@aws-sdk/s3-request-presigner')
 const { s3Client } = require('./AwsClient')
 
 
-const putObject = asyncHandler(async(req,res)=>{
+const getSignedUrlForUpload = asyncHandler(async(req,res)=>{
 
     try{
 
         const { fileName,contentType,folder } = req.query
-        console.log(fileName,contentType,folder )
         let command;
+        let url;
         if(folder=='Document')
         {
             command = new PutObjectCommand({
@@ -18,6 +18,7 @@ const putObject = asyncHandler(async(req,res)=>{
                 Key:`${folder}/${fileName}`,
                 ContentType:contentType
             })
+            url = await getSignedUrl(s3Client,command,{expiresIn:180});
         }else
         {
             command = new PutObjectCommand({
@@ -25,10 +26,9 @@ const putObject = asyncHandler(async(req,res)=>{
                 Key:`${folder}/${fileName}`,
                 ContentType:contentType
             })
+            url = await getSignedUrl(s3Client,command,{expiresIn:120});
         }
          
-        const url = await getSignedUrl(s3Client,command,{expiresIn:60});
-        console.log(url)
         return res.json({response:true,url});
     }catch(e)
     {
@@ -38,6 +38,8 @@ const putObject = asyncHandler(async(req,res)=>{
 
 })
 
+
+
 module.exports ={
-    putObject
+    getSignedUrlForUpload,
 }

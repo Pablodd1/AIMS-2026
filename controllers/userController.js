@@ -8,7 +8,8 @@ const Visit = require('../models/Visit')
 const Document = require('../models/Document') 
 const { deleteAsset } = require('../controllers/Cloudinary/cloudinay');
 const { PARSE_DEFAULTS } = require('cron/dist/constants');
-const { sendQrCodeToPatient } = require('./mailController')
+const { sendQrCodeToPatient } = require('./mailController');
+const { AuthCallsIpAccessControlListMappingContextImpl } = require('twilio/lib/rest/api/v2010/account/sip/domain/authTypes/authTypeCalls/authCallsIpAccessControlListMapping');
 const createUser = asyncHandler(async (req,res)=>{
   
   const { first_name, last_name ,email, phone_number , password,re_password  , title , Address , speciality  , clinicName} = req.body;
@@ -177,10 +178,23 @@ const updateSignature = asyncHandler(async(req,res)=>{
 })
 const updateProfiePicture = asyncHandler(async(req,res)=>{
 
-  const { _id , profile_picture , pic_public_Id } = req.body;
+  const { img ,folder } = req.body;
   try{
-    await User.updateOne({_id},{profile_picture,pic_public_Id})
-    return res.json({"response":true,msg:"Profile picture updated"})
+      if(folder == 'profile_picture')
+      {
+        await User.updateOne({_id:req.user},{$set:{'profile_picture':`${process.env.PUBLIC_BUCKET_AWS_URL}/${folder}/${img}`}})
+        return res.json({"response":true,msg:"Profile Updated"})
+      } 
+      else if(folder == 'signature')
+      {
+        await User.updateOne({_id:req.user},{$set:{'signature':`${process.env.PUBLIC_BUCKET_AWS_URL}/${folder}/${img}`}})
+        return res.json({"response":true,msg:"Profile Updated"})
+      }else{
+        await User.updateOne({_id:req.user},{$set:{'clinic_logo':`${process.env.PUBLIC_BUCKET_AWS_URL}/${folder}/${img}`}})
+        return res.json({"response":true,msg:"Profile Updated"})
+      }
+      
+    
    }catch(e)
    {
      return res.json({"response":false,msg:"Failed to updated profile picture try again"})

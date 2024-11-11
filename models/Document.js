@@ -15,10 +15,6 @@ const DocumentSchema = new Schema({
     type: String,
     required: true,
   },
-  publicId: {
-    type: String,
-    required: true,
-  },
   secure_url: {
     type: String,
     required: true,
