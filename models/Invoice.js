@@ -25,6 +25,11 @@ const InvoiceSchema = new Schema({
   time: {
     type: String,
   },
+  status: {
+    type: String,
+    enum: ['Complete', 'Pending'], // Enum for status field
+    default: 'Pending', // Optional: set default value
+  },
   userTimezone: {
     type: String, // Store the timezone
     required: true, // Ensure it's always provided

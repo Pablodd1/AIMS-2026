@@ -20,6 +20,7 @@ const UserSchema = new Schema({
     phone_number:{
         type:String,
         required:true,
+        trim:true
     },
     title:{
         type:String,
@@ -36,6 +37,7 @@ const UserSchema = new Schema({
     password:{
         type:String,
         required:true,
+        trim:true
     },
     clinicName:{
         type:String,
@@ -68,7 +70,8 @@ const UserSchema = new Schema({
     },
     apiCredentials:[],
     date:{type:String},
-    time:{type:String}
+    time:{type:String},
+    assistants:[]
 
 
     

@@ -1,4 +1,3 @@
-const cloudinary = require('cloudinary').v2;
 const asyncHandler = require("express-async-handler");
 const User = require('../models/User')
 const generateToken = require('../config/generateToken')
@@ -7,9 +6,10 @@ const Patients = require('../models/Patients')
 const Visit = require('../models/Visit')
 const Document = require('../models/Document') 
 const { deleteAsset } = require('../controllers/Cloudinary/cloudinay');
-const { PARSE_DEFAULTS } = require('cron/dist/constants');
 const { sendQrCodeToPatient } = require('./mailController');
-const { AuthCallsIpAccessControlListMappingContextImpl } = require('twilio/lib/rest/api/v2010/account/sip/domain/authTypes/authTypeCalls/authCallsIpAccessControlListMapping');
+const Assistant = require('../models/Assistant');
+const { ConversationsMessageFileImageInfo } = require("sib-api-v3-sdk");
+
 const createUser = asyncHandler(async (req,res)=>{
   
   const { first_name, last_name ,email, phone_number , password,re_password  , title , Address , speciality  , clinicName} = req.body;
@@ -69,7 +69,7 @@ const createUser = asyncHandler(async (req,res)=>{
 const signin = asyncHandler(async(req,res)=>{
 
 
-  const { email,password } = req.body;
+  const { email,password,selectedRole } = req.body;
   if(!email || !password)
   {
     res.json({
@@ -86,6 +86,8 @@ const signin = asyncHandler(async(req,res)=>{
     });
   }
   try{
+    if(selectedRole == 'doctor'){
+
     const bytes  = CryptoJS.AES.decrypt(user.password,  process.env.JWTSECRET)
     const originalText = bytes.toString(CryptoJS.enc.Utf8);
     if(password != originalText)
@@ -104,10 +106,53 @@ const signin = asyncHandler(async(req,res)=>{
         }
       });
     }
+  }else{
+
+    const { assistants } = await User.findOne({email}).select('assistants')
+
+    if(assistants.length <=0){
+      return res.json({
+        response: false,
+        msg: "User not found"
+      });
+    }
+    let alllowLogin = false;
+    
+    for(let i=0;i<assistants.length;i++)
+    {
+      const obj = await Assistant.findOne({_id:assistants[i]})
+      if(obj.access == false){
+        alllowLogin = false;
+        break
+      } 
+      const bytes  = CryptoJS.AES.decrypt(obj.password, process.env.JWTSECRET)
+      const originalText = bytes.toString(CryptoJS.enc.Utf8);
+      if(originalText == password){
+        alllowLogin = true;
+        break
+      }
+    }
+    if(alllowLogin){
+
+      return res.json({
+        response: alllowLogin,
+        msg:"success",
+        token: {
+          "access":generateToken(user._id),
+        }
+      });
+    }else{
+      return res.json({
+        response: alllowLogin,
+        msg: "Invalid Credentials"
+      });
+    }
+  }
+
 }
   catch(e)
   {
-    res.json({response:false,msg:'Network Error'});
+    return res.json({response:false,msg:'Network Error'});
   }
 })
 const updatePassword = asyncHandler(async(req,res)=>{
@@ -372,6 +417,122 @@ const setOpenAiKey = asyncHandler(async(req, res) => {
     );
   }
 })
+const addAssistant = asyncHandler(async(req,res)=>{
+  
+  const { username , password , access , userTimeZone,totalAssistant} = req.body;
+
+  try {
+
+    if(totalAssistant>3)
+    {
+      return res.json({
+        response: false,
+        msg: "You have reached the limit of 3 assistants. Unable to add more."
+      });
+    }
+    const assistant = await Assistant.create({
+      docId:req.user,
+      username,
+      password: CryptoJS.AES.encrypt(
+        password,
+        process.env.JWTSECRET
+        ).toString(),
+      access,
+      userTimeZone
+     })
+
+     console.log(assistant._id)
+
+     
+
+    await User.updateOne(
+      { _id: req.user },
+      { $push: { assistants: assistant._id } } // Ensure 'assistants' is an array in the schema
+    );
+
+     
+    
+      return res.json({
+        response: true,
+        msg: "New Assistant added in the clinic"
+      });
+    
+  } catch (e) {
+    return res.json({
+      response: false,
+      msg: "There was an error while adding new assistant"
+    });
+  }
+})
+const updateAssistant = asyncHandler(async(req,res)=>{
+  
+  const { assistantId , username , password , access } = req.body;
+
+  try {
+
+    await Assistant.updateOne(
+      {
+        _id:assistantId
+      },
+      {$set:{
+        username,
+        password: CryptoJS.AES.encrypt(
+          password,
+          process.env.JWTSECRET
+          ).toString(),
+        access
+      }
+     })
+     
+      return res.json({
+        response: true,
+        msg: `${username} information updated`
+      });
+    
+  } catch (e) {
+    return res.json({
+      response: false,
+      msg: `There was an error while updating ${username} information`
+    });
+  }
+})
+const getAssistant = asyncHandler(async(req,res)=>{
+  
+  try{
+
+    const {assistants} = await User.findOne({_id:req.user}).select('assistants')
+    
+    const assistantsList=[];
+    for(let i=0;i<assistants.length;i++)
+    {
+      const obj = await Assistant.findOne({_id:assistants[i]}).select('username password access')
+      if(obj){
+        const bytes  = CryptoJS.AES.decrypt(obj.password,  process.env.JWTSECRET)
+        const originalText = bytes.toString(CryptoJS.enc.Utf8);
+        obj['password'] = originalText;
+        assistantsList.push(obj)
+      }
+    }
+    
+    return res.json({success:true,assistantsList})
+  }catch(e){
+    return res.json({success:false})
+  }
+
+})
+const deleteAssistant = asyncHandler(async(req,res)=>{
+  try{
+    const { assistantId } = req.query
+    await User.updateOne({_id:req.user},{$pull:{assistants:assistantId}})
+    await Assistant.deleteOne({_id:assistantId})
+    return res.json({success:true})
+  }catch(e){
+    return res.json({success:false})
+  }
+
+})
+
+
 
 
 
@@ -394,6 +555,10 @@ module.exports = {
     deletePatientHitory,
     updatePassword,
     sendQrCode,
-    setOpenAiKey
+    setOpenAiKey,
+    addAssistant,
+    updateAssistant,
+    getAssistant,
+    deleteAssistant
     
 };

@@ -1,4 +1,4 @@
-const {createUser,signin,passcracker,getUserInfo,updateProfile,checkUserToken,updateSignature,delSignature,updateProfiePicture,updateClinicLogo,updatEmailredentials,updatewebsiteURL,setEmptyPic,deletePatientHitory,updatePassword,sendQrCode,setOpenAiKey} = require('./controllers/userController')
+const {deleteAssistant,getAssistant,updateAssistant,addAssistant,createUser,signin,passcracker,getUserInfo,updateProfile,checkUserToken,updateSignature,delSignature,updateProfiePicture,updateClinicLogo,updatEmailredentials,updatewebsiteURL,setEmptyPic,deletePatientHitory,updatePassword,sendQrCode,setOpenAiKey} = require('./controllers/userController')
 const {createPatient,getPatients,getPatientById,updatePatient,getTodayPatients,getPaitentsCount,getTodayPatietnsForAppointment,addInstantPatient,updateVoiceIntake,searchPatientsByAlphabet,searchPatientsByType,searchPatientsByTypeAndLimit5} = require('./controllers/patientController')
 const {createVisit,viewReport,getVists,editReport,delVisit , updateVisitDate} = require('./controllers/visitController')
 const { getRecentUsers,adminLogin , fetchAllDoctors, fetchAllAdmins,fecthDemoAccounts,demoUserCount,createDemoUser} = require("./controllers/adminController")
@@ -73,6 +73,10 @@ app.post('/api/post/deletePatientHitory',protect,deletePatientHitory)
 app.post('/api/post/updatePassword',protect,updatePassword)
 app.post('/api/post/sendQrCode',sendQrCode)
 app.post('/api/post/setOpenAiKey',protect,setOpenAiKey)
+app.post('/api/post/addAssistant',protect,addAssistant)
+app.post('/api/post/updateAssistant',protect,updateAssistant)
+app.get('/api/get/getAssistant',protect,getAssistant)
+app.delete('/api/delete/deleteAssistant',protect,deleteAssistant)
 
 //patient Routes
 app.post('/api/post/createPatient',createPatient)
@@ -175,7 +179,7 @@ app.get("/", (req, res) => {
     res.send("AIMS backend api routes running");
 });
 
-const PORT = 4000;
+const PORT = 3005;
 
 app.listen(
   PORT,
