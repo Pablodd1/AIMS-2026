@@ -179,7 +179,7 @@ app.get("/", (req, res) => {
     res.send("AIMS backend api routes running");
 });
 
-const PORT = 3005;
+const PORT = 4000;
 
 app.listen(
   PORT,
