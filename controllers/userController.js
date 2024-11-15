@@ -8,7 +8,7 @@ const Document = require('../models/Document')
 const { deleteAsset } = require('../controllers/Cloudinary/cloudinay');
 const { sendQrCodeToPatient } = require('./mailController');
 const Assistant = require('../models/Assistant');
-const { ConversationsMessageFileImageInfo } = require("sib-api-v3-sdk");
+const jwt = require("jsonwebtoken");
 
 const createUser = asyncHandler(async (req,res)=>{
   
@@ -88,66 +88,85 @@ const signin = asyncHandler(async(req,res)=>{
   try{
     if(selectedRole == 'doctor'){
 
-    const bytes  = CryptoJS.AES.decrypt(user.password,  process.env.JWTSECRET)
-    const originalText = bytes.toString(CryptoJS.enc.Utf8);
-    if(password != originalText)
-    {
-      res.json({
-        response: false,
-        msg: "Wrong Password"
-      });
-    }
-    else{
-      res.status(200).json({
-        response: true,
-        msg:"success",
-        token: {
-          "access":generateToken(user._id),
-        }
-      });
-    }
-  }else{
-
-    const { assistants } = await User.findOne({email}).select('assistants')
-
-    if(assistants.length <=0){
-      return res.json({
-        response: false,
-        msg: "User not found"
-      });
-    }
-    let alllowLogin = false;
-    
-    for(let i=0;i<assistants.length;i++)
-    {
-      const obj = await Assistant.findOne({_id:assistants[i]})
-      if(obj.access == false){
-        alllowLogin = false;
-        break
-      } 
-      const bytes  = CryptoJS.AES.decrypt(obj.password, process.env.JWTSECRET)
+      const bytes  = CryptoJS.AES.decrypt(user.password,  process.env.JWTSECRET)
       const originalText = bytes.toString(CryptoJS.enc.Utf8);
-      if(originalText == password){
-        alllowLogin = true;
-        break
+      if(password != originalText)
+      {
+        res.json({
+          response: false,
+          msg: "Wrong Password"
+        });
+      }
+      else{
+        res.status(200).json({
+          response: true,
+          msg:"success",
+          token: {
+            "access":generateToken(user._id),
+          },
+          role:"Doctor"
+        });
+      }
+    }else{
+      const { assistants } = await User.findOne({email}).select('assistants')
+      if(assistants.length <=0){
+        return res.json({
+          response: false,
+          msg: "User not found"
+        });
+      }
+      let alllowLogin = false;
+      let accessDenied = false;
+      let assistantId = ""
+      for(let i=0;i<assistants.length;i++)
+      {
+        accessDenied = false;
+        const obj = await Assistant.findOne({_id:assistants[i]})
+        assistantId = obj._id
+        
+        const bytes  = CryptoJS.AES.decrypt(obj.password, process.env.JWTSECRET)
+        const originalText = bytes.toString(CryptoJS.enc.Utf8);
+        if(originalText == password ){
+          if(obj.access == false){
+            alllowLogin = false;
+            accessDenied = true;
+            break
+          }else{
+            alllowLogin = true;
+             break
+          }
+        }else{
+          alllowLogin = false;
+          break
+        }
+       
+      }
+
+      if(accessDenied){
+        return res.json({
+          response: false,
+          msg: "Access Denied"
+        });
+      }
+      if(alllowLogin){
+        return res.json({
+          response: true,
+          msg:"success",
+          token: {
+            "access":generateToken(user._id),
+          },
+          assistantToken:{
+            "access":generateToken(assistantId),
+          },
+          role:"Assistant"
+        });
+      }else{
+        return res.json({
+          response: false,
+          msg: "Invalid Credentials"
+        });
       }
     }
-    if(alllowLogin){
-
-      return res.json({
-        response: alllowLogin,
-        msg:"success",
-        token: {
-          "access":generateToken(user._id),
-        }
-      });
-    }else{
-      return res.json({
-        response: alllowLogin,
-        msg: "Invalid Credentials"
-      });
-    }
-  }
 
 }
   catch(e)
@@ -203,7 +222,20 @@ const updateProfile = asyncHandler(async(req,res)=>{
 const checkUserToken = asyncHandler(async(req,res)=>{
 
   try{
-    return res.json({response:true,msg:"token is valid"})
+    const { AssToken } = req.body
+    if(AssToken==null)
+    {
+      return res.json({response:true,msg:"token is valid",role:"Doctor"})
+    }else{
+      const decoded = jwt.verify(AssToken, process.env.JWTSECRET);
+      const ass = await Assistant.findOne({_id:decoded.id}) 
+      if(ass && ass.access==true)
+      {
+        return res.json({response:true,msg:"token is valid",role:"Assistant"})
+      }else{
+        return res.json({response:false,msg:"Assistant token is not valid"})
+      }
+    }
   }
   catch(e)
   {
@@ -317,39 +349,23 @@ const setEmptyPic = asyncHandler(async(req,res)=>{
   
 })
 const deletePatientHitory = asyncHandler(async(req,res)=>{
-  const { pId , password } = req.body
+  const { pId  } = req.body
 
     try
     {
     
-
-     
-
-    const user = await User.findOne({_id:req.user})
-
-    const bytes  = CryptoJS.AES.decrypt(user.password,  process.env.JWTSECRET)
-    const originalText = bytes.toString(CryptoJS.enc.Utf8);
-
-    if(password != originalText)
-    {
-      return res.json({
-        response: false,
-        msg: "Invalid Password"
-      });
-    }
-
       await Promise.all([
          Patients.deleteOne({_id:pId}),
          Visit.deleteMany({pId}),
          Document.deleteMany({pId})
       ])
 
-     const docs = await Document.find({pId});
+    //  const docs = await Document.find({pId});
 
-      for(let i=0;i<docs.length;i++)
-      {
-        await deleteAsset(docs[i].publicId)
-      }
+    //   for(let i=0;i<docs.length;i++)
+    //   {
+    //     await deleteAsset(docs[i].publicId)
+    //   }
 
       return res.json({
         response: true,
@@ -418,12 +434,10 @@ const setOpenAiKey = asyncHandler(async(req, res) => {
   }
 })
 const addAssistant = asyncHandler(async(req,res)=>{
-  
-  const { username , password , access , userTimeZone,totalAssistant} = req.body;
-
+  const { username , password , access ,totalAssistant} = req.body;
   try {
 
-    if(totalAssistant>3)
+    if(totalAssistant>=3)
     {
       return res.json({
         response: false,
@@ -437,24 +451,21 @@ const addAssistant = asyncHandler(async(req,res)=>{
         password,
         process.env.JWTSECRET
         ).toString(),
-      access,
-      userTimeZone
+      access
      })
-
-     console.log(assistant._id)
 
      
 
     await User.updateOne(
       { _id: req.user },
-      { $push: { assistants: assistant._id } } // Ensure 'assistants' is an array in the schema
+      { $push: { assistants: assistant._id.toString() } } // Ensure 'assistants' is an array in the schema
     );
 
      
     
       return res.json({
         response: true,
-        msg: "New Assistant added in the clinic"
+        msg: "Assistant has been added successfully"
       });
     
   } catch (e) {
@@ -531,13 +542,6 @@ const deleteAssistant = asyncHandler(async(req,res)=>{
   }
 
 })
-
-
-
-
-
-
-
 module.exports = {
     createUser,
     signin,
