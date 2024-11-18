@@ -1,4 +1,4 @@
-function appointmentComplete(number, clinicname, patientName, website, address, pic) {
+function appointmentComplete(number, clinicname, patientName, website, address, pic, googleReviewUrl) {
     return `
   
     <!DOCTYPE html>
@@ -86,6 +86,9 @@ function appointmentComplete(number, clinicname, patientName, website, address, 
           <p>Address: ${address}</p>
           <p>Website: <a href=${website}>${website === "" ? '(link unavailable)' : website}</a></p>
           <p>©️ 2024 ${clinicname}. All rights reserved.</p>
+          <a style="background-color: #4285F4; color: white; border: none; padding: 10px 20px; font-size: 16px; border-radius: 5px; cursor: pointer;" href=${googleReviewUrl}">
+            Review Us on Google
+          </a>
         </div>
       </div>
     </body>

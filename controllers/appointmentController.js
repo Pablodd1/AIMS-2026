@@ -174,29 +174,17 @@ const getbyDateAppointment = asyncHandler(async (req,res)=>{
     }
 })
 const delAppointment = asyncHandler(async(req,res)=>{
-    const { appId ,  number, businessMail,
-            appCode, website, clinic } = req.body
-    let p
-    let appResult
+    const { appId } = req.body
    try{
-    appResult = await Appointment.findOne({_id:appId})
-    p = await Patient.findOne({_id:appResult.patientID})
     await Appointment.deleteOne({_id:appId});
     return res.json({success:true})
    }catch(e){
     return res.json({success:false})
-   }finally{
-    if(businessMail=="" || appCode == "")
-            {
-                await appCancel(process.env.NODE_MAILER_USER,process.env.NODE_MAILER_PASS,p.email,formatDateString(appResult.time),number,website,clinic,p.fullName)
-            }else{
-                await appCancel(businessMail,appCode,p.email,formatDateString(appResult.time),number,website,clinic,p.fullName)
-            }
    }
 })
 
 const editAppTime = asyncHandler(async(req,res)=>{
-    const { appId , time , number,businessMail,
+    const { appId , time , number,businessMail,userTimezone,
         appCode,website,clinic  } = req.body
         let appt;
    try{
@@ -210,9 +198,9 @@ const editAppTime = asyncHandler(async(req,res)=>{
    }finally{
     if(businessMail=="" || appCode == "")
             {
-                await appUpdate(process.env.NODE_MAILER_USER,process.env.NODE_MAILER_PASS,appt.email,formatDateString(time),number,website,clinic,appt.name)
+                await appUpdate(process.env.NODE_MAILER_USER,process.env.NODE_MAILER_PASS,appt.email,userInpuDateintoReadableFormat(time,userTimezone),number,website,clinic,appt.name)
             }else{
-                await appUpdate(businessMail,appCode,appt.email,formatDateString(appt.time),number,website,clinic,appt.name)
+                await appUpdate(businessMail,appCode,appt.email,userInpuDateintoReadableFormat(time,userTimezone),number,website,clinic,appt.name)
             }
    }
 })

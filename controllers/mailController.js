@@ -4,7 +4,8 @@ const { appointmentCreated } = require('../Template/Appointments/appointmentcrea
 const { appointmentCancelled } = require('../Template/Appointments/appointmentCancelled');
 const { appointmentUpdate } = require('../Template/Appointments/appointmentUpdate');
 const { addInstantPatient , addInstantPatientICare } = require('../Template/Patients/addInstantPatient')
-const { appointmentComplete} = require('../Template/Appointments/appoitmentComplete')
+const { appointmentComplete} = require('../Template/Appointments/appoitmentComplete');
+const { innovativeGoogleReviewUrl } = require("../constants/global");
 
 const appMail = async (businessMail,appCode,userEmail,time,phone_number,clinicname,patient,website,address,pic,link,apptID) => {
   try {
@@ -133,11 +134,17 @@ const onComplete = async (businessMail,appCode,userEmail,number, clinicname, pat
       },
       secure: true,
     });
+
+    let googleUrl = ""
+    if(businessMail == "drjeffreydraesel@gmail.com")
+    {
+      googleUrl = innovativeGoogleReviewUrl
+    }
     await transporter.sendMail({
       from: businessMail,
       to: userEmail,
       subject: `Thank you for Visiting  ${clinicname}`,
-      html: appointmentComplete(number, clinicname, patientName, website, address, pic),
+      html: appointmentComplete(number, clinicname, patientName, website, address, pic, googleUrl),
     });
 
     return true
