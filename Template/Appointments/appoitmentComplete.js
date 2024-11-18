@@ -6,7 +6,7 @@ function appointmentComplete(number, clinicname, patientName, website, address, 
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Appointment Confirmation</title>
+      <title>Appointment Complete</title>
       <style>
         body {
           background-color: #1E293B; /* slate-900 */
@@ -65,7 +65,7 @@ function appointmentComplete(number, clinicname, patientName, website, address, 
         </div>
     
         <div class="subject">
-          Appointment Confirmation - ${clinicname}
+          Appointment Complete - ${clinicname}
         </div>
     
         <div class="content">

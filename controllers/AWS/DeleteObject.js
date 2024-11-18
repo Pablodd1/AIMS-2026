@@ -8,7 +8,6 @@ const deleteObject = asyncHandler(async(req,res)=>{
     try
     {
         const { key,bucket,name } = req.query
-        console.log(key,bucket,name)
         const result = await awsRemoveObject(key,bucket)
         if(result){
             if(name == 'profile_picture') await User.updateOne({_id:req.user},{$set:{profile_picture:""}});

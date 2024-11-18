@@ -4,7 +4,8 @@ const Patient = require('../models/Patients')
 const {appMail,appCancel,appUpdate,onComplete} = require('./mailController')
 const { sendMessage } = require('../controllers/Twilio/twilio'); 
 
-const { getTodayDateInTimeZone } = require('../Helper/getLocalDates')
+const { getTodayDateInTimeZone } = require('../Helper/getLocalDates');
+const { CompositionSettingsContextImpl } = require("twilio/lib/rest/video/v1/compositionSettings");
 function getOriginalAndReminderDates(originalDateString) {
     // Parse the original date
     const originalDate = new Date(originalDateString);
@@ -122,10 +123,10 @@ let { patientID , time ,number,clinicname,businessMail,
              const confirmLink = `https://www.aiscribers.com/AppointmentConfirmation/${newAppointment._id}`
             if(clinicname == "Icare" || clinicname == "icare" || clinicname == "Icare Mobile Medicine")
             {
-                 msg = `Hi ${patientInfo.fullName},\n\nYour appointment is confirmed for ${formatDateString(time)}.\n\nPlease complete the intake form ahead of time using this link: ${link}.\n\nThe form is voice-to-text enabled and works on both your phone and computer.\n\nCall us at ${number} if you need to reschedule.\n\nAddress: ${address}\nVisit us at: ${website}\nTo opt out, reply STOP.\nConfirm your appointment using this -> link\n${confirmLink} `;
+                 msg = `Hi ${patientInfo.fullName},\n\nYour appointment is confirmed for ${newAppointment.time}.\n\nPlease complete the intake form ahead of time using this link: ${link}.\n\nThe form is voice-to-text enabled and works on both your phone and computer.\n\nCall us at ${number} if you need to reschedule.\n\nAddress: ${address}\nVisit us at: ${website}\nTo opt out, reply STOP.\nConfirm your appointment using this -> link\n${confirmLink} `;
 
             }else{
-                 msg = `Hi ${patientInfo.fullName},\nYour appointment is confirmed for ${formatDateString(time)}.\nTo make your visit smoother, if you haven't filled out the intake form, please complete it in advance using this link: ${link}.\nThe form supports multiple languages and allows you to use voice-to-text technology to fill it out using your voice. You can complete it from your phone or computer.\nAddress: ${address}\nVisit us at: ${website}\nCall: ${number}\n\nIf you need to reschedule.\nTo opt-out, reply STOP.\nConfirm your appointment using this -> link\n${confirmLink}`;
+                 msg = `Hi ${patientInfo.fullName},\nYour appointment is confirmed for ${newAppointment.time}.\nTo make your visit smoother, if you haven't filled out the intake form, please complete it in advance using this link: ${link}.\nThe form supports multiple languages and allows you to use voice-to-text technology to fill it out using your voice. You can complete it from your phone or computer.\nAddress: ${address}\nVisit us at: ${website}\nCall: ${number}\n\nIf you need to reschedule.\nTo opt-out, reply STOP.\nConfirm your appointment using this -> link\n${confirmLink}`;
             }
             return res.json({success:true,msg:"Appointment scheduled"});
         }else{
@@ -146,14 +147,13 @@ let { patientID , time ,number,clinicname,businessMail,
         
             if(businessMail=="" || appCode == "")
             {
-                    appMail(process.env.NODE_MAILER_USER,process.env.NODE_MAILER_PASS,patientInfo.email,formatDateString(time),number,clinicname,patientInfo.fullName,website,address,pic,link,newAppointment._id)
+                    appMail(process.env.NODE_MAILER_USER,process.env.NODE_MAILER_PASS,patientInfo.email,newAppointment.time,number,clinicname,patientInfo.fullName,website,address,pic,link,newAppointment._id)
             }else{
-                    appMail(businessMail,appCode,patientInfo.email,formatDateString(time),number,clinicname,patientInfo.fullName,website,address,pic,link,newAppointment._id)
+                    appMail(businessMail,appCode,patientInfo.email,newAppointment.time,number,clinicname,patientInfo.fullName,website,address,pic,link,newAppointment._id)
             }
         }
     }
 })
-
 const getbyDateAppointment = asyncHandler(async (req,res)=>{
     try{
 
@@ -173,10 +173,9 @@ const getbyDateAppointment = asyncHandler(async (req,res)=>{
         return res.json({success:false,msg:"Failed to fetch appointments"})
     }
 })
-
 const delAppointment = asyncHandler(async(req,res)=>{
-    const { appId , number , businessMail,
-        appCode,website,clinic } = req.body
+    const { appId ,  number, businessMail,
+            appCode, website, clinic } = req.body
     let p
     let appResult
    try{
@@ -213,7 +212,7 @@ const editAppTime = asyncHandler(async(req,res)=>{
             {
                 await appUpdate(process.env.NODE_MAILER_USER,process.env.NODE_MAILER_PASS,appt.email,formatDateString(time),number,website,clinic,appt.name)
             }else{
-                await appUpdate(businessMail,appCode,appt.email,formatDateString(time),number,website,clinic,appt.name)
+                await appUpdate(businessMail,appCode,appt.email,formatDateString(appt.time),number,website,clinic,appt.name)
             }
    }
 })
@@ -253,6 +252,7 @@ const changeStatus = asyncHandler(async(req,res)=>{
             const {businessMail, appCode, clinicName , address , website , number ,pic} = req.body 
             const appt = await Appointment.findOne({_id:appId})
             const patientInfo = await Patient.findOne({_id:appt.patientID})
+            
             // const msg = `Thank you, ${paienInfo.fullName}, for visiting us today! We’d love to hear about your experience.Please leave us a review on Google under ${clinicName}. Address: ${address}.Visit us at ${website}. Call ${number}. To opt-out, reply STOP. `
             let msg =""
             if(clinicName == "Icare" || clinicName == "icare" || clinicName == "Icare Mobile Medicine")
@@ -267,9 +267,20 @@ const changeStatus = asyncHandler(async(req,res)=>{
             sendMessage(msg,patientInfo.phoneNumber)
             if(businessMail=="" || appCode == "")
             {
-                onComplete(process.env.NODE_MAILER_USER,process.env.NODE_MAILER_PASS,patientInfo.email,formatDateString(time),number,clinicName,patientInfo.fullName,website,address,pic)
+                onComplete(process.env.NODE_MAILER_USER,process.env.NODE_MAILER_PASS,patientInfo.email,number,clinicName,patientInfo.fullName,website,address,pic)
             }else{
                 onComplete(businessMail,appCode,patientInfo.email,number,clinicName,patientInfo.fullName,website,address,pic)
+            }
+        }
+        else if(status=="Cancelled"){
+            const {businessMail, appCode, clinicName  , website , number } = req.body 
+            const appt = await Appointment.findOne({_id:appId})
+            const patientInfo = await Patient.findOne({_id:appt.patientID})
+            if(businessMail=="" || appCode == "")
+            {
+                await appCancel(process.env.NODE_MAILER_USER,process.env.NODE_MAILER_PASS,patientInfo.email,formatDateString(appt.time),number,website,clinicName,patientInfo.fullName)
+            }else{
+                await appCancel(businessMail,appCode,patientInfo.email,formatDateString(appt.time),number,website,clinicName,patientInfo.fullName)
             }
         }
     }

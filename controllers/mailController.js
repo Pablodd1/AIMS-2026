@@ -49,7 +49,7 @@ const appCancel = async (businessMail,appCode,userEmail,time,number,website,clin
     await transporter.sendMail({
       from: businessMail,
       to: userEmail,
-      subject: `Welcome to ${clinic}`,
+      subject: `Appointment Cancellation`,
       html: appointmentCancelled(time,number,website,clinic,name),
     });
 
@@ -74,7 +74,7 @@ const appUpdate = async (businessMail,appCode,userEmail,newt,number,website,clin
     await transporter.sendMail({
       from: businessMail,
       to: userEmail,
-      subject: `Welcome to ${clinic}`,
+      subject: `Appointment Time`,
       html: appointmentUpdate(newt,number,website,clinic,name),
     });
 
@@ -133,7 +133,6 @@ const onComplete = async (businessMail,appCode,userEmail,number, clinicname, pat
       },
       secure: true,
     });
-
     await transporter.sendMail({
       from: businessMail,
       to: userEmail,

@@ -5,10 +5,12 @@ const CryptoJS = require("crypto-js");
 const Patients = require('../models/Patients')
 const Visit = require('../models/Visit')
 const Document = require('../models/Document') 
-const { deleteAsset } = require('../controllers/Cloudinary/cloudinay');
 const { sendQrCodeToPatient } = require('./mailController');
 const Assistant = require('../models/Assistant');
 const jwt = require("jsonwebtoken");
+const { deleteDocumentObject } = require('../controllers/AWS/DeleteObject')
+const Invoice = require('../models/Invoice')
+const Appointment = require('../models/Appointment')
 
 const createUser = asyncHandler(async (req,res)=>{
   
@@ -121,6 +123,7 @@ const signin = asyncHandler(async(req,res)=>{
       for(let i=0;i<assistants.length;i++)
       {
         accessDenied = false;
+        alllowLogin = false;
         const obj = await Assistant.findOne({_id:assistants[i]})
         assistantId = obj._id
         
@@ -135,9 +138,6 @@ const signin = asyncHandler(async(req,res)=>{
             alllowLogin = true;
              break
           }
-        }else{
-          alllowLogin = false;
-          break
         }
        
       }
@@ -353,23 +353,26 @@ const deletePatientHitory = asyncHandler(async(req,res)=>{
 
     try
     {
-    
+
+      const docs = await Document.find({pId}).select('secure_url')
+
       await Promise.all([
          Patients.deleteOne({_id:pId}),
          Visit.deleteMany({pId}),
-         Document.deleteMany({pId})
+         Document.deleteMany({pId}),
+         Invoice.deleteMany({pId}),
+         Appointment.deleteMany({patientID:pId})
       ])
 
-    //  const docs = await Document.find({pId});
 
-    //   for(let i=0;i<docs.length;i++)
-    //   {
-    //     await deleteAsset(docs[i].publicId)
-    //   }
+      for(let i=0;i<docs.length;i++)
+      {
+        await deleteDocumentObject(docs[i].secure_url)
+      }
 
       return res.json({
         response: true,
-        msg: "Successfully patient reccord deleted"
+        msg: "Successfully patient record deleted"
       });
     }
     catch(e)

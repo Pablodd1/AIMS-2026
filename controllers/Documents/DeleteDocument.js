@@ -2,6 +2,7 @@ const asyncHandler = require("express-async-handler");
 const Document = require('../../models/Document')
 const { deleteAsset } = require('../Cloudinary/cloudinay')
 const { deleteDocumentObject } = require('../AWS/AwsController')
+
 const deleteDocument = asyncHandler(async(req,res)=>{
     try
     {
