@@ -5,6 +5,7 @@ const invoiceStatus = asyncHandler(async(req,res)=>{
     try
     {
       const {invoiceId,status} =  req.body
+      console.log(invoiceId,status)
       await Invoice.updateOne({
         _id:invoiceId
       },

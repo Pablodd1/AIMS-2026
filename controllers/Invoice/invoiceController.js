@@ -4,11 +4,13 @@ const { getInvoiceById } = require('./getInvoiceById')
 const { getInvoiceAnalyitcs } = require('./getInvoiceAnalytics')
 const { updateInvoice } = require('./updateInvoice')
 const { deleteInvoice } = require('./deleteInvoice')
+const { invoiceStatus} = require('./invoiceStatus')
 module.exports={
     makeInvoice,
     getAllInvoices,
     getInvoiceById,
     getInvoiceAnalyitcs,
     updateInvoice,
-    deleteInvoice
+    deleteInvoice,
+    invoiceStatus
 }

@@ -160,9 +160,12 @@ const getbyDateAppointment = asyncHandler(async (req,res)=>{
         let { date } = req.body
         
         date = date.slice(0,10)
-        const query = { status:'Scheduled', time: {
-            $regex: `^${date}`
-          }};
+        const status = ['Scheduled','Pending']; 
+        const query = {
+            doctorID:req.user,
+            status: { $in: status }, // Correctly using $in for the status field
+            time: { $regex: `^${date}`, $options: 'i' } // Regex to match the start of the time string (case-insensitive)
+          };
         const results = await Appointment.find(query)
 
 
@@ -206,12 +209,16 @@ const editAppTime = asyncHandler(async(req,res)=>{
 })
 
 const calenderDates = asyncHandler(async(req,res)=>{
-    const { status } = req.body
+    const { _id} = req.body
     try{
-        // console.log(status)
-        const appts = await Appointment.find({doctorID:req.body._id,status})
-        .select('time') 
+        const status = ['Scheduled','Pending']; 
+        const appts = await Appointment.find({
+            doctorID: _id,
+            status: { $in: status } 
+        })
+        .select('time') // Select only the 'time' field
         .exec();
+
 
         // console.log(appts) 
         return res.json({response:true,appointments:appts})

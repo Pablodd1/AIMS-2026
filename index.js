@@ -5,7 +5,7 @@ const { getRecentUsers,adminLogin , fetchAllDoctors, fetchAllAdmins,fecthDemoAcc
 const { createAppointment , getbyDateAppointment , delAppointment , editAppTime , calenderDates , changeStatus, filterAppointments,userResponseFromEmail,appointmentReport,allAppointments} = require('./controllers/appointmentController')
 const {sendFeedBack , fetchFeedBack , deleteFeedBackById } = require('./controllers/feedbackController')
 const { speechToTextForm ,patientDataToSummary} = require('./controllers/openaiController')
-const { makeInvoice , getAllInvoices , getInvoiceById , getInvoiceAnalyitcs , updateInvoice , deleteInvoice } = require('./controllers/Invoice/invoiceController')
+const { makeInvoice , getAllInvoices , getInvoiceById , getInvoiceAnalyitcs , updateInvoice , deleteInvoice, invoiceStatus } = require('./controllers/Invoice/invoiceController')
 const { uploadPDF, getDocuments , deleteDocument, updateDocumentDate } = require('./controllers/Documents/DocumentController')
 const {  reportDocx , reportPdf } = require('./controllers/Downloads/downloadController')
 const {  getObject , getSignedUrlForUpload , deleteObject} = require ('./controllers/AWS/AwsController')
@@ -161,8 +161,7 @@ app.post('/api/post/getInvoiceById',protect,getInvoiceById)
 app.post('/api/post/getInvoiceAnalyitcs',protect,getInvoiceAnalyitcs)
 app.post('/api/post/updateInvoice',protect,updateInvoice)
 app.delete('/api/delete/deleteInvoice',protect,deleteInvoice)
-
-
+app.post('/api/post/invoiceStatus',protect,invoiceStatus)
 //Downloads (report,pdf)
 app.get('/api/get/reportDocx',protect,reportDocx)
 app.get('/api/get/reportPdf',protect,reportPdf)

@@ -9,8 +9,8 @@ try {
 
   const timezone = userTimezone || "America/New_York"; 
 
-  const todayStart = moment.tz(timezone).startOf('day').format('MM-DD-YYYY');
-const todayEnd = moment.tz(timezone).endOf('day').format('MM-DD-YYYY');
+  const todayStart = moment.tz(timezone).startOf('day').toDate();
+  const todayEnd = moment.tz(timezone).endOf('day').toDate();
 
   // Running all the operations simultaneously using Promise.all
   const [result, count, todayResult] = await Promise.all([
@@ -34,25 +34,25 @@ const todayEnd = moment.tz(timezone).endOf('day').format('MM-DD-YYYY');
 
      // SubTotal for today
      Invoice.aggregate([
-        {
-          $match: {
-            docId: req.user,
-            date: { $gte: todayStart, $lte: todayEnd } // Replace 'dateField' with the correct field for date in your documents
-          }
-        },
-        {
-          $group: {
-            _id: null,
-            totalSubTotalToday: { $sum: "$subTotal" }
-          }
+      {
+        $match: {
+          docId: req.user,
+          createdAt: { $gte: todayStart, $lte: todayEnd } // Ensure 'date' is the correct field in your schema
         }
-      ])
+      },
+      {
+        $group: {
+          _id: null,
+          subTotal: { $sum: "$subTotal" }
+        }
+      }
+    ])
   ]);
-
+console.log(todayResult)
 
   // Extracting the subtotal and today's subtotal
   const subTotal = result.length > 0 ? result[0].totalSubTotal : 0;
-  const subTotalToday = todayResult.length > 0 ? todayResult[0].totalSubTotalToday : 0;
+  const subTotalToday = todayResult[0]?.subTotal || 0;
 
   // Sending the response
   return res.json({ response: true, subTotal, count, subTotalToday });
