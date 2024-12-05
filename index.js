@@ -1,4 +1,4 @@
-const {deleteAssistant,getAssistant,updateAssistant,addAssistant,createUser,signin,passcracker,getUserInfo,updateProfile,checkUserToken,updateSignature,delSignature,updateProfiePicture,updateClinicLogo,updatEmailredentials,updatewebsiteURL,setEmptyPic,deletePatientHitory,updatePassword,sendQrCode,setOpenAiKey} = require('./controllers/userController')
+const {updateDoctor,deleteDoctor,getDoctors,addDoctor,deleteAssistant,getAssistant,updateAssistant,addAssistant,createUser,signin,passcracker,getUserInfo,updateProfile,checkUserToken,updateSignature,delSignature,updateProfiePicture,updateClinicLogo,updatEmailredentials,updatewebsiteURL,setEmptyPic,deletePatientHitory,updatePassword,sendQrCode,setOpenAiKey} = require('./controllers/userController')
 const {createPatient,getPatients,getPatientById,updatePatient,getTodayPatients,getPaitentsCount,getTodayPatietnsForAppointment,addInstantPatient,updateVoiceIntake,searchPatientsByAlphabet,searchPatientsByType,searchPatientsByTypeAndLimit5} = require('./controllers/patientController')
 const {createVisit,viewReport,getVists,editReport,delVisit , updateVisitDate,recentVisit} = require('./controllers/visitController')
 const { getRecentUsers,adminLogin , fetchAllDoctors, fetchAllAdmins,fecthDemoAccounts,demoUserCount,createDemoUser} = require("./controllers/adminController")
@@ -7,7 +7,7 @@ const {sendFeedBack , fetchFeedBack , deleteFeedBackById } = require('./controll
 const { speechToTextForm ,patientDataToSummary} = require('./controllers/openaiController')
 const { makeInvoice , getAllInvoices , getInvoiceById , getInvoiceAnalyitcs , updateInvoice , deleteInvoice, invoiceStatus } = require('./controllers/Invoice/invoiceController')
 const { uploadPDF, getDocuments , deleteDocument, updateDocumentDate } = require('./controllers/Documents/DocumentController')
-const {  reportDocx , reportPdf } = require('./controllers/Downloads/downloadController')
+const {  reportDocx , reportPdf ,createQuickDocx} = require('./controllers/Downloads/downloadController')
 const {  getObject , getSignedUrlForUpload , deleteObject} = require ('./controllers/AWS/AwsController')
 const { testFunc } = require('./controllers/testController')
 const { protect } = require('./middleware/authMiddleware')
@@ -73,10 +73,17 @@ app.post('/api/post/deletePatientHitory',protect,deletePatientHitory)
 app.post('/api/post/updatePassword',protect,updatePassword)
 app.post('/api/post/sendQrCode',sendQrCode)
 app.post('/api/post/setOpenAiKey',protect,setOpenAiKey)
+//add-new-assistant
 app.post('/api/post/addAssistant',protect,addAssistant)
 app.post('/api/post/updateAssistant',protect,updateAssistant)
-app.get('/api/get/getAssistant',protect,getAssistant)
+app.get('/api/get/getAssistants',protect,getAssistant)
 app.delete('/api/delete/deleteAssistant',protect,deleteAssistant)
+//add-new-doctors
+app.post('/api/post/addDoctor',protect,addDoctor)
+app.get('/api/get/getDoctors',protect,getDoctors)
+app.delete('/api/delete/deleteDoctor',protect,deleteDoctor)
+app.post('/api/post/updateDoctor',protect,updateDoctor)
+
 
 //patient Routes
 app.post('/api/post/createPatient',createPatient)
@@ -165,6 +172,7 @@ app.post('/api/post/invoiceStatus',protect,invoiceStatus)
 //Downloads (report,pdf)
 app.get('/api/get/reportDocx',protect,reportDocx)
 app.get('/api/get/reportPdf',protect,reportPdf)
+app.get('/api/post/createQuickDocx',protect,createQuickDocx)
 
 
 

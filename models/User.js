@@ -71,7 +71,8 @@ const UserSchema = new Schema({
     apiCredentials:[],
     date:{type:String},
     time:{type:String},
-    assistants:[]
+    assistants:[],
+    doctors:[]
 
 
     

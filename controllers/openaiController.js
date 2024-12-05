@@ -24,7 +24,7 @@ async function speechToText(file)
 async function extractAnswers(text){
     try {
         const response = await openai.chat.completions.create({
-            model: "gpt-4o",
+            model: "gpt-4",
             temperature: 0,
             messages: [
                 {

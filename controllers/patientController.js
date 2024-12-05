@@ -139,33 +139,12 @@ const getPatientById = asyncHandler(async(req,res)=>{
 const updatePatient = asyncHandler(async(req,res)=>{
   try{
 
-    // const { _id } = req.body
 
     const {
-      _id, fullName, dateOfBirth, gender, email, phoneNumber, emergencyContactPhoneNumber,
-      insuranceProvider, insurancePolicyNumber, policyHolderName, groupNumber, primaryCarePhysician,
-      medications, allergies, chronicConditions, pastSurgeries, familyMedicalHistory, visitReason,
-      symptomDescription, symptomDuration, symptomSeverity, symptomHistory, symptomTriggers,
-      occupation, lifestyle, exerciseAndDiet, livingArrangement, recentHealthChanges,
-      cardiovascularHistory, respiratoryHistory, gastrointestinalHistory, musculoskeletalHistory,
-      neurologicalHistory, summary
+      _id
     } = req.body;
     
-    // const requiredFields = {
-    //   fullName, dateOfBirth, gender, email, phoneNumber, emergencyContactPhoneNumber,
-    //   insuranceProvider, insurancePolicyNumber, policyHolderName, groupNumber, primaryCarePhysician,
-    //   medications, allergies, chronicConditions, pastSurgeries, familyMedicalHistory, visitReason,
-    //   symptomDescription, symptomDuration, symptomSeverity, symptomHistory, symptomTriggers,
-    //   occupation, lifestyle, exerciseAndDiet, livingArrangement, recentHealthChanges,
-    //   cardiovascularHistory, respiratoryHistory, gastrointestinalHistory, musculoskeletalHistory,
-    //   neurologicalHistory, summary
-    // };
-    
-    // for (const [field, value] of Object.entries(requiredFields)) {
-    //   if (!value || (field === "email" && !value.includes("@"))) {
-    //     return res.status(200).send({ msg: `Enter ${field}`, response: false });
-    //   }
-    // }
+   
   
     
   await Patient.updateOne({_id},req.body);
@@ -180,26 +159,33 @@ catch(e){
 
 const getTodayPatients = asyncHandler(async(req,res)=>{
   try {
-    // Calculate the date 24 hours ago
-    // const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const userTimezone = req.query.userTimezone || "UTC"; // Get the timezone from query or default to UTC
     const today = new Date();
-    const startOfDay = new Date(today.setHours(0, 0, 0, 0));
-    const endOfDay = new Date(today.setHours(23, 59, 59, 999));
   
-    // Find patients with appointments created after twentyFourHoursAgo for the given doc_id
+    // Set the start and end of the day in the user's time zone
+    const startOfDay = new Date(
+      new Date(today).toLocaleString("en-US", { timeZone: userTimezone }).split(',')[0]
+    );
+    startOfDay.setHours(0, 0, 0, 0);
+  
+    const endOfDay = new Date(startOfDay);
+    endOfDay.setHours(23, 59, 59, 999);
+  
+    // Query the patients with appointments created today in the given timezone
     const patients = await Patient.find({
-      doc_id: req.query.id,
+      doc_id: req.user,
       createdAt: {
         $gte: startOfDay,
-        $lt: endOfDay
-      }
-      // createdAt: { $gte: twentyFourHoursAgo }
+        $lt: endOfDay,
+      },
     });
   
     res.status(200).json({ patients, response: true });
   } catch (e) {
-    res.json({ response: false });
+    console.error("Error fetching patients:", e);
+    res.status(500).json({ response: false });
   }
+  
 })
 
 const getPaitentsCount = asyncHandler(async(req,res)=>{

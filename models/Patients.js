@@ -39,6 +39,7 @@ const PatientSchema = new Schema({
   neurologicalHistory: { type: String, required: false },
   userTimezone: { type: String, required: false },
   summary: { type: String, required: false },
+  notes: { type: String, required: false },
   date: { type: String }, // Default to current date
   time: { type: String }, // Default to current time
 }, { timestamps: true });

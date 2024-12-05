@@ -1,5 +1,6 @@
-const { reportDocx , reportPdf } = require('./reportDocx')
+const { reportDocx , reportPdf , createQuickDocx } = require('./reportDocx')
 module.exports = {
     reportDocx,
-    reportPdf
+    reportPdf,
+    createQuickDocx
 };

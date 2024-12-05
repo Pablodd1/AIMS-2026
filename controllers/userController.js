@@ -11,6 +11,8 @@ const jwt = require("jsonwebtoken");
 const { deleteDocumentObject } = require('../controllers/AWS/DeleteObject')
 const Invoice = require('../models/Invoice')
 const Appointment = require('../models/Appointment')
+const Doctor  = require('../models/Doctor');
+const { ConversationsMessageFile } = require("sib-api-v3-sdk");
 
 const createUser = asyncHandler(async (req,res)=>{
   
@@ -92,14 +94,8 @@ const signin = asyncHandler(async(req,res)=>{
 
       const bytes  = CryptoJS.AES.decrypt(user.password,  process.env.JWTSECRET)
       const originalText = bytes.toString(CryptoJS.enc.Utf8);
-      if(password != originalText)
+      if(password == originalText)
       {
-        res.json({
-          response: false,
-          msg: "Wrong Password"
-        });
-      }
-      else{
         res.status(200).json({
           response: true,
           msg:"success",
@@ -109,6 +105,70 @@ const signin = asyncHandler(async(req,res)=>{
           role:"Doctor"
         });
       }
+
+      // extra doctor login check 
+      const { doctors } = await User.findOne({email}).select('doctors')
+      if(doctors.length <=0){
+
+        return res.json({
+          response: false,
+          msg: "Invalid Credentials"
+        });
+      }
+
+      let alllowLogin = false;
+      let accessDenied = false;
+      let doctorsId = ""
+      for(let i=0;i<doctors.length;i++)
+      {
+        accessDenied = false;
+        alllowLogin = false;
+        const obj = await Doctor.findOne({_id:doctors[i]})
+        doctorsId = obj._id
+        
+        const bytes  = CryptoJS.AES.decrypt(obj.password, process.env.JWTSECRET)
+        const originalText = bytes.toString(CryptoJS.enc.Utf8);
+        if(originalText == password ){
+          if(obj.access == false){
+            alllowLogin = false;
+            accessDenied = true;
+            break
+          }else{
+            alllowLogin = true;
+             break
+          }
+        }
+       
+      }
+
+      if(accessDenied){
+        return res.json({
+          response: false,
+          msg: "Access Denied"
+        });
+      }
+      if(alllowLogin){
+        return res.json({
+          response: true,
+          msg:"success",
+          token: {
+            "access":generateToken(user._id),
+          },
+          assistantToken:{
+            "access":generateToken(doctorsId),
+          },
+          role:"Doctor"
+        });
+      }else{
+        return res.json({
+          response: false,
+          msg: "Invalid Credentials"
+        });
+      }
+
+
+
+
     }else{
       const { assistants } = await User.findOne({email}).select('assistants')
       if(assistants.length <=0){
@@ -166,6 +226,7 @@ const signin = asyncHandler(async(req,res)=>{
           msg: "Invalid Credentials"
         });
       }
+   
     }
 
 }
@@ -437,10 +498,10 @@ const setOpenAiKey = asyncHandler(async(req, res) => {
   }
 })
 const addAssistant = asyncHandler(async(req,res)=>{
-  const { username , password , access ,totalAssistant} = req.body;
+  const { username , password , access ,total} = req.body;
   try {
 
-    if(totalAssistant>=3)
+    if(total>=3)
     {
       return res.json({
         response: false,
@@ -500,7 +561,7 @@ const updateAssistant = asyncHandler(async(req,res)=>{
      
       return res.json({
         response: true,
-        msg: `${username} information updated`
+        msg: `Assistant has been Edited successfully.`
       });
     
   } catch (e) {
@@ -539,12 +600,120 @@ const deleteAssistant = asyncHandler(async(req,res)=>{
     const { assistantId } = req.query
     await User.updateOne({_id:req.user},{$pull:{assistants:assistantId}})
     await Assistant.deleteOne({_id:assistantId})
-    return res.json({success:true})
+    return res.json({success:true,msg:"Assistant has been deleted successfully"})
   }catch(e){
     return res.json({success:false})
   }
 
 })
+const addDoctor = asyncHandler(async(req,res)=>{
+  const { username , password , access ,total} = req.body;
+  try {
+    if(total>=3)
+    {
+      return res.json({
+        response: false,
+        msg: "You have reached the limit of 3 doctors. Unable to add more."
+      });
+    }
+    const doctor = await Doctor.create({
+      docId:req.user,
+      username,
+      password: CryptoJS.AES.encrypt(
+        password,
+        process.env.JWTSECRET
+        ).toString(),
+      access
+     })
+
+     
+
+    await User.updateOne(
+      { _id: req.user },
+      { $push: { doctors: doctor._id.toString() } } // Ensure 'assistants' is an array in the schema
+    );
+
+     
+    
+      return res.json({
+        response: true,
+        msg: "Doctor has been added successfully"
+      });
+    
+  } catch (e) {
+    return res.json({
+      response: false,
+      msg: "There was an error while adding new Doctor"
+    });
+  }
+})
+const deleteDoctor = asyncHandler(async(req,res)=>{
+  try{
+    const { doctorId } = req.query
+    await User.updateOne({_id:req.user},{$pull:{doctors:doctorId}})
+    await Doctor.deleteOne({_id:doctorId,})
+    return res.json({success:true,msg:"Doctor has been deleted successfully"})
+  }catch(e){
+    return res.json({success:false})
+  }
+
+})
+const getDoctors = asyncHandler(async(req,res)=>{
+  
+  try{
+    const {doctors} = await User.findOne({_id:req.user}).select('doctors')
+
+    
+    const doctorsList=[];
+    for(let i=0;i<doctors.length;i++)
+    {
+      const obj = await Doctor.findOne({_id:doctors[i]}).select('username password access')
+      if(obj){
+        const bytes  = CryptoJS.AES.decrypt(obj.password,  process.env.JWTSECRET)
+        const originalText = bytes.toString(CryptoJS.enc.Utf8);
+        obj['password'] = originalText;
+        doctorsList.push(obj)
+      }
+    }
+    return res.json({success:true,doctorsList})
+  }catch(e){
+    return res.json({success:false})
+  }
+
+})
+const updateDoctor= asyncHandler(async(req,res)=>{
+  
+  const { assistantId , username , password , access } = req.body;
+
+  try {
+
+    await Doctor.updateOne(
+      {
+        _id:assistantId
+      },
+      {$set:{
+        username,
+        password: CryptoJS.AES.encrypt(
+          password,
+          process.env.JWTSECRET
+          ).toString(),
+        access
+      }
+     })
+     
+      return res.json({
+        response: true,
+        msg: `Doctor has been Edited successfully.`
+      });
+    
+  } catch (e) {
+    return res.json({
+      response: false,
+      msg: `There was an error while updating ${username} information`
+    });
+  }
+})
+
 module.exports = {
     createUser,
     signin,
@@ -566,6 +735,10 @@ module.exports = {
     addAssistant,
     updateAssistant,
     getAssistant,
-    deleteAssistant
+    deleteAssistant,
+    addDoctor,
+    getDoctors,
+    deleteDoctor,
+    updateDoctor
     
 };
