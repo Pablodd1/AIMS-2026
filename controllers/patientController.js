@@ -541,6 +541,8 @@ const searchPatientsByTypeAndLimit5 = asyncHandler(async (req, res) => {
 
 
 
+
+
 module.exports = {
     createPatient,
     getPatients,

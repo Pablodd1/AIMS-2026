@@ -9,6 +9,7 @@ const { makeInvoice , getAllInvoices , getInvoiceById , getInvoiceAnalyitcs , up
 const { uploadPDF, getDocuments , deleteDocument, updateDocumentDate } = require('./controllers/Documents/DocumentController')
 const {  reportDocx , reportPdf ,createQuickDocx} = require('./controllers/Downloads/downloadController')
 const {  getObject , getSignedUrlForUpload , deleteObject} = require ('./controllers/AWS/AwsController')
+const {  addNote, deleteNote, getNotes } = require('./controllers/CheckInOutNotes/NotesController')
 const { testFunc } = require('./controllers/testController')
 const { protect } = require('./middleware/authMiddleware')
 const bodyParser = require('body-parser');
@@ -169,18 +170,21 @@ app.post('/api/post/getInvoiceAnalyitcs',protect,getInvoiceAnalyitcs)
 app.post('/api/post/updateInvoice',protect,updateInvoice)
 app.delete('/api/delete/deleteInvoice',protect,deleteInvoice)
 app.post('/api/post/invoiceStatus',protect,invoiceStatus)
+
 //Downloads (report,pdf)
 app.get('/api/get/reportDocx',protect,reportDocx)
 app.get('/api/get/reportPdf',protect,reportPdf)
 app.get('/api/post/createQuickDocx',protect,createQuickDocx)
-
-
 
 //AWS-S3
 app.get('/api/get/getSignedUrlForUpload',protect,getSignedUrlForUpload)
 app.get('/api/get/getObject',protect,getObject)
 app.delete('/api/delete/deleteObject',protect,deleteObject)
 
+//CheckIn/OutNotes
+app.get('/api/get/getNotes',protect,getNotes)
+app.post('/api/post/addNote',protect,addNote)
+app.delete('/api/delete/deleteNote/:id',protect,deleteNote)
 
 // route 
 app.get("/", (req, res) => {
