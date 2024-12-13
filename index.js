@@ -13,13 +13,20 @@ const {  addNote, deleteNote, getNotes } = require('./controllers/CheckInOutNote
 const { testFunc } = require('./controllers/testController')
 const { protect } = require('./middleware/authMiddleware')
 const bodyParser = require('body-parser');
+const  ensureUploadsDirectory  = require('./Helper/makeDirectory')
 const connectDB = require('./config/db')
 const express = require("express");
 const cors = require('cors');
 const multer = require('multer');
-const path = require('path');
+
 require('dotenv').config();
 connectDB()
+
+
+
+// Call the function
+ensureUploadsDirectory();
+
 
 
 
