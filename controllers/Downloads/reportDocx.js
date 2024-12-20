@@ -33,7 +33,6 @@ async function createDocx(visitId,userId) {
         const imageUrl = user.signature; // Replace with your image URL
         if(imageUrl!="")
         {
-
             const imageBuffer = await loadImage(imageUrl); // Load image data
             
             const imageModule = new ImageModule({

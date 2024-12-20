@@ -68,6 +68,10 @@ const UserSchema = new Schema({
         type:String,
         default:""
     },
+    website:{
+        type:String,
+        default:""
+    },
     apiCredentials:[],
     date:{type:String},
     time:{type:String},

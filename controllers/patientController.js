@@ -112,10 +112,10 @@ const createPatient = asyncHandler(async(req,res)=>{
 }
 });
 
-const getPatients = asyncHandler(async(req,res)=>{
+const exportAllPatients = asyncHandler(async(req,res)=>{
   try
   {
-    const patients = await Patient.find({doc_id:req.query.id})
+    const patients = await Patient.find({doc_id:req.user})
     res.status(200).json({patients,response:true})
   }
   catch(e)
@@ -123,6 +123,59 @@ const getPatients = asyncHandler(async(req,res)=>{
     res.json({response:false})
   }
 })
+
+const getPatients = asyncHandler(async (req, res) => {
+  try {
+      const { page = 1, limit = 29 } = req.query;
+      const id = req.user;
+      if (!id) {
+          return res.status(400).json({
+              response: false,
+              msg: "Missing required parameter: id",
+          });
+      }
+
+      // Parse page and limit to ensure they are numbers
+      const pageNumber = parseInt(page, 10);
+      const limitNumber = parseInt(limit, 10);
+
+      if (isNaN(pageNumber) || pageNumber < 1 || isNaN(limitNumber) || limitNumber < 1) {
+          return res.status(400).json({
+              response: false,
+              msg: "Invalid page or limit value. Both must be positive integers.",
+          });
+      }
+
+      // Calculate skip value for pagination
+      const skip = (pageNumber - 1) * limitNumber;
+
+      // Fetch paginated patients
+      const patients = await Patient.find({ doc_id: id })
+          .sort({ createdAt: -1 }) // Sort by creation date (most recent first)
+          .skip(skip)
+          .limit(limitNumber);
+
+      // Fetch total count for metadata
+      const totalCount = await Patient.countDocuments({ doc_id: id });
+
+      return res.status(200).json({
+          response: true,
+          patients,
+          pagination: {
+              total: totalCount,
+              page: pageNumber,
+              limit: limitNumber,
+              totalPages: Math.ceil(totalCount / limitNumber),
+          },
+      });
+  } catch (e) {
+      return res.status(500).json({
+          response: false,
+          msg: "An error occurred while fetching patients.",
+      });
+  }
+});
+
 
 const getPatientById = asyncHandler(async(req,res)=>{
   try
@@ -555,5 +608,6 @@ module.exports = {
     updateVoiceIntake,
     searchPatientsByAlphabet,
     searchPatientsByType,
-    searchPatientsByTypeAndLimit5
+    searchPatientsByTypeAndLimit5,
+    exportAllPatients
 };

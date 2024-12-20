@@ -113,10 +113,53 @@ const editReport = asyncHandler(async (req, res) => {
 
 const getVists = asyncHandler(async (req, res) => {
   try {
-    const visits = await Visit.find({ pId: req.query.id });
-    res.status(200).json({ visits, response: true });
+      const { id, page = 1, limit = 3 } = req.query;
+
+      if (!id) {
+          return res.status(400).json({
+              response: false,
+              msg: "Missing required parameter: id",
+          });
+      }
+
+      // Parse page and limit to ensure they are numbers
+      const pageNumber = parseInt(page, 10);
+      const limitNumber = parseInt(limit, 10);
+
+      if (isNaN(pageNumber) || pageNumber < 1 || isNaN(limitNumber) || limitNumber < 1) {
+          return res.status(400).json({
+              response: false,
+              msg: "Invalid page or limit value. Both must be positive integers.",
+          });
+      }
+
+      // Calculate skip value for pagination
+      const skip = (pageNumber - 1) * limitNumber;
+
+      // Fetch paginated visits
+      const visits = await Visit.find({ pId: id })
+          .sort({ createdAt: -1 }) // Sort by creation date (most recent first)
+          .skip(skip)
+          .limit(limitNumber);
+
+      // Fetch total count for metadata
+      const totalCount = await Visit.countDocuments({ pId: id });
+
+      return res.status(200).json({
+          response: true,
+          visits,
+          pagination: {
+              total: totalCount,
+              page: pageNumber,
+              limit: limitNumber,
+              totalPages: Math.ceil(totalCount / limitNumber),
+          },
+      });
   } catch (e) {
-    res.json({ response: false });
+      return res.status(500).json({
+          response: false,
+          msg: "An error occurred while fetching visits.",
+      });
   }
 });
 

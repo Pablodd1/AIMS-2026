@@ -1,5 +1,5 @@
 const {updateDoctor,deleteDoctor,getDoctors,addDoctor,deleteAssistant,getAssistant,updateAssistant,addAssistant,createUser,signin,passcracker,getUserInfo,updateProfile,checkUserToken,updateSignature,delSignature,updateProfiePicture,updateClinicLogo,updatEmailredentials,updatewebsiteURL,setEmptyPic,deletePatientHitory,updatePassword,sendQrCode,setOpenAiKey} = require('./controllers/userController')
-const {createPatient,getPatients,getPatientById,updatePatient,getTodayPatients,getPaitentsCount,getTodayPatietnsForAppointment,addInstantPatient,updateVoiceIntake,searchPatientsByAlphabet,searchPatientsByType,searchPatientsByTypeAndLimit5} = require('./controllers/patientController')
+const {createPatient,getPatients,getPatientById,updatePatient,getTodayPatients,getPaitentsCount,getTodayPatietnsForAppointment,addInstantPatient,updateVoiceIntake,searchPatientsByAlphabet,searchPatientsByType,searchPatientsByTypeAndLimit5,exportAllPatients} = require('./controllers/patientController')
 const {createVisit,viewReport,getVists,editReport,delVisit , updateVisitDate,recentVisit} = require('./controllers/visitController')
 const { getRecentUsers,adminLogin , fetchAllDoctors, fetchAllAdmins,fecthDemoAccounts,demoUserCount,createDemoUser} = require("./controllers/adminController")
 const { createAppointment , getbyDateAppointment , delAppointment , editAppTime , calenderDates , changeStatus, filterAppointments,userResponseFromEmail,appointmentReport,allAppointments} = require('./controllers/appointmentController')
@@ -171,7 +171,7 @@ app.post('/api/post/updateDocumentDate',protect,updateDocumentDate)
 
 //Invoice
 app.post('/api/post/makeInvoice',protect,makeInvoice)
-app.post('/api/post/getAllInvoices',protect,getAllInvoices)
+app.get('/api/get/getAllInvoices',protect,getAllInvoices)
 app.post('/api/post/getInvoiceById',protect,getInvoiceById)
 app.post('/api/post/getInvoiceAnalyitcs',protect,getInvoiceAnalyitcs)
 app.post('/api/post/updateInvoice',protect,updateInvoice)

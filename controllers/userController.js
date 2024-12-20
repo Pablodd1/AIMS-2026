@@ -73,7 +73,7 @@ const createUser = asyncHandler(async (req,res)=>{
 const signin = asyncHandler(async(req,res)=>{
 
 
-  const { email,password,selectedRole } = req.body;
+const { email,password,selectedRole } = req.body;
   if(!email || !password)
   {
     res.json({
@@ -351,9 +351,9 @@ const updateClinicLogo = asyncHandler(async(req,res)=>{
 })
 const delSignature = asyncHandler(async(req,res)=>{
   const { _id , publicId } = req.body;
-  console.log(_id,publicId)
+  // console.log(_id,publicId)
   const rres = await deleteImage("co1pbf9gbmy18rc1noy0")
-  console.log(rres)
+  // console.log(rres)
   //  try{
   //    if(await deleteImage(publicId) == true)
   //    {
@@ -380,7 +380,6 @@ const updatEmailredentials = asyncHandler(async(req,res)=>{
 const updatewebsiteURL = asyncHandler(async(req,res)=>{
   try{
     const { website } = req.body;
-   
     await User.updateOne({_id:req.user},{website})
     return res.status(200).json({respnse:true,msg:"Clinic Profile Updated"})
   }catch(e){
@@ -389,7 +388,7 @@ const updatewebsiteURL = asyncHandler(async(req,res)=>{
 })
 const setEmptyPic = asyncHandler(async(req,res)=>{
   const { publicId } = req.body
-  console.log('hit')
+  // console.log('hit')
 
   try{
 

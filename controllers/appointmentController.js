@@ -3,9 +3,9 @@ const Appointment = require('../models/Appointment')
 const Patient = require('../models/Patients')
 const {appMail,appCancel,appUpdate,onComplete} = require('./mailController')
 const { sendMessage } = require('../controllers/Twilio/twilio'); 
-
 const { getTodayDateInTimeZone } = require('../Helper/getLocalDates');
-const { CompositionSettingsContextImpl } = require("twilio/lib/rest/video/v1/compositionSettings");
+
+
 function getOriginalAndReminderDates(originalDateString) {
     // Parse the original date
     const originalDate = new Date(originalDateString);
