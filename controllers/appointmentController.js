@@ -188,7 +188,7 @@ const delAppointment = asyncHandler(async(req,res)=>{
 
 const editAppTime = asyncHandler(async(req,res)=>{
     const { appId , time , number,businessMail,userTimezone,
-        appCode,website,clinic  } = req.body
+        appCode,website,clinic,sendMail  } = req.body
         let appt;
    try{
      appt = await Appointment.findOne({_id:appId})
@@ -199,12 +199,15 @@ const editAppTime = asyncHandler(async(req,res)=>{
    {
     return res.json({success:false})
    }finally{
-    if(businessMail=="" || appCode == "")
-            {
-                await appUpdate(process.env.NODE_MAILER_USER,process.env.NODE_MAILER_PASS,appt.email,userInpuDateintoReadableFormat(time,userTimezone),number,website,clinic,appt.name)
-            }else{
-                await appUpdate(businessMail,appCode,appt.email,userInpuDateintoReadableFormat(time,userTimezone),number,website,clinic,appt.name)
-            }
+    if(sendMail)
+    {
+         if(businessMail=="" || appCode == "")
+                {
+                    await appUpdate(process.env.NODE_MAILER_USER,process.env.NODE_MAILER_PASS,appt.email,userInpuDateintoReadableFormat(time,userTimezone),number,website,clinic,appt.name)
+                }else{
+                    await appUpdate(businessMail,appCode,appt.email,userInpuDateintoReadableFormat(time,userTimezone),number,website,clinic,appt.name)
+                }
+    }
    }
 })
 
@@ -232,7 +235,7 @@ const calenderDates = asyncHandler(async(req,res)=>{
 
 const changeStatus = asyncHandler(async(req,res)=>{
 
-    const { appId , status } = req.body;
+    const { appId , status ,sendMsg , sendMail } = req.body;
     try{
         await Appointment.updateOne({_id:appId},{status})
         return res.json({response:true})
@@ -242,32 +245,40 @@ const changeStatus = asyncHandler(async(req,res)=>{
         return res.json({response:false})
     }
     finally{
-        if(status=="Complete")
+        if(status=="Complete" && sendMsg  || sendMail)
         {
             const {businessMail, appCode, clinicName , address , website , number ,pic} = req.body 
             const appt = await Appointment.findOne({_id:appId})
             const patientInfo = await Patient.findOne({_id:appt.patientID})
             
             // const msg = `Thank you, ${paienInfo.fullName}, for visiting us today! We’d love to hear about your experience.Please leave us a review on Google under ${clinicName}. Address: ${address}.Visit us at ${website}. Call ${number}. To opt-out, reply STOP. `
-            let msg =""
-            if(clinicName == "Icare" || clinicName == "icare" || clinicName == "Icare Mobile Medicine")
-            {
-                 msg = `Thank you, ${patientInfo.fullName}, for visiting ${clinicName}!\n\nWe’d love to hear your feedback.\n\nPlease leave us a review on Google under "${clinicName}".\n\nCall ${number} for any follow-ups.\n\nAddress: ${address}\nVisit us at: ${website}\nTo opt out, reply STOP.`;
+            if(sendMsg){
 
-            }else{
+                let msg =""
+                if(clinicName == "Icare" || clinicName == "icare" || clinicName == "Icare Mobile Medicine")
+                {
+                    msg = `Thank you, ${patientInfo.fullName}, for visiting ${clinicName}!\n\nWe’d love to hear your feedback.\n\nPlease leave us a review on Google under "${clinicName}".\n\nCall ${number} for any follow-ups.\n\nAddress: ${address}\nVisit us at: ${website}\nTo opt out, reply STOP.`;
 
-                 msg = `Thank you, ${patientInfo.fullName}, for visiting us today!\nWe’d love to hear about your experience.\nPlease leave us a review on Google under ${clinicName}.\nAddress: ${address}.\nVisit us at ${website}.\nCall ${number}.\nTo opt-out, reply STOP.`;
+                }else{
+
+                    msg = `Thank you, ${patientInfo.fullName}, for visiting us today!\nWe’d love to hear about your experience.\nPlease leave us a review on Google under ${clinicName}.\nAddress: ${address}.\nVisit us at ${website}.\nCall ${number}.\nTo opt-out, reply STOP.`;
+                }
+
+                sendMessage(msg,patientInfo.phoneNumber)
             }
 
-            sendMessage(msg,patientInfo.phoneNumber)
-            if(businessMail=="" || appCode == "")
+            if(sendMail)
             {
-                onComplete(process.env.NODE_MAILER_USER,process.env.NODE_MAILER_PASS,patientInfo.email,number,clinicName,patientInfo.fullName,website,address,pic)
-            }else{
-                onComplete(businessMail,appCode,patientInfo.email,number,clinicName,patientInfo.fullName,website,address,pic)
+                if(businessMail=="" || appCode == "")
+                {
+                    onComplete(process.env.NODE_MAILER_USER,process.env.NODE_MAILER_PASS,patientInfo.email,number,clinicName,patientInfo.fullName,website,address,pic)
+                }else{
+                    onComplete(businessMail,appCode,patientInfo.email,number,clinicName,patientInfo.fullName,website,address,pic)
+                }
             }
+
         }
-        else if(status=="Cancelled"){
+        else if(status=="Cancelled" &&  sendMail){
             const {businessMail, appCode, clinicName  , website , number } = req.body 
             const appt = await Appointment.findOne({_id:appId})
             const patientInfo = await Patient.findOne({_id:appt.patientID})

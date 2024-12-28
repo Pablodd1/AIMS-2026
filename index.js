@@ -7,7 +7,7 @@ const {sendFeedBack , fetchFeedBack , deleteFeedBackById } = require('./controll
 const { speechToTextForm ,patientDataToSummary} = require('./controllers/openaiController')
 const { makeInvoice , getAllInvoices , getInvoiceById , getInvoiceAnalyitcs , updateInvoice , deleteInvoice, invoiceStatus } = require('./controllers/Invoice/invoiceController')
 const { uploadPDF, getDocuments , deleteDocument, updateDocumentDate } = require('./controllers/Documents/DocumentController')
-const {  reportDocx , reportPdf ,createQuickDocx} = require('./controllers/Downloads/downloadController')
+const {  reportDocx , reportPdf ,createQuickDocx , reportDocxDirectDownload} = require('./controllers/Downloads/downloadController')
 const {  getObject , getSignedUrlForUpload , deleteObject} = require ('./controllers/AWS/AwsController')
 const {  addNote, deleteNote, getNotes } = require('./controllers/CheckInOutNotes/NotesController')
 const { testFunc } = require('./controllers/testController')
@@ -182,6 +182,7 @@ app.post('/api/post/invoiceStatus',protect,invoiceStatus)
 app.get('/api/get/reportDocx',protect,reportDocx)
 app.get('/api/get/reportPdf',protect,reportPdf)
 app.get('/api/post/createQuickDocx',protect,createQuickDocx)
+app.post('/api/post/reportDocxDirectDownload',reportDocxDirectDownload)
 
 //AWS-S3
 app.get('/api/get/getSignedUrlForUpload',protect,getSignedUrlForUpload)
