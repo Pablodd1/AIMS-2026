@@ -41,7 +41,7 @@ app.use(cors({
 
 
 //multer
-const storage1 = multer.diskStorage({
+const storage = multer.diskStorage({
   destination: function(req, file, cb) {
     // Define where to store the files
     cb(null, './uploads'); // Uploads directory should exist
@@ -52,20 +52,9 @@ const storage1 = multer.diskStorage({
   }
 });
 
-const storage2 = multer.diskStorage({
-  destination: function(req, file, cb) {
-    // Define where to store the files
-    cb(null, './pdfs'); // Uploads directory should exist
-  },
-  filename: (req, file, cb) => {
-    cb(null, file.fieldname + '-' + Date.now() + '.' + 'pdf');
-  }
-});
 
 
-
-const uploadSet1 = multer({ storage: storage1 });
-const uploadSet2 = multer({ storage: storage2 });
+const uploadSet1 = multer({ storage });
 
 //user Routes
 app.post('/api/v1/auth/users/',createUser);
@@ -149,6 +138,11 @@ app.post('/api/post/updateClinicLogo',protect,updateClinicLogo)
 
 //oepnai
 app.post('/api/post/speechToText',uploadSet1.single('file'),speechToTextForm)
+// app.post('/api/post/speechToText',uploadSet1.fields([
+//     { name: 'file1', maxCount: 1 },
+//     { name: 'file2', maxCount: 1 },
+//   ]),speechToTextForm)
+
 app.post('/api/post/patientDataToSummary',patientDataToSummary)
 
 //appointments

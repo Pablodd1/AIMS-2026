@@ -1,3 +1,4 @@
+
 const asyncHandler = require("express-async-handler");
 const OpenAI = require('openai');
 const fs = require('fs');
@@ -484,6 +485,124 @@ async function extractSummary(text){
         return { error: "Error processing" };
     }
 }
+
+// function encodeImage(imagePath) {
+//     const imageBuffer = fs.readFileSync(imagePath);
+//     return imageBuffer.toString('base64');
+//   }
+  
+//   const extractDataFromImage = async (filepath)=> {
+  
+//     if (!filepath) {
+//         return res.json({ response: false, error: "No file uploaded." });
+//     }
+  
+  
+//     const mimeType = filepath.mimetype 
+  
+//     const base64Image = encodeImage(filepath.path)
+  
+//     const supportedMimeTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+//     if (!supportedMimeTypes.includes(mimeType)) {
+//         fs.unlinkSync(filepath.path);
+//         return res.json({ response: false, error: "Unsupported image format. Allowed formats: png, jpeg, gif, webp." });
+//     }
+  
+//     try {
+//         const response = await client.chat.completions.create({
+//             model: "gpt-4o-mini",
+//             messages: [
+//                 {
+//                     role: "user",
+//                     content: [
+//                         { type: "text", text: "Extract the text data in the image" },
+//                         { 
+//                             type: "image_url", 
+//                             image_url: { url: `data:${mimeType};base64,${base64Image}` },
+//                         },
+//                     ],
+//                 },
+//             ],
+//         });
+  
+//         return res.json({data:response.choices[0],response:true})
+//     } catch (e) {
+//         if(filepath)
+//         return res.json({response:false,error:e.error.message})
+//     }
+//     finally{
+//         if(filepath)
+//         {
+//             fs.unlinkSync(filepath.path)
+//         }
+//     }
+//   }
+
+// const speechToTextForm =  asyncHandler(async(req,res)=>{
+//     try
+//     {
+
+//         const file = req.files['file2'][0].path;
+
+//         console.log(file)
+//         if (!req.files['file1'][0] || !req.files['file2'][0]) {
+//             return res.status(400).send('No file uploaded.');
+//         }
+
+//         console.log(req.files['file1'][0] )
+//         let imgData = ""
+//         if(req.image)
+//         {
+//             imgData =  extractDataFromImage(req.image)
+//         }
+
+//         let finalText = ""
+
+//         let audioData = await speechToText(req.file)
+
+//         if(imgData && audioData){
+//             finalText = audioData + " " + imgData
+//         }
+
+//         if(!audioData && imgData)
+//         {
+//             finalText = imgData
+//         }
+
+
+//         if(!imgData && audioData)
+//         {
+//             finalText = audioData
+//         }
+
+//         if(req.body.type=="create")
+//         {
+//             const [
+//                 answers, 
+//             ] = await Promise.all([
+//                 extractAnswers(finalText),
+//             ]);
+//             res.json({'success':true,data:JSON.parse(answers)});
+//         }
+//         else
+//         {
+//             const [
+//                 answers, 
+//             ] = await Promise.all([
+//                 extractAnswersforUpdate(finalText),
+//             ]);
+//             res.json({'success':true,data:JSON.parse(answers)});
+
+//         }
+        
+        
+//     }catch(e)
+//     {
+//         res.send({success:false,msg:"Error in processing inforrmation"})
+//     }
+    
+// })
+
 const speechToTextForm =  asyncHandler(async(req,res)=>{
     try
     {
@@ -549,3 +668,17 @@ module.exports = {
     speechToTextForm,
     patientDataToSummary
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
