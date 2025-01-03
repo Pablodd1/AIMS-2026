@@ -2,10 +2,12 @@
 const asyncHandler = require("express-async-handler");
 const OpenAI = require('openai');
 const fs = require('fs');
+const { response } = require("express");
 
 const openai = new OpenAI({
     apiKey: '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', 
-  });
+});
+
 async function speechToText(file)
 {
     try {
@@ -13,15 +15,34 @@ async function speechToText(file)
             file: fs.createReadStream(file.path),
             model: "whisper-1",
         });
-        return transcription.text;
+        return {response:true , msg: transcription.text} 
+        // return transcription.text;
     } catch (e) {
-        return e.toString();
+        // return e.toString();
+        return {response:false , msg: e.error.message} 
     } finally {
         fs.unlink(file.path, (err) => {
             if (err) console.error(err);
         });
     }
 }
+
+function extractArrayKey(data) {
+    if (Array.isArray(data)) {
+        return data; 
+    }
+    
+    if (typeof data === "object" && data !== null) {
+        for (const key in data) {
+            if (Array.isArray(data[key])) {
+                return data[key]; 
+            }
+        }
+    }
+    
+    return [];
+}
+
 async function extractAnswers(text){
     try {
         const response = await openai.chat.completions.create({
@@ -30,7 +51,10 @@ async function extractAnswers(text){
             messages: [
                 {
                     role: "system",
-                    content: `Extracts answers and formats them into JSON. Return a null answer if you don't find the answer to that question in the provided text.output must be in english language
+                    content: `
+                    Extracts answers and formats them into a JSON object. Always return an array of 33 question-answer objects.
+                    If the transcription does not contain the answer to a question, set its answer to null.
+                    The output must be in English and datte of birth must be in this format YYYY-MM-DD  
                     "questions": [
                      { "id": 1, "question": "Please state your full name." },
                      { "id": 2, "question": "What is your date of birth?" },
@@ -66,7 +90,7 @@ async function extractAnswers(text){
                      { "id": 32, "question": "Any joint pain, muscle aches, or weakness?" },
                      { "id": 33, "question": "Any headaches, dizziness, or numbness?" }
                  ],
-                 "example": [
+                 "answers": [
                      {
                          "id": 1,
                          "question": "Please state your full name.",
@@ -74,7 +98,7 @@ async function extractAnswers(text){
                      },
                      {
                          "id": 2,
-                         "question": "What is your date of birth? format YYYY-MM-DD",
+                         "question": "What is your date of birth?",
                          "answer": 'YYYY-MM-DD'
                      },
                      {
@@ -249,6 +273,7 @@ async function extractAnswers(text){
         return { error: "Error processing" };
     }
 }
+
 async function extractAnswersforUpdate(text){
     try {
         const response = await openai.chat.completions.create({
@@ -257,7 +282,10 @@ async function extractAnswersforUpdate(text){
             messages: [
                 {
                     role: "system",
-                    content: `Extracts answers and formats them into JSON. Return a null answer if you don't find the answer to that question in the provided text.output must be in english language
+                    content: `
+                    Extracts answers and formats them into a JSON object. Always return an array of 31 question-answer objects.
+                    If the transcription does not contain the answer to a question, set its answer to null.
+                    The output must be in English and datte of birth must be in this format YYYY-MM-DD  
                     "questions": [
                      { "id": 1, "question": "What is your date of birth? format YYYY-MM-DD" },
                      { "id": 2, "question": "What is your gender?" },
@@ -295,7 +323,7 @@ async function extractAnswersforUpdate(text){
                  "example": [
                      {
                          "id": 1,
-                         "question": "What is your date of birth? format YYYY-MM-DD",
+                         "question": "What is your date of birth?",
                          "answer": 'YYYY-MM-DD'
                      },
                      {
@@ -464,6 +492,7 @@ async function extractAnswersforUpdate(text){
         return { error: "Error processing" };
     }
 }
+
 async function extractSummary(text){
     try {
         const response = await openai.chat.completions.create({
@@ -486,150 +515,88 @@ async function extractSummary(text){
     }
 }
 
-// function encodeImage(imagePath) {
-//     const imageBuffer = fs.readFileSync(imagePath);
-//     return imageBuffer.toString('base64');
-//   }
+function encodeImage(imagePath) {
+    const imageBuffer = fs.readFileSync(imagePath);
+    return imageBuffer.toString('base64');
+}
   
-//   const extractDataFromImage = async (filepath)=> {
+const extractDataFromImage = async (filepath)=> {
   
-//     if (!filepath) {
-//         return res.json({ response: false, error: "No file uploaded." });
-//     }
-  
-  
-//     const mimeType = filepath.mimetype 
-  
-//     const base64Image = encodeImage(filepath.path)
-  
-//     const supportedMimeTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
-//     if (!supportedMimeTypes.includes(mimeType)) {
-//         fs.unlinkSync(filepath.path);
-//         return res.json({ response: false, error: "Unsupported image format. Allowed formats: png, jpeg, gif, webp." });
-//     }
-  
-//     try {
-//         const response = await client.chat.completions.create({
-//             model: "gpt-4o-mini",
-//             messages: [
-//                 {
-//                     role: "user",
-//                     content: [
-//                         { type: "text", text: "Extract the text data in the image" },
-//                         { 
-//                             type: "image_url", 
-//                             image_url: { url: `data:${mimeType};base64,${base64Image}` },
-//                         },
-//                     ],
-//                 },
-//             ],
-//         });
-  
-//         return res.json({data:response.choices[0],response:true})
-//     } catch (e) {
-//         if(filepath)
-//         return res.json({response:false,error:e.error.message})
-//     }
-//     finally{
-//         if(filepath)
-//         {
-//             fs.unlinkSync(filepath.path)
-//         }
-//     }
-//   }
-
-// const speechToTextForm =  asyncHandler(async(req,res)=>{
-//     try
-//     {
-
-//         const file = req.files['file2'][0].path;
-
-//         console.log(file)
-//         if (!req.files['file1'][0] || !req.files['file2'][0]) {
-//             return res.status(400).send('No file uploaded.');
-//         }
-
-//         console.log(req.files['file1'][0] )
-//         let imgData = ""
-//         if(req.image)
-//         {
-//             imgData =  extractDataFromImage(req.image)
-//         }
-
-//         let finalText = ""
-
-//         let audioData = await speechToText(req.file)
-
-//         if(imgData && audioData){
-//             finalText = audioData + " " + imgData
-//         }
-
-//         if(!audioData && imgData)
-//         {
-//             finalText = imgData
-//         }
-
-
-//         if(!imgData && audioData)
-//         {
-//             finalText = audioData
-//         }
-
-//         if(req.body.type=="create")
-//         {
-//             const [
-//                 answers, 
-//             ] = await Promise.all([
-//                 extractAnswers(finalText),
-//             ]);
-//             res.json({'success':true,data:JSON.parse(answers)});
-//         }
-//         else
-//         {
-//             const [
-//                 answers, 
-//             ] = await Promise.all([
-//                 extractAnswersforUpdate(finalText),
-//             ]);
-//             res.json({'success':true,data:JSON.parse(answers)});
-
-//         }
-        
-        
-//     }catch(e)
-//     {
-//         res.send({success:false,msg:"Error in processing inforrmation"})
-//     }
     
-// })
+
+    const mimeType = filepath.mimetype 
+  
+    const base64Image = encodeImage(filepath.path)
+  
+    const supportedMimeTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+    if (!supportedMimeTypes.includes(mimeType)) {
+        fs.unlinkSync(filepath.path);
+       return { response: false, msg: "Unsupported image format. Allowed formats: png, jpeg, gif, webp." }
+    }
+
+  
+    try {
+        const response = await openai.chat.completions.create({
+            model: "gpt-4o-mini",
+            messages: [
+                {
+                    role: "user",
+                    content: [
+                        { type: "text", text: "Extract the text data in the image" },
+                        { 
+                            type: "image_url", 
+                            image_url: { url: `data:${mimeType};base64,${base64Image}` },
+                        },
+                    ],
+                },
+            ],
+        });
+  
+        return {msg:response.choices[0].message.content,response:true}
+    } catch (e) {
+        return {response:false,msg:e.error.message}
+    }
+    finally{
+        if(filepath)
+        {
+            fs.unlinkSync(filepath.path)
+        }
+    }
+}
 
 const speechToTextForm =  asyncHandler(async(req,res)=>{
     try
     {
-     
-        if (!req.file) {
-            return res.status(400).send('No file uploaded.');
-        }
-        const text = await speechToText(req.file)
-        if(req.body.type=="create")
-        {
-            const [
-                answers, 
-            ] = await Promise.all([
-                extractAnswers(text),
-            ]);
-            res.json({'success':true,data:JSON.parse(answers)});
-        }
-        else
-        {
-            const [
-                answers, 
-            ] = await Promise.all([
-                extractAnswersforUpdate(text),
-            ]);
-            res.json({'success':true,data:JSON.parse(answers)});
+        const uploadMethod = req.body.method 
+        const type = req.body.type
 
+       
+        if(uploadMethod == "voice")
+        {
+          const result = await voiceMethod(req.file,type)
+
+          if(result.response === false)
+          {
+            return res.status(400).json({success:false, msg:result.msg});
+          }
+
+           return res.json({success:true,data:result.msg});
         }
+        else if(uploadMethod == "image")
+        {
+            const result = await imageMethod(req.file,type)
+
+            console.log(result)
+            
+            if(result.response === false)
+            {
+              return res.status(400).json({success:false,msg:result.msg});
+            }
+  
+             return res.json({success:true,data:result.msg});
+        }
+
+        
         
         
     }catch(e)
@@ -638,6 +605,160 @@ const speechToTextForm =  asyncHandler(async(req,res)=>{
     }
     
 })
+
+const speechToTextFormWithOcr =  asyncHandler(async(req,res)=>{
+    try
+    {
+        const uploadMethod = req.body.method 
+        const type = req.body.type
+        const audioFile = req.files['file1'][0]
+        const imageFile = req.files['file2'][0]
+
+        if (!audioFile || !imageFile) {
+            return {success:false,msg:"'No file uploaded.'"}
+        }
+
+        if(uploadMethod == "both")
+        {
+            const result = await imageAndVoiceMethod(audioFile,imageFile,type)
+
+            if(result.response === false)
+            {
+              return res.status(400).send({success:false,msg:result.msg});
+            }
+  
+             return res.json({success:true,data:result.msg});
+        }
+
+        return res.json({success:false,msg:"Condition failed"});
+
+        
+    }catch(e)
+    {
+        res.send({success:false,msg:"Error in processing inforrmation"})
+    }
+    
+})
+
+async function voiceMethod (file,type){
+    if (!file) {
+        return {response:false,msg:"'No file uploaded.'"}
+    }
+
+
+    const result = await speechToText(file)
+
+
+    if(result.response == false)
+    {
+        return { response:false , msg:result.msg}
+    }
+    if(type=="create")
+    {
+        const [
+            answers, 
+        ] = await Promise.all([
+            extractAnswers(result.msg),
+        ]);
+        
+        const parsed = parseData(answers)
+        return {response:true,msg:extractArrayKey(parsed)}
+    }
+    else
+    {
+        const [
+            answers, 
+        ] = await Promise.all([
+            extractAnswersforUpdate(result.msg),
+        ]);
+
+        const parsed = parseData(answers)
+        return {response:true,msg:extractArrayKey(parsed)}
+
+    }
+}
+
+async function imageMethod (file,type){
+    if (!file) {
+        return {success:false,msg:"'No file uploaded.'"}
+    }
+  
+    const result = await extractDataFromImage(file)
+    
+    if(result.response == false)
+    {
+       return { response: result.response, msg: result.msg }
+    }
+
+    if(type=="create")
+    {
+        const [
+            answers, 
+        ] = await Promise.all([
+            extractAnswers(result.msg),
+        ]);
+        
+        const parsed = parseData(answers)
+        return {response:true,msg:extractArrayKey(parsed)}
+    }
+    else
+    {
+        const [
+            answers, 
+        ] = await Promise.all([
+            extractAnswersforUpdate(result.msg),
+        ]);
+        const parsed = parseData(answers)
+        return {response:true,msg:extractArrayKey(parsed)}
+
+    }
+}
+
+async function imageAndVoiceMethod (audioFile,imageFile,type){
+    
+    const audioData = await speechToText(audioFile)
+
+
+    if(audioData.response == false)
+    {
+        return { response:false , msg:audioData.msg}
+    }
+
+    const imageData = await extractDataFromImage(imageFile)
+
+    
+
+    if(imageData.response == false)
+    {
+        return { response:false , msg:imageData.msg}
+    }
+
+    let finalTransaciption = audioData.msg + " " + imageData.msg;
+
+
+    if(type=="create")
+    {
+        const [
+            answers, 
+        ] = await Promise.all([
+            extractAnswers(finalTransaciption),
+        ]);
+        const parsed = parseData(answers)
+        return {response:true,msg:extractArrayKey(parsed)}
+    }
+    else
+    {
+        const [
+            answers, 
+        ] = await Promise.all([
+            extractAnswersforUpdate(finalTransaciption),
+        ]);
+        const parsed = parseData(answers)
+        return {response:true,msg:extractArrayKey(parsed)}
+
+    }
+}
+
 const patientDataToSummary =  asyncHandler(async(req,res)=>{
     try
     {
@@ -650,6 +771,18 @@ const patientDataToSummary =  asyncHandler(async(req,res)=>{
     }
     
 })
+
+function parseData(input) {
+    if (typeof input === "string") {
+        try {
+            return JSON.parse(input); // Parse if it's a valid JSON string
+        } catch (error) {
+            console.error("Failed to parse JSON:", error);
+            return null; // Return null if parsing fails
+        }
+    }
+    return input; // Return as-is if not a string
+}
 
 
 
@@ -665,8 +798,9 @@ const patientDataToSummary =  asyncHandler(async(req,res)=>{
 
 
 module.exports = {
+    patientDataToSummary,
     speechToTextForm,
-    patientDataToSummary
+    speechToTextFormWithOcr
 };
 
 
