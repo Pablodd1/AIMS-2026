@@ -1,6 +1,6 @@
 const asyncHandler = require("express-async-handler");
-const Visit = require("../models/Visit");
-const Patient = require("../models/Patients");
+const Visit = require("../../models/Visit");
+const Patient = require("../../models/Patients");
 
 const createVisit = asyncHandler(async (req, res) => {
   try {
@@ -209,6 +209,44 @@ const recentVisit = asyncHandler(async (req, res) => {
   }
 });
 
+const newReportMethodStoredIntoDb = asyncHandler(async(req,res)=>{
+
+   const { pId , reportData , transcription , mode , visitId } = req.body
+
+   try {
+  
+    if (mode == "generate") {
+      const visit = new Visit({
+        doc_id:req.user,
+        pId,
+        all:transcription,
+        reportType:"2.0",
+        soapNotesSummary:reportData
+      });
+
+      await visit.save();
+
+     return res.json({ response: true, msg: "Visited registered", id: visit._id });
+
+    } else if (mode == "edit") {
+      
+      await Visit.updateOne(
+        { _id: visitId },
+        {
+          soapNotesSummary:reportData,
+        }
+      );
+
+      res.json({ response: true, msg: "Report updated" });
+    }
+
+    // }
+  } catch (e) {
+    res.status(500).json({ response: false, error: e});
+  }
+
+})
+
 module.exports = {
   createVisit,
   viewReport,
@@ -216,5 +254,6 @@ module.exports = {
   editReport,
   delVisit,
   updateVisitDate,
-  recentVisit
+  recentVisit,
+  newReportMethodStoredIntoDb
 };

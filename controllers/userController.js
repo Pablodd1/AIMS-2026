@@ -73,7 +73,19 @@ const createUser = asyncHandler(async (req,res)=>{
 const signin = asyncHandler(async(req,res)=>{
 
 
-const { email,password,selectedRole } = req.body;
+const { email,password,selectedRole,adminId } = req.body;
+
+  
+
+  if(selectedRole !="admin" && !adminId)
+  {
+    res.json({
+      response: false,
+      msg: "ID missing"
+    });
+
+  }
+
   if(!email || !password)
   {
     res.json({
@@ -81,16 +93,21 @@ const { email,password,selectedRole } = req.body;
       msg: "Enter email and password"
     });
   }
-  const user = await User.findOne({ email });
-  if(!user)
-  {
-    res.json({
-      response: false,
-      msg: "User not found"
-    });
-  }
+
   try{
-    if(selectedRole == 'doctor'){
+
+    if(selectedRole === "admin")
+    {
+
+      const user = await User.findOne({ email });
+      
+      if(!user)
+      {
+        res.json({
+          response: false,
+          msg: "User not found"
+        });
+      }
 
       const bytes  = CryptoJS.AES.decrypt(user.password,  process.env.JWTSECRET)
       const originalText = bytes.toString(CryptoJS.enc.Utf8);
@@ -102,62 +119,7 @@ const { email,password,selectedRole } = req.body;
           token: {
             "access":generateToken(user._id),
           },
-          role:"Doctor"
-        });
-      }
-
-      // extra doctor login check 
-      const { doctors } = await User.findOne({email}).select('doctors')
-      if(doctors.length <=0){
-
-        return res.json({
-          response: false,
-          msg: "Invalid Credentials"
-        });
-      }
-
-      let alllowLogin = false;
-      let accessDenied = false;
-      let doctorsId = ""
-      for(let i=0;i<doctors.length;i++)
-      {
-        accessDenied = false;
-        alllowLogin = false;
-        const obj = await Doctor.findOne({_id:doctors[i]})
-        doctorsId = obj._id
-        
-        const bytes  = CryptoJS.AES.decrypt(obj.password, process.env.JWTSECRET)
-        const originalText = bytes.toString(CryptoJS.enc.Utf8);
-        if(originalText == password ){
-          if(obj.access == false){
-            alllowLogin = false;
-            accessDenied = true;
-            break
-          }else{
-            alllowLogin = true;
-             break
-          }
-        }
-       
-      }
-
-      if(accessDenied){
-        return res.json({
-          response: false,
-          msg: "Access Denied"
-        });
-      }
-      if(alllowLogin){
-        return res.json({
-          response: true,
-          msg:"success",
-          token: {
-            "access":generateToken(user._id),
-          },
-          assistantToken:{
-            "access":generateToken(doctorsId),
-          },
-          role:"Doctor"
+          role:"Admin"
         });
       }else{
         return res.json({
@@ -165,50 +127,71 @@ const { email,password,selectedRole } = req.body;
           msg: "Invalid Credentials"
         });
       }
+    }
+    else if(selectedRole == 'doctor'){
+
+      const user = await User.findOne({ _id:adminId});
+
+      if(!user)
+      {
+
+       return res.json({
+          response: false,
+          msg: "Incorrect ID"
+        });
+      }
 
 
+      const { doctors } = user
+      
+      if(doctors.length <=0){
 
+        return res.json({
+          response: false,
+          msg: "User not found"
+        });
 
-    }else{
-      const { assistants } = await User.findOne({email}).select('assistants')
-      if(assistants.length <=0){
+      }
+
+      let alllowLogin = false;
+
+      const doc = await Doctor.findOne({username:email})
+    
+      for(let i=0;i<doctors.length;i++)
+      {
+        if(doctors[i] == doc._id)
+        {
+          alllowLogin = true;
+        }
+      }
+
+      if(!alllowLogin){
         return res.json({
           response: false,
           msg: "User not found"
         });
       }
-      let alllowLogin = false;
-      let accessDenied = false;
-      let assistantId = ""
-      for(let i=0;i<assistants.length;i++)
+
+      const bytes  = CryptoJS.AES.decrypt(doc.password, process.env.JWTSECRET)
+      const originalText = bytes.toString(CryptoJS.enc.Utf8);
+
+      if(originalText != password)
       {
-        accessDenied = false;
-        alllowLogin = false;
-        const obj = await Assistant.findOne({_id:assistants[i]})
-        assistantId = obj._id
-        
-        const bytes  = CryptoJS.AES.decrypt(obj.password, process.env.JWTSECRET)
-        const originalText = bytes.toString(CryptoJS.enc.Utf8);
-        if(originalText == password ){
-          if(obj.access == false){
-            alllowLogin = false;
-            accessDenied = true;
-            break
-          }else{
-            alllowLogin = true;
-             break
-          }
-        }
-       
+        return res.json({
+          response: false,
+          msg: "Invalid Credentials"
+        });
       }
 
-      if(accessDenied){
+      if(!doc.access)
+      {
         return res.json({
           response: false,
           msg: "Access Denied"
         });
       }
-      if(alllowLogin){
+
+      if(doc.access){
         return res.json({
           response: true,
           msg:"success",
@@ -216,18 +199,94 @@ const { email,password,selectedRole } = req.body;
             "access":generateToken(user._id),
           },
           assistantToken:{
-            "access":generateToken(assistantId),
+            "access":generateToken(doc._id),
           },
-          role:"Assistant"
+          role:"Doctor"
         });
-      }else{
+      }
+
+
+
+
+    }
+    else{
+
+      const user = await User.findOne({ _id:adminId});
+      
+      if(!user)
+      {
+        res.json({
+          response: false,
+          msg: "Incorrect ID"
+        });
+      }
+
+
+      // extra doctor login check 
+      const { assistants } = user
+
+      if(assistants.length <=0){
+
+        return res.json({
+          response: false,
+          msg: "User not found"
+        });
+
+      }
+
+      let alllowLogin = false;
+      const ass = await Assistant.findOne({username:email})
+      
+    
+      for(let i=0;i<assistants.length;i++)
+      {
+        
+        if(assistants[i] == ass._id)
+        {
+          alllowLogin = true;
+        }
+      }
+
+      if(!alllowLogin){
+        return res.json({
+          response: false,
+          msg: "User not found"
+        });
+      }
+
+      const bytes  = CryptoJS.AES.decrypt(ass.password, process.env.JWTSECRET)
+      const originalText = bytes.toString(CryptoJS.enc.Utf8);
+
+      if(originalText != password)
+      {
         return res.json({
           response: false,
           msg: "Invalid Credentials"
         });
       }
-   
-    }
+
+      if(!ass.access)
+      {
+        return res.json({
+          response: false,
+          msg: "Access Denied"
+        });
+      }
+
+      if(ass.access){
+        return res.json({
+          response: true,
+          msg:"success",
+          token: {
+            "access":generateToken(user._id),
+          },
+          assistantToken:{
+            "access":generateToken(ass._id),
+          },
+          role:"Assistant"
+        });
+      }
+  }
 
 }
   catch(e)
@@ -284,18 +343,28 @@ const checkUserToken = asyncHandler(async(req,res)=>{
 
   try{
     const { AssToken } = req.body
+    console.log(AssToken)
     if(AssToken==null)
     {
-      return res.json({response:true,msg:"token is valid",role:"Doctor"})
+      return res.json({response:true,msg:"token is valid",role:"Admin"})
     }else{
       const decoded = jwt.verify(AssToken, process.env.JWTSECRET);
       const ass = await Assistant.findOne({_id:decoded.id}) 
       if(ass && ass.access==true)
       {
         return res.json({response:true,msg:"token is valid",role:"Assistant"})
-      }else{
-        return res.json({response:false,msg:"Assistant token is not valid"})
       }
+      const doc = await Doctor.findOne({_id:decoded.id}) 
+      if(doc && doc.access==true)
+      {
+        return res.json({response:true,msg:"token is valid",role:"Doctor"})
+      }
+      else{
+        console.log('hit')
+        return res.json({response:false,msg:"Assistant token is not valid",role:"None"})
+      }
+
+
     }
   }
   catch(e)

@@ -67,6 +67,10 @@ const VisitSchema = new Schema({
   time: {
     type: String,
   },
+  reportType:{
+    default:"1.0",
+    type: String,
+  },
   userTimezone: {
     type: String, // Store the timezone
 }

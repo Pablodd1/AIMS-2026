@@ -1,10 +1,10 @@
 const asyncHandler = require("express-async-handler");
-const User = require('../models/User')
+const Visit = require("../models/Visit");
 const testFunc = asyncHandler(async(req,res)=>{
     
- await User.updateMany({},{assistants:[]})
-
-res.send(true)    
+ await Visit.updateMany({},{reportType:"1.0"})
+ res.send(true)
+  
   })
   
 
