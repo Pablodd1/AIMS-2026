@@ -13,7 +13,7 @@ try {
   const todayEnd = moment.tz(timezone).endOf('day').toDate();
 
   // Running all the operations simultaneously using Promise.all
-  const [result, count, todayResult] = await Promise.all([
+  const [result, count, todayResult,paid,unpaid] = await Promise.all([
     // Total SubTotal for a specific pId
     Invoice.aggregate([
       {
@@ -46,7 +46,10 @@ try {
           subTotal: { $sum: "$subTotal" }
         }
       }
-    ])
+    ]),
+
+     Invoice.countDocuments({docId:req.user,status:"Paid"}),
+     Invoice.countDocuments({docId:req.user,status:"Unpaid"})
   ]);
 console.log(todayResult)
 
@@ -55,7 +58,7 @@ console.log(todayResult)
   const subTotalToday = todayResult[0]?.subTotal || 0;
 
   // Sending the response
-  return res.json({ response: true, subTotal, count, subTotalToday });
+  return res.json({ response: true, subTotal, count, subTotalToday,paid,unpaid });
 } catch (e) {
   console.error(e);
   return res.json({ response: false });
