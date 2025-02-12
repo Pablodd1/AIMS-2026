@@ -11,7 +11,8 @@ const ImageModule = require('docxtemplater-image-module-free');
 const puppeteer = require('puppeteer');
 const mammoth = require('mammoth');
 const { Document, Packer, Paragraph, TextRun } = require("docx");
-
+const { sendPatientDocumentToDoctor} = require('../mailController')
+const { extractSummary } = require('../openaiController')
 async function loadImage(url) {
     const response = await axios.get(url, { responseType: 'arraybuffer' });
     return Buffer.from(response.data, 'binary');
@@ -665,9 +666,126 @@ const reportDocxDirectDownload = asyncHandler(async(req,res)=>{
     }
 })
 
+
+
+//Americare Wellness Document
+const ameriarePatientDocument = asyncHandler(async (req, res) => {
+
+    const { formData, doctorMail } = req.body
+
+    try {
+
+        const originFile = fs.readFileSync(path.resolve('public','americare.docx'), 'binary');
+        const zip = new PizZip(originFile);
+        const doc = new Docxtemplater(zip);
+        const { summary } = await extractSummary(formData)
+
+      doc.setData({
+        "firstName": formData.firstName ?? "N/A",
+        "middleName": formData.middleName ?? "N/A",
+        "lastName": formData.lastName ?? "N/A",
+        "dob": formData.dob ?? "N/A",
+        "gender": formData.gender ?? "N/A",
+        "homePhone": formData.homePhone ?? "N/A",
+        "mobilePhone": formData.mobilePhone ?? "N/A",
+        "email": formData.email ?? "N/A",
+        "address1": formData.address1 ?? "N/A",
+        "address2": formData.address2 ?? "N/A",
+        "city": formData.city ?? "N/A",
+        "state": formData.state ?? "N/A",
+        "zip": formData.zip ?? "N/A",
+        "preferredContact": formData.preferredContact ?? "N/A",
+        "insuranceProvider": formData.insuranceProvider ?? "N/A",
+        "policyMemberId": formData.policyMemberId ?? "N/A",
+        "groupNumber": formData.groupNumber ?? "N/A",
+        "policyHolderName": formData.policyHolderName ?? "N/A",
+        "policyHolderDob": formData.policyHolderDob ?? "N/A",
+        "primaryCarePhysician": formData.primaryCarePhysician ?? "N/A",
+        "currentMedications": formData.currentMedications ?? "N/A",
+        "allergies": formData.allergies ?? "N/A",
+        "chronicConditions": formData.chronicConditions ?? "N/A",
+        "pastSurgeries": formData.pastSurgeries ?? "N/A",
+        "familyHistory": formData.familyHistory ?? "N/A",
+        "reasonForVisit": formData.reasonForVisit ?? "N/A",
+        "symptomsDetail": formData.symptomsDetail ?? "N/A",
+        "symptomsDuration": formData.symptomsDuration ?? "N/A",
+        "symptomsSeverity": formData.symptomsSeverity ?? "N/A",
+        "experiencedBefore": formData.experiencedBefore ?? "N/A",
+        "symptomsBeforeWhen": formData.symptomsBeforeWhen ?? "N/A",
+        "symptomsAggravators": formData.symptomsAggravators ?? "N/A",
+        "occupation": formData.occupation ?? "N/A",
+        "livingArrangement": formData.livingArrangement ?? "N/A",
+        "tobaccoUse": formData.tobaccoUse ?? "N/A",
+        "alcoholUse": formData.alcoholUse ?? "N/A",
+        "recreationalDrugs": formData.recreationalDrugs ?? "N/A",
+        "weightLossFeverFatigue": formData.weightLossFeverFatigue ?? "N/A",
+        "chestPainPalpitationsLegSwelling": formData.chestPainPalpitationsLegSwelling ?? "N/A",
+        "coughShortnessBreathWheezing": formData.coughShortnessBreathWheezing ?? "N/A",
+        "nauseaVomitingDiarrheaConstipation": formData.nauseaVomitingDiarrheaConstipation ?? "N/A",
+        "jointPainMuscleAchesWeakness": formData.jointPainMuscleAchesWeakness ?? "N/A",
+        "headachesDizzinessNumbness": formData.headachesDizzinessNumbness ?? "N/A",
+        "physicalActivity": formData.physicalActivity ?? "N/A",
+        "nutrition": formData.nutrition ?? "N/A",
+        "seatBeltUse": formData.seatBeltUse ?? "N/A",
+        "depression": formData.depression ?? "N/A",
+        "anxiety": formData.anxiety ?? "N/A",
+        "stress": formData.stress ?? "N/A",
+        "socialEmotionalSupport": formData.socialEmotionalSupport ?? "N/A",
+        "pain": formData.pain ?? "N/A",
+        "generalHealth": formData.generalHealth ?? "N/A",
+        "activitiesOfDailyLiving": formData.activitiesOfDailyLiving ?? "N/A",
+        "sleep": formData.sleep ?? "N/A",
+        "bloodPressure": formData.bloodPressure ?? "N/A",
+        "cholesterol": formData.cholesterol ?? "N/A",
+        "bloodGlucose": formData.bloodGlucose ?? "N/A",
+        "height": formData.height ?? "N/A",
+        "weight": formData.weight ?? "N/A",
+        "waistCircumference": formData.waistCircumference ?? "N/A",
+        "comment": formData.comment ?? "N/A",
+        "summary":summary
+    });
+
+        // Render the document
+        try {
+            doc.render();
+        } catch (error) {
+            console.error("Template Rendering Error:", error);
+        }
+
+         // Generate buffer
+         const docBuffer = doc.getZip().generate({ type: "nodebuffer" });
+
+         // Save the document temporarily
+        const tempFilePath = path.resolve("uploads", "generated_doc.docx");
+        fs.writeFileSync(tempFilePath, docBuffer);
+
+        const result = await sendPatientDocumentToDoctor(tempFilePath, doctorMail )
+
+        if (!result) {
+            return { 
+                success: false,
+                msg: "Failed to generate the document. Please try again or contact support."
+            };
+        }
+
+        return { 
+            success: true,
+            msg: "The document has been successfully sent to the doctor."
+        };
+        
+
+    } catch (error) {
+        return { 
+            success: false,
+            msg: "An error occurred while sending the document. Please check the details and try again."
+        };
+    }
+})
+
 module.exports = {
     reportDocx,
     reportPdf,
     createQuickDocx,
-    reportDocxDirectDownload
+    reportDocxDirectDownload,
+    ameriarePatientDocument
 };

@@ -193,6 +193,43 @@ const sendQrCodeToPatient = async (businessMail, appCode, link, userEmail) => {
   }
 };
 
+const sendPatientDocumentToDoctor = async (documentPath,docterMail) => {
+  try {
+
+    const transporter = nodemailer.createTransport({
+      port: 465,
+      host: "smtp.gmail.com",
+      service: "Gmail",
+      auth: {
+        user: process.env.NODE_MAILER_USER,
+        pass: process.env.NODE_MAILER_PASS,
+      },
+      secure: true,
+    });
+
+    await transporter.sendMail({
+      from: process.env.NODE_MAILER_USER,
+      to: docterMail,
+      subject: `Patient VoiceIntake Document`,
+      text: "Attached is the requested patient document.",
+      attachments: [
+        {
+            filename: "patient_document.docx",
+            path: documentPath
+        }
+    ]
+    });
+
+    console.log('QR code sent successfully to:', docterMail);
+    return true;
+  } catch (error) {
+    console.error('Error sending email:', error);
+    return false;
+  }finally{
+    fs.unlinkSync(documentPath);
+  }
+};
+
 
 
 
@@ -202,5 +239,6 @@ module.exports = {
     appUpdate,
     addPatient,
     onComplete,
-    sendQrCodeToPatient
+    sendQrCodeToPatient,
+    sendPatientDocumentToDoctor
 };

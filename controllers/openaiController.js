@@ -509,9 +509,16 @@ async function extractSummary(text){
                 }
             ]
         });
-        return response.choices[0].message.content;;
+        return {
+            success:true,
+            summary:response.choices[0].message.content
+        }
+        
     } catch (error) {
-        return { error: "Error processing" };
+        return {
+            success:false,
+            summary:"",
+        }
     }
 }
 
@@ -762,7 +769,8 @@ async function imageAndVoiceMethod (audioFile,imageFile,type){
 const patientDataToSummary =  asyncHandler(async(req,res)=>{
     try
     {
-        const summary = await extractSummary(req.body)
+        
+        const {summary} = await extractSummary(req.body)
         res.json({success:true,summary});
         
     }catch(e)
@@ -800,7 +808,8 @@ function parseData(input) {
 module.exports = {
     patientDataToSummary,
     speechToTextForm,
-    speechToTextFormWithOcr
+    speechToTextFormWithOcr,
+    extractSummary
 };
 
 

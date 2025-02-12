@@ -7,7 +7,7 @@ const {sendFeedBack , fetchFeedBack , deleteFeedBackById } = require('./controll
 const { speechToTextForm ,patientDataToSummary , speechToTextFormWithOcr} = require('./controllers/openaiController')
 const { makeInvoice , getAllInvoices , getInvoiceById , getInvoiceAnalyitcs , updateInvoice , deleteInvoice, invoiceStatus, getAllByStatus } = require('./controllers/Invoice/invoiceController')
 const { uploadPDF, getDocuments , deleteDocument, updateDocumentDate } = require('./controllers/Documents/DocumentController')
-const {  reportDocx , reportPdf ,createQuickDocx , reportDocxDirectDownload} = require('./controllers/Downloads/downloadController')
+const {  reportDocx , reportPdf ,createQuickDocx , reportDocxDirectDownload,ameriarePatientDocument} = require('./controllers/Downloads/downloadController')
 const {  getObject , getSignedUrlForUpload , deleteObject} = require ('./controllers/AWS/AwsController')
 const {  addNote, deleteNote, getNotes } = require('./controllers/CheckInOutNotes/NotesController')
 const { testFunc } = require('./controllers/testController')
@@ -96,6 +96,7 @@ app.post('/api/post/updateVoiceIntake',updateVoiceIntake)
 app.post('/api/post/searchPatientsByAlphabet',protect,searchPatientsByAlphabet)
 app.post('/api/post/searchPatientsByType',protect,searchPatientsByType)
 app.post('/api/post/searchPatientsByTypeAndLimit5',protect,searchPatientsByTypeAndLimit5)
+app.get('/api/get/exportAllPatients',protect,exportAllPatients)
 
 //visit routes
 app.post('/api/post/createVisit',protect,createVisit);
@@ -177,6 +178,7 @@ app.get('/api/get/reportDocx',protect,reportDocx)
 app.get('/api/get/reportPdf',protect,reportPdf)
 app.get('/api/post/createQuickDocx',protect,createQuickDocx)
 app.post('/api/post/reportDocxDirectDownload',reportDocxDirectDownload)
+app.post('/api/post/ameriarePatientDocument',ameriarePatientDocument)
 
 //AWS-S3
 app.get('/api/get/getSignedUrlForUpload',protect,getSignedUrlForUpload)

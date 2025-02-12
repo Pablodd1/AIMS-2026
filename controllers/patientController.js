@@ -115,6 +115,7 @@ const createPatient = asyncHandler(async(req,res)=>{
 const exportAllPatients = asyncHandler(async(req,res)=>{
   try
   {
+    console.log('hit')
     const patients = await Patient.find({doc_id:req.user})
     res.status(200).json({patients,response:true})
   }
@@ -366,7 +367,7 @@ To opt out, reply STOP.`;
 
     }else{
 
-      msg = `Hi ${fullName},\nwelcome to ${clinic}! We are thrilled to have you.\nWe have moved from Bay Harbor to ${address}. Same staff, same great service!\nVisit us at ${website}.\nCall ${clinicNumber}.`;
+      msg = `Hi ${fullName},\nwelcome to ${clinic}! We are thrilled to have you.\n${address}. Same staff, same great service!\nVisit us at ${website}.\nCall ${clinicNumber}.`;
     }
 
     if(smsChecked)
