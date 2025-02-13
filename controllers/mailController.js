@@ -6,6 +6,7 @@ const { appointmentUpdate } = require('../Template/Appointments/appointmentUpdat
 const { addInstantPatient , addInstantPatientICare } = require('../Template/Patients/addInstantPatient')
 const { appointmentComplete} = require('../Template/Appointments/appoitmentComplete');
 const { innovativeGoogleReviewUrl } = require("../constants/global");
+const fs = require('fs')
 
 const appMail = async (businessMail,appCode,userEmail,time,phone_number,clinicname,patient,website,address,pic,link,apptID) => {
   try {
@@ -193,42 +194,79 @@ const sendQrCodeToPatient = async (businessMail, appCode, link, userEmail) => {
   }
 };
 
-const sendPatientDocumentToDoctor = async (documentPath,docterMail) => {
-  try {
+// const sendPatientDocumentToDoctor = async (documentPath,docterMail) => {
 
-    const transporter = nodemailer.createTransport({
-      port: 465,
-      host: "smtp.gmail.com",
-      service: "Gmail",
-      auth: {
-        user: process.env.NODE_MAILER_USER,
-        pass: process.env.NODE_MAILER_PASS,
-      },
-      secure: true,
-    });
 
-    await transporter.sendMail({
-      from: process.env.NODE_MAILER_USER,
-      to: docterMail,
-      subject: `Patient VoiceIntake Document`,
-      text: "Attached is the requested patient document.",
-      attachments: [
-        {
-            filename: "patient_document.docx",
-            path: documentPath
-        }
-    ]
-    });
+//     const transporter = nodemailer.createTransport({
+//       port: 465,
+//       host: "smtp.gmail.com",
+//       service: "Gmail",
+//       auth: {
+//         user: process.env.NODE_MAILER_USER,
+//         pass: process.env.NODE_MAILER_PASS,
+//       },
+//       secure: true,
+//     })
 
-    console.log('QR code sent successfully to:', docterMail);
-    return true;
-  } catch (error) {
-    console.error('Error sending email:', error);
-    return false;
-  }finally{
-    fs.unlinkSync(documentPath);
-  }
+//     await transporter.sendMail({
+//       from: process.env.NODE_MAILER_USER,
+//       to: docterMail,
+//       subject: `Patient VoiceIntake Document`,
+//       text: "Attached is the requested patient document.",
+//       attachments: [
+//         {
+//             filename: "patient_document.docx",
+//             path: documentPath
+//         }
+//     ]
+//     }).then((result)=>{
+//       fs.unlinkSync(documentPath);
+//       console.log('result',result)
+//       return true;
+//     }).catch((e)=>{
+//       fs.unlinkSync(documentPath);
+//       console.log('error',e)
+//       return false;
+//     })
+
+  
+// };
+
+
+const sendPatientDocumentToDoctor = async (buffer, doctorMail) => {
+    try {
+        const transporter = nodemailer.createTransport({
+            port: 465,
+            host: "smtp.gmail.com",
+            service: "Gmail",
+            auth: {
+                user: process.env.NODE_MAILER_USER,
+                pass: process.env.NODE_MAILER_PASS,
+            },
+            secure: true,
+        });
+
+        await transporter.sendMail({
+            from: process.env.NODE_MAILER_USER,
+            to: doctorMail,
+            subject: `Patient VoiceIntake Document`,
+            text: "Attached is the requested patient document.",
+            attachments: [
+                {
+                    filename: "patient_document.docx",
+                    content: buffer
+                }
+            ]
+        });
+
+        console.log('Email sent');
+        return true;
+    } catch (error) {
+        console.error('Error sending email:', error);
+        return false;
+    }
 };
+
 
 
 

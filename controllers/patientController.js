@@ -354,7 +354,13 @@ const addInstantPatient = asyncHandler(async(req,res)=>{
     // Save patient to database
     const patient =  await newPatient.save();
     
-    const link = `https://www.aiscribers.com/updatePatient/${patient._id}`
+    const doctorDetails = await User.findOne({_id:req.user})
+
+    let link = `https://www.aiscribers.com/updatePatient/${patient._id}`
+    if(doctorDetails.email === "tom@odin.clinic"){
+      link = `https://www.aiscribers.com/americare`
+    }
+    
     let msg=""
     
     if(clinic == "Icare" || clinic == "icare" || clinic == "Icare Mobile Medicine")

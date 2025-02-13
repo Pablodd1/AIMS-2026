@@ -80,23 +80,6 @@ let { patientID , time ,number,clinicname,businessMail,
  try
  {  
     
-       
-    //  const isPatientAppointmentAlreadyBooked = await Appointment.findOne({
-    //     patientID,
-    //     status: { $in: ['Scheduled', 'Pending'] }
-    // })
-    //  if(isPatientAppointmentAlreadyBooked)
-    //  {
-
-    //      const apptDate = isPatientAppointmentAlreadyBooked.time || isPatientAppointmentAlreadyBooked.createdAt.slice(0,10)
-    //      if(isPatientAppointmentAlreadyBooked.status == 'Scheduled')
-    //      {
-    //         return res.json({success:false,msg:`The patient appointment is already scheduled for ${apptDate}. If you wish to make a new appointment, please change the status of the previous one.`})
-    //      }else{
-    //         return res.json({success:false,msg:`The patient appointment has been scheduled by the doctor for ${apptDate} but is currently in pending status, as the patient has neither confirmed nor rejected the appointment yet. If you wish to schedule a new appointment, please change the status of the previous one.`})
-    //      }
-    //  }
- 
         patientInfo = await Patient.findOne({_id:patientID})
         if(patientInfo)
         {
@@ -119,7 +102,14 @@ let { patientID , time ,number,clinicname,businessMail,
                 time:userInpuDateintoReadableFormat(time,userTimezone),
                 userTimezone
             })
-             link = `https://www.aiscribers.com/updatePatient/${patientID}`
+
+            const doctorDetails = await User.findOne({_id:req.user})
+            
+            link = `https://www.aiscribers.com/updatePatient/${patientID}`
+            if(doctorDetails.email === "tom@odin.clinic"){
+                link = `https://www.aiscribers.com/americare`
+            }
+
              const confirmLink = `https://www.aiscribers.com/AppointmentConfirmation/${newAppointment._id}`
             if(clinicname == "Icare" || clinicname == "icare" || clinicname == "Icare Mobile Medicine")
             {
