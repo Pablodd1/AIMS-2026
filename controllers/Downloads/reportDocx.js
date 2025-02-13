@@ -678,8 +678,8 @@ const ameriarePatientDocument = asyncHandler(async (req, res) => {
         const originFile = fs.readFileSync(path.resolve('public','americare.docx'), 'binary');
         const zip = new PizZip(originFile);
         const doc = new Docxtemplater(zip);
-        // const { summary } = await extractSummary(formData)
-        const summary = "test"
+        const { summary } = await extractSummary(formData)
+        // const summary = "test"
       doc.setData({
         "firstName": formData.firstName || "N/A",
         "middleName": formData.middleName || "N/A",
