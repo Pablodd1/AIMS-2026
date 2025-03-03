@@ -1,6 +1,7 @@
 const asyncHandler = require("express-async-handler");
 const Appointment = require('../models/Appointment')
 const Patient = require('../models/Patients')
+const User = require('../models/User')
 const {appMail,appCancel,appUpdate,onComplete} = require('./mailController')
 const { sendMessage } = require('../controllers/Twilio/twilio'); 
 const { getTodayDateInTimeZone } = require('../Helper/getLocalDates');
@@ -104,9 +105,8 @@ let { patientID , time ,number,clinicname,businessMail,
             })
 
             const doctorDetails = await User.findOne({_id:req.user})
-            
             link = `https://www.aiscribers.com/updatePatient/${patientID}`
-            if(doctorDetails.email === "tom@odin.clinic"){
+            if(doctorDetails.email === "kmcneal@awclinics.com"){
                 link = `https://www.aiscribers.com/americare`
             }
 

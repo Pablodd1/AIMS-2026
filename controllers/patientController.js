@@ -3,6 +3,7 @@ const Patient = require('../models/Patients')
 const Appointment = require('../models/Appointment');
 const { addPatient } = require('./mailController')
 const { sendMessage } = require('../controllers/Twilio/twilio') 
+const User = require('../models/User')
 
 const createPatient = asyncHandler(async(req,res)=>{
 
@@ -316,7 +317,6 @@ const addInstantPatient = asyncHandler(async(req,res)=>{
     userTimezone
 } = req.body;
   
-
    
   try {
 
@@ -355,9 +355,8 @@ const addInstantPatient = asyncHandler(async(req,res)=>{
     const patient =  await newPatient.save();
     
     const doctorDetails = await User.findOne({_id:req.user})
-
     let link = `https://www.aiscribers.com/updatePatient/${patient._id}`
-    if(doctorDetails.email === "tom@odin.clinic"){
+    if(doctorDetails.email === "kmcneal@awclinics.com"){
       link = `https://www.aiscribers.com/americare`
     }
     
