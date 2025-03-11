@@ -1,3 +1,4 @@
+const asyncHandler = require("express-async-handler");
 const nodemailer = require("nodemailer");
 const QRCode = require('qrcode');
 const { appointmentCreated } = require('../Template/Appointments/appointmentcreated');
@@ -6,8 +7,7 @@ const { appointmentUpdate } = require('../Template/Appointments/appointmentUpdat
 const { addInstantPatient , addInstantPatientICare } = require('../Template/Patients/addInstantPatient')
 const { appointmentComplete} = require('../Template/Appointments/appoitmentComplete');
 const { innovativeGoogleReviewUrl } = require("../constants/global");
-const fs = require('fs')
-
+const { contactTemplate } = require('../Template/agingBioHack/contact')
 const appMail = async (businessMail,appCode,userEmail,time,phone_number,clinicname,patient,website,address,pic,link,apptID) => {
   try {
     const transporter = nodemailer.createTransport({
@@ -194,45 +194,6 @@ const sendQrCodeToPatient = async (businessMail, appCode, link, userEmail) => {
   }
 };
 
-// const sendPatientDocumentToDoctor = async (documentPath,docterMail) => {
-
-
-//     const transporter = nodemailer.createTransport({
-//       port: 465,
-//       host: "smtp.gmail.com",
-//       service: "Gmail",
-//       auth: {
-//         user: process.env.NODE_MAILER_USER,
-//         pass: process.env.NODE_MAILER_PASS,
-//       },
-//       secure: true,
-//     })
-
-//     await transporter.sendMail({
-//       from: process.env.NODE_MAILER_USER,
-//       to: docterMail,
-//       subject: `Patient VoiceIntake Document`,
-//       text: "Attached is the requested patient document.",
-//       attachments: [
-//         {
-//             filename: "patient_document.docx",
-//             path: documentPath
-//         }
-//     ]
-//     }).then((result)=>{
-//       fs.unlinkSync(documentPath);
-//       console.log('result',result)
-//       return true;
-//     }).catch((e)=>{
-//       fs.unlinkSync(documentPath);
-//       console.log('error',e)
-//       return false;
-//     })
-
-  
-// };
-
-
 const sendPatientDocumentToDoctor = async (buffer, doctorMail) => {
     try {
         const transporter = nodemailer.createTransport({
@@ -267,6 +228,36 @@ const sendPatientDocumentToDoctor = async (buffer, doctorMail) => {
     }
 };
 
+const agingBioHack = asyncHandler(async(req,res)=>{
+  try {
+     const { name , email, phone , subject,message} = req.body
+      const transporter = nodemailer.createTransport({
+          port: 465,
+          host: "smtp.gmail.com",
+          service: "Gmail",
+          auth: {
+              user: process.env.NODE_MAILER_USER,
+              pass: process.env.NODE_MAILER_PASS,
+          },
+          secure: true,
+      });
+
+     
+      await transporter.sendMail({
+          from: process.env.NODE_MAILER_USER,
+          to: "process.env.NODE_MAILER_USER",
+          subject: `Aging BioHack Contact Form`,
+          html: contactTemplate(name , email, phone , subject,message),
+      });
+
+      console.log('Email sent');
+      return res.send(true);
+  } catch (error) {
+      console.error('Error sending email:', error);
+      return res.send(false);
+  }
+})
+
 
 
 
@@ -278,5 +269,6 @@ module.exports = {
     addPatient,
     onComplete,
     sendQrCodeToPatient,
-    sendPatientDocumentToDoctor
+    sendPatientDocumentToDoctor,
+    agingBioHack
 };

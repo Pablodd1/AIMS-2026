@@ -18,7 +18,7 @@ const connectDB = require('./config/db')
 const express = require("express");
 const cors = require('cors');
 const multer = require('multer');
-
+const { agingBioHack } = require('./controllers/mailController')
 require('dotenv').config();
 connectDB()
 
@@ -189,6 +189,10 @@ app.delete('/api/delete/deleteObject',protect,deleteObject)
 app.get('/api/get/getNotes',protect,getNotes)
 app.post('/api/post/addNote',protect,addNote)
 app.delete('/api/delete/deleteNote/:id',protect,deleteNote)
+
+
+//agingBioHack
+app.post('/api/post/email/agingbiohack',agingBioHack)
 
 // route 
 app.get("/", (req, res) => {
