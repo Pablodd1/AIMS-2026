@@ -245,7 +245,7 @@ const agingBioHack = asyncHandler(async(req,res)=>{
      
       await transporter.sendMail({
           from: process.env.NODE_MAILER_USER,
-          to: "process.env.NODE_MAILER_USER",
+          to: process.env.NODE_MAILER_USER,
           subject: `Aging BioHack Contact Form`,
           html: contactTemplate(name , email, phone , subject,message),
       });
