@@ -5,7 +5,7 @@ const fs = require('fs');
 const { response } = require("express");
 
 const openai = new OpenAI({
-    apiKey: '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', 
+    apiKey: process.env.OPENAI_KEY, 
 });
 
 async function speechToText(file)
@@ -277,7 +277,7 @@ async function extractAnswers(text){
 async function extractAnswersforUpdate(text){
     try {
         const response = await openai.chat.completions.create({
-            model: "gpt-4o",
+            model: "gpt-4o-mini",
             temperature: 0,
             messages: [
                 {
@@ -496,7 +496,7 @@ async function extractAnswersforUpdate(text){
 async function extractSummary(text){
     try {
         const response = await openai.chat.completions.create({
-            model: "gpt-4o",
+            model: "gpt-4o-mini",
             temperature: 0,
             messages: [
                 {
