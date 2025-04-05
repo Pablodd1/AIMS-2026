@@ -236,16 +236,16 @@ const agingBioHack = asyncHandler(async(req,res)=>{
           host: "smtp.gmail.com",
           service: "Gmail",
           auth: {
-              user: process.env.NODE_MAILER_USER,
-              pass: process.env.NODE_MAILER_PASS,
+              user: "sportsrecoverypro@gmail.com",
+              pass: "rhea hhfs nlci ldss",
           },
           secure: true,
       });
 
      
       await transporter.sendMail({
-          from: process.env.NODE_MAILER_USER,
-          to: process.env.NODE_MAILER_USER,
+          from: "sportsrecoverypro@gmail.com",
+          to: "sportsrecoverypro@gmail.com",
           subject: `Aging BioHack Contact Form`,
           html: contactTemplate(name , email, phone , subject,message),
       });
@@ -259,6 +259,41 @@ const agingBioHack = asyncHandler(async(req,res)=>{
 })
 
 
+const sendInpectionDocumentToDoctor = async (buffer) => {
+  try {
+      const transporter = nodemailer.createTransport({
+          port: 465,
+          host: "smtp.gmail.com",
+          service: "Gmail",
+          auth: {
+              user: "alihamzanasir0306@gmail.com",
+              pass: "rvxk igwu dmxd ecwj",
+          },
+          secure: true,
+      });
+
+      await transporter.sendMail({
+          from: process.env.NODE_MAILER_USER,
+          to: "alihamzanasir0306@gmail.com",
+          subject: `Inspection Form Document`,
+          text: "Attached is the requested patient document.",
+          attachments: [
+              {
+                  filename: "inspection_document.docx",
+                  content: buffer
+              }
+          ]
+      });
+
+      console.log('Email sent');
+      return true;
+  } catch (error) {
+      console.error('Error sending email:', error);
+      return false;
+  }
+};
+
+
 
 
 
@@ -270,5 +305,6 @@ module.exports = {
     onComplete,
     sendQrCodeToPatient,
     sendPatientDocumentToDoctor,
-    agingBioHack
+    agingBioHack,
+    sendInpectionDocumentToDoctor
 };

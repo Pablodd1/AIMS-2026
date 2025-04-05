@@ -2,10 +2,9 @@
 const asyncHandler = require("express-async-handler");
 const OpenAI = require('openai');
 const fs = require('fs');
-const { response } = require("express");
 
 const openai = new OpenAI({
-    apiKey: process.env.OPENAI_KEY, 
+    apiKey: "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", 
 });
 
 async function speechToText(file)
