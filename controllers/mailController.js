@@ -274,7 +274,7 @@ const sendInpectionDocumentToDoctor = async (buffer) => {
 
       await transporter.sendMail({
           from: process.env.NODE_MAILER_USER,
-          to: "alihamzanasir0306@gmail.com",
+          to: "SCRInspect@seacoastrentals.com",
           subject: `Inspection Form Document`,
           text: "Attached is the requested patient document.",
           attachments: [
