@@ -4,6 +4,9 @@ const Appointment = require('../models/Appointment');
 const { addPatient } = require('./mailController')
 const { sendMessage } = require('../controllers/Twilio/twilio') 
 const User = require('../models/User')
+const csv = require('csv-parser');
+const fs = require('fs')
+const fsPromises = require('fs').promises;
 
 const createPatient = asyncHandler(async(req,res)=>{
 
@@ -592,6 +595,72 @@ const searchPatientsByTypeAndLimit5 = asyncHandler(async (req, res) => {
 });
 
 
+  // API to import patients from CSV file
+  const importPatients = asyncHandler(async (req, res) => {
+    const file = req.file;
+    try {
+      if (!file) {
+        return res.status(400).json({ message: 'No file uploaded.' });
+      }
+
+      const user = await User.findOne({_id:req.user})
+  
+      const patients = [];
+      const csvData = [];
+  
+      fs.createReadStream(file.path)
+        .pipe(csv())
+        .on('data', (data) => {
+          if ((data['First Name'] || data['Last Name']) && (data['Email'] || data['Phone'])) {
+            csvData.push(data);
+          }
+        })
+        .on('end', async () => {
+          for (const item of csvData) {
+            const newPatient = new Patient(
+              {
+              doc_id: user._id,
+              fullName: `${item['First Name']} ${item['Last Name']}`,
+              phoneNumber: item['Phone'],
+              email: item['Email'],
+              address: item['Address (full)'],
+              gender: item['Sex'],
+              dateOfBirth: item['Birth Date'],
+              userTimezone: user.timezone,
+            }
+          );
+  
+            patients.push(newPatient.save());
+          }
+  
+          await Promise.all(patients);
+          if (file && file.path) {
+            try {
+              await fsPromises.unlink(file.path);
+              console.log('File deleted:', file.path);
+            } catch (err) {
+              console.error('Failed to delete file:', err);
+            }
+          }
+          res.status(200).json({ message: 'Patients imported successfully.' });
+        });
+  
+    } catch (error) {
+      console.error('Error importing patients:', error);
+        if (file && file.path) {
+          try {
+            await fsPromises.unlink(file.path);
+            console.log('File deleted:', file.path);
+          } catch (err) {
+            console.error('Failed to delete file:', err);
+          }
+        }
+      res.status(500).json({ message: 'Error importing patients. Please try again.' });
+    }
+  });
+
+
+
 
 
 
@@ -615,5 +684,6 @@ module.exports = {
     searchPatientsByAlphabet,
     searchPatientsByType,
     searchPatientsByTypeAndLimit5,
-    exportAllPatients
+    exportAllPatients,
+    importPatients
 };

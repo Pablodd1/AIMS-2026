@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const { Schema } = mongoose;
 const { getCurrentDateGlobally, getCurrentTimeGlobally } = require('../Helper/getLocalDates');
 
+
 const PatientSchema = new Schema({
   doc_id: { type: String, required: true },
   fullName: { type: String, required: true },

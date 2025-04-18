@@ -1,5 +1,5 @@
 const {updateDoctor,deleteDoctor,getDoctors,addDoctor,deleteAssistant,getAssistant,updateAssistant,addAssistant,createUser,signin,passcracker,getUserInfo,updateProfile,checkUserToken,updateSignature,delSignature,updateProfiePicture,updateClinicLogo,updatEmailredentials,updatewebsiteURL,setEmptyPic,deletePatientHitory,updatePassword,sendQrCode,setOpenAiKey} = require('./controllers/userController')
-const {createPatient,getPatients,getPatientById,updatePatient,getTodayPatients,getPaitentsCount,getTodayPatietnsForAppointment,addInstantPatient,updateVoiceIntake,searchPatientsByAlphabet,searchPatientsByType,searchPatientsByTypeAndLimit5,exportAllPatients} = require('./controllers/patientController')
+const {createPatient,getPatients,getPatientById,updatePatient,getTodayPatients,getPaitentsCount,getTodayPatietnsForAppointment,addInstantPatient,updateVoiceIntake,searchPatientsByAlphabet,searchPatientsByType,searchPatientsByTypeAndLimit5,exportAllPatients,importPatients} = require('./controllers/patientController')
 const {createVisit,viewReport,getVists,editReport,delVisit , updateVisitDate,recentVisit,newReportMethodStoredIntoDb} = require('./controllers/Visits/visitController')
 const { getRecentUsers,adminLogin , fetchAllDoctors, fetchAllAdmins,fecthDemoAccounts,demoUserCount,createDemoUser} = require("./controllers/adminController")
 const { createAppointment , getbyDateAppointment , delAppointment , editAppTime , calenderDates , changeStatus, filterAppointments,userResponseFromEmail,appointmentReport,allAppointments} = require('./controllers/appointmentController')
@@ -97,6 +97,7 @@ app.post('/api/post/searchPatientsByAlphabet',protect,searchPatientsByAlphabet)
 app.post('/api/post/searchPatientsByType',protect,searchPatientsByType)
 app.post('/api/post/searchPatientsByTypeAndLimit5',protect,searchPatientsByTypeAndLimit5)
 app.get('/api/get/exportAllPatients',protect,exportAllPatients)
+app.post('/api/post/importPatients',protect,uploadSet1.single('file'),importPatients)
 
 //visit routes
 app.post('/api/post/createVisit',protect,createVisit);
