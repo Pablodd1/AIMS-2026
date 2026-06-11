@@ -28,7 +28,6 @@ const {
   getRecentCodes,
   runBillingCompliance,
 } = require('./controllers/medicalCodesController')
-const { updateNotificationSettings, getDailySchedule, sendDailySchedule, triggerDailySchedule } = require('./controllers/notificationController')
 const { protect } = require('./middleware/authMiddleware')
 const bodyParser = require('body-parser');
 const  ensureUploadsDirectory  = require('./Helper/makeDirectory')
@@ -92,11 +91,6 @@ app.post('/api/post/deletePatientHitory',protect,deletePatientHitory)
 app.post('/api/post/updatePassword',protect,updatePassword)
 app.post('/api/post/sendQrCode',sendQrCode)
 app.post('/api/post/setOpenAiKey',protect,setOpenAiKey)
-// Notification settings — daily schedule delivery
-app.post('/api/post/updateNotificationSettings',protect,updateNotificationSettings)
-app.get('/api/get/dailySchedule',protect,getDailySchedule)
-app.post('/api/post/sendDailySchedule',protect,sendDailySchedule)
-app.get('/api/get/triggerDailySchedule',triggerDailySchedule)
 //add-new-assistant
 app.post('/api/post/addAssistant',protect,addAssistant)
 app.post('/api/post/updateAssistant',protect,updateAssistant)
@@ -210,11 +204,11 @@ app.post('/api/post/extractPatientDataFromImage', uploadSet1.single('image'), ex
 // Smart assistant — generates notes with previous visit history
 app.post('/api/post/generateNoteWithHistory', protect, generateNoteWithHistory)
 // Auto-treatment suggestions
-app.post('/api/post/suggestTreatment', suggestTreatment)
+app.post('/api/post/suggestTreatment', protect, suggestTreatment)
 // Validate red flags
-app.post('/api/post/validateRedFlags', validateRedFlags)
+app.post('/api/post/validateRedFlags', protect, validateRedFlags)
 // Extract DX/CPT codes
-app.post('/api/post/extractDxCptCodes', extractDxCptCodes)
+app.post('/api/post/extractDxCptCodes', protect, extractDxCptCodes)
 // Download note as audio
 app.get('/api/get/downloadNoteAsAudio', protect, downloadNoteAsAudio)
 // 3-Agent quality check
@@ -277,8 +271,6 @@ app.post('/api/post/inspectionDownload',inspectionDownload)
 // Visit timeline & export
 app.get('/api/get/getPatientVisits', protect, getPatientVisits)
 app.get('/api/get/exportVisitDocx/:visitId', protect, exportVisitDocx)
-
-// Patient Portal
 
 
 //AWS-S3

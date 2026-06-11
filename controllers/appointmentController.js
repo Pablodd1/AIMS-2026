@@ -92,7 +92,16 @@ let { patientID , time ,number,clinicname,businessMail,
                 smsChecked   = false; 
             }
 
-
+            // Duplicate guard: check if appointment already exists for this patient today
+            const todayPrefix = time ? time.toString().slice(0, 10) : new Date().toISOString().slice(0, 10);
+            const existingToday = await Appointment.findOne({
+                patientID,
+                doctorID: req.user,
+                time: { $regex: `^${todayPrefix}`, $options: 'i' }
+            });
+            if(existingToday){
+                return res.json({success:true, msg:"Appointment already exists for today", appointment: existingToday});
+            }
         
             newAppointment =  await Appointment.create({
                 patientID,
@@ -150,7 +159,7 @@ const getbyDateAppointment = asyncHandler(async (req,res)=>{
         let { date } = req.body
         
         date = date.slice(0,10)
-        const status = ['Scheduled','Pending']; 
+        const status = ['Scheduled','Pending','Complete']; 
         const query = {
             doctorID:req.user,
             status: { $in: status }, // Correctly using $in for the status field
@@ -189,14 +198,28 @@ const editAppTime = asyncHandler(async(req,res)=>{
    {
     return res.json({success:false})
    }finally{
-    if(sendMail)
-    {
-         if(businessMail=="" || appCode == "")
-                {
-                    await appUpdate(process.env.NODE_MAILER_USER,process.env.NODE_MAILER_PASS,appt.email,userInpuDateintoReadableFormat(time,userTimezone),number,website,clinic,appt.name)
-                }else{
-                    await appUpdate(businessMail,appCode,appt.email,userInpuDateintoReadableFormat(time,userTimezone),number,website,clinic,appt.name)
-                }
+    // Always notify patient of schedule change
+    if (appt && appt.patientID) {
+        const patientInfo = await Patient.findOne({_id: appt.patientID}).select('email phoneNumber fullName');
+        const formattedTime = userInpuDateintoReadableFormat(time, userTimezone);
+        const clinicName = clinic || 'the clinic';
+        
+        // Send email notification
+        const emailTo = appt.email || patientInfo?.email;
+        if (emailTo) {
+            if(businessMail == "" || appCode == "") {
+                await appUpdate(process.env.NODE_MAILER_USER, process.env.NODE_MAILER_PASS, emailTo, formattedTime, number, website, clinicName, appt.name);
+            } else {
+                await appUpdate(businessMail, appCode, emailTo, formattedTime, number, website, clinicName, appt.name);
+            }
+        }
+        
+        // Send SMS notification
+        const phoneTo = appt.number || patientInfo?.phoneNumber;
+        if (phoneTo) {
+            const msg = `Your appointment at ${clinicName} has been rescheduled to ${formattedTime}. Please call ${number || 'the office'} if you have questions. Reply STOP to opt out.`;
+            await sendMessage(msg, phoneTo);
+        }
     }
    }
 })
@@ -209,7 +232,7 @@ const calenderDates = asyncHandler(async(req,res)=>{
             doctorID: _id,
             status: { $in: status } 
         })
-        .select('time') // Select only the 'time' field
+        .select('time name status') // Select fields for individual event display
         .exec();
 
 
@@ -228,6 +251,15 @@ const changeStatus = asyncHandler(async(req,res)=>{
     const { appId , status ,sendMsg , sendMail } = req.body;
     try{
         await Appointment.updateOne({_id:appId},{status})
+        
+        // Increment patient visit count when appointment is completed
+        if (status === "Complete") {
+            const appt = await Appointment.findOne({_id: appId});
+            if (appt && appt.patientID) {
+                await Patient.updateOne({ _id: appt.patientID }, { $inc: { visitCount: 1 } });
+            }
+        }
+        
         return res.json({response:true})
     }
     catch(e)
@@ -372,7 +404,7 @@ const allAppointments = asyncHandler(async(req,res)=>{
             appointments = await Appointment.find({doctorID:req.user}).sort({ createdAt: -1 }).select('status email name time')
         }else if(status == 'Today') {
 
-            appointments = await Appointment.find({doctorID: userId,time: { $regex: `^${getTodayDateInTimeZone(userTimeZone)}` } // Match 'time' field starting with YYYY-MM-DD
+            appointments = await Appointment.find({doctorID: req.user,time: { $regex: `^${getTodayDateInTimeZone(userTimeZone)}` } // Match 'time' field starting with YYYY-MM-DD
               }).sort({ createdAt: -1 }).select('status email name time');
         }else{
              appointments = await Appointment.find({doctorID:req.user,status:status}).sort({ createdAt: -1 }).select('status email name time')

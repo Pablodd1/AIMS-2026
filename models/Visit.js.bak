@@ -72,7 +72,7 @@ const VisitSchema = new Schema({
     type: String,
   },
   userTimezone: {
-    type: String,
+    type: String, // Store the timezone
   },
   redFlags: [{
     type: Object,
@@ -86,18 +86,19 @@ const VisitSchema = new Schema({
   audioNoteDuration: {
     type: Number,
   },
-  audioTranscription: {
-    type: String,
-  },
 }, { timestamps: true });
 
 mongoose.models = {};
 
+// Middleware to set date and time before saving the document
 VisitSchema.pre('save', function (next) {
   console.log('Pre-save middleware executed for Visit');
+  
+  // Set date and time only for new documents
   if (this.isNew) {
     const currentDate = getCurrentDateGlobally(this.userTimezone);
     const currentTime = getCurrentTimeGlobally(this.userTimezone);
+
     if (!currentDate || !currentTime) {
       console.error('Error: Date or time is undefined');
     } else {

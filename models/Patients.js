@@ -43,6 +43,69 @@ const PatientSchema = new Schema({
   notes: { type: String, required: false },
   date: { type: String }, // Default to current date
   time: { type: String }, // Default to current time
+  visitCount: { type: Number, default: 0 },
+
+  // Pain & symptoms
+  painScale: { type: Number, required: false },
+  painLocation: { type: [String], required: false },
+  painQuality: { type: String, required: false },
+
+  // Auto accident
+  autoAccident: {
+    involved: { type: Boolean, default: false },
+    date: { type: String, required: false },
+    claimNumber: { type: String, required: false },
+    attorneyName: { type: String, required: false },
+    attorneyPhone: { type: String, required: false },
+    policeReport: { type: String, required: false },
+  },
+
+  // Workers compensation
+  workersComp: {
+    involved: { type: Boolean, default: false },
+    employer: { type: String, required: false },
+    claimNumber: { type: String, required: false },
+    caseManager: { type: String, required: false },
+    caseManagerPhone: { type: String, required: false },
+  },
+
+  // Chiropractic history
+  previousChiropractic: {
+    seenBefore: { type: Boolean, default: false },
+    lastChiropractor: { type: String, required: false },
+    lastVisitDate: { type: String, required: false },
+  },
+
+  functionalLimitations: { type: String, required: false },
+  referralSource: { type: String, required: false },
+
+  // Secondary insurance
+  secondaryInsurance: {
+    provider: { type: String, required: false },
+    policyNumber: { type: String, required: false },
+    groupNumber: { type: String, required: false },
+  },
+
+  // Emergency contact details
+  emergencyContactName: { type: String, required: false },
+  emergencyContactRelationship: { type: String, required: false },
+
+  // Physical metrics
+  height: { type: String, required: false },
+  weight: { type: String, required: false },
+
+  // Split substance use
+  smoking: { type: String, required: false },
+  alcohol: { type: String, required: false },
+  drugUse: { type: String, required: false },
+
+  // OCR extracted data
+  pictureIdOcr: { type: String, required: false },
+  insuranceCardOcr: { type: String, required: false },
+
+  // Pregnancy status
+  pregnancyStatus: { type: String, required: false },
+
 }, { timestamps: true });
 
 mongoose.models = {};

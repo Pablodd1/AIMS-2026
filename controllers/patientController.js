@@ -46,17 +46,44 @@ const createPatient = asyncHandler(async(req,res)=>{
     musculoskeletalHistory,
     neurologicalHistory,
     summary,
-    userTimezone
+    userTimezone,
+    painScale,
+    painLocation,
+    painQuality,
+    autoAccident,
+    workersComp,
+    previousChiropractic,
+    functionalLimitations,
+    referralSource,
+    secondaryInsurance,
+    emergencyContactName,
+    emergencyContactRelationship,
+    height,
+    weight,
+    smoking,
+    alcohol,
+    drugUse,
+    pictureIdOcr,
+    insuranceCardOcr,
+    pregnancyStatus
 } = req.body;
   
   
 
    
   try {
-    // const patientExists = await Patient.findOne({ email });
-    // if (patientExists) {
-    //     return res.status(200).json({ response: false, msg: "Patient with this email address is already registered. Please enter a new email address for new registration." });
-    // }
+    // Check for duplicate patients by email or phone+name
+    if (email) {
+      const existingPatient = await Patient.findOne({ email });
+      if (existingPatient) {
+        return res.status(200).json({ response: false, msg: "Patient with this email address is already registered. Please enter a new email address for new registration." });
+      }
+    } else if (fullName && phoneNumber) {
+      const existingPatient = await Patient.findOne({ fullName, phoneNumber });
+      if (existingPatient) {
+        return res.status(200).json({ response: false, msg: "Patient with this name and phone number already exists." });
+      }
+    }
 
     // Create new patient
     const newPatient = new Patient({
@@ -103,7 +130,26 @@ const createPatient = asyncHandler(async(req,res)=>{
         
         musculoskeletalHistory,
         neurologicalHistory,
-        summary
+        summary,
+        painScale,
+        painLocation,
+        painQuality,
+        autoAccident,
+        workersComp,
+        previousChiropractic,
+        functionalLimitations,
+        referralSource,
+        secondaryInsurance,
+        emergencyContactName,
+        emergencyContactRelationship,
+        height,
+        weight,
+        smoking,
+        alcohol,
+        drugUse,
+        pictureIdOcr,
+        insuranceCardOcr,
+        pregnancyStatus
     });
 
     // Save patient to database
@@ -217,30 +263,38 @@ catch(e){
 
 const getTodayPatients = asyncHandler(async(req,res)=>{
   try {
-    const userTimezone = req.query.userTimezone || "UTC"; // Get the timezone from query or default to UTC
+    const userTimezone = req.query.userTimezone || "UTC";
     const today = new Date();
-  
-    // Set the start and end of the day in the user's time zone
-    const startOfDay = new Date(
-      new Date(today).toLocaleString("en-US", { timeZone: userTimezone }).split(',')[0]
-    );
-    startOfDay.setHours(0, 0, 0, 0);
-  
-    const endOfDay = new Date(startOfDay);
-    endOfDay.setHours(23, 59, 59, 999);
-  
-    // Query the patients with appointments created today in the given timezone
+    
+    // Get today's appointments
+    const todayStr = today.toISOString().slice(0, 10);
+    const appointments = await Appointment.find({
+      doctorID: req.user,
+      time: { $regex: `^${todayStr}`, $options: 'i' }
+    });
+    
+    // Get unique patient IDs from today's appointments
+    const patientIds = [...new Set(appointments.map(a => a.patientID))];
+    
+    // Fetch those patients
     const patients = await Patient.find({
-      doc_id: req.user,
-      createdAt: {
-        $gte: startOfDay,
-        $lt: endOfDay,
-      },
+      _id: { $in: patientIds }
+    });
+    
+    // Attach appointment time to each patient
+    const patientsWithAppts = patients.map(p => {
+      const appt = appointments.find(a => a.patientID === p._id.toString());
+      return {
+        ...p.toObject(),
+        appointmentTime: appt?.time || '',
+        appointmentStatus: appt?.status || '',
+        appointmentId: appt?._id || '',
+      };
     });
   
-    res.status(200).json({ patients, response: true });
+    res.status(200).json({ patients: patientsWithAppts, response: true, total: patientsWithAppts.length });
   } catch (e) {
-    console.error("Error fetching patients:", e);
+    console.error("Error fetching today's patients:", e);
     res.status(500).json({ response: false });
   }
   
@@ -323,12 +377,27 @@ const addInstantPatient = asyncHandler(async(req,res)=>{
    
   try {
 
+    const fullName = name + ' ' + lastName
+
+    // Duplicate guard: check email, then phone+name
     if(email)
     {
       const patientExists = await Patient.findOne({doc_id:req.user,email})
       if(patientExists)
       {
-        return res.status(200).json({ response: false, msg: "Patient already exists in your patients list"});
+        return res.status(200).json({ response: false, msg: "Patient already exists in your patients list", patient: patientExists });
+      }
+    }
+    else if(number)
+    {
+      const phoneDigits = number.toString().replace(/\D/g, '');
+      if(phoneDigits.length >= 7)
+      {
+        const patientExists = await Patient.findOne({doc_id:req.user, fullName: fullName, phoneNumber: number})
+        if(patientExists)
+        {
+          return res.status(200).json({ response: false, msg: "Patient already exists in your patients list", patient: patientExists });
+        }
       }
     }
 
@@ -342,7 +411,6 @@ const addInstantPatient = asyncHandler(async(req,res)=>{
       smsChecked = false
     }
     
-    const fullName = name + ' ' + lastName
 
     // Create new patient
     const newPatient = new Patient({
@@ -394,7 +462,7 @@ To opt out, reply STOP.`;
   }
 
 
-    return res.status(200).json({ response: true, msg: "Patient registered" });
+    return res.status(200).json({ response: true, msg: "Patient registered", patient });
 } catch (error) {
     console.error(error);
     return res.status(500).json({ response: false, msg: "Server error" });
@@ -436,7 +504,26 @@ const updateVoiceIntake = asyncHandler(async(req,res)=>{
     gastrointestinalHistory,
     musculoskeletalHistory,
     neurologicalHistory,
-    summary
+    summary,
+    painScale,
+    painLocation,
+    painQuality,
+    autoAccident,
+    workersComp,
+    previousChiropractic,
+    functionalLimitations,
+    referralSource,
+    secondaryInsurance,
+    emergencyContactName,
+    emergencyContactRelationship,
+    height,
+    weight,
+    smoking,
+    alcohol,
+    drugUse,
+    pictureIdOcr,
+    insuranceCardOcr,
+    pregnancyStatus
 } = req.body;
 
 
@@ -489,7 +576,26 @@ const updateVoiceIntake = asyncHandler(async(req,res)=>{
         
         musculoskeletalHistory,
         neurologicalHistory,
-        summary
+        summary,
+        painScale,
+        painLocation,
+        painQuality,
+        autoAccident,
+        workersComp,
+        previousChiropractic,
+        functionalLimitations,
+        referralSource,
+        secondaryInsurance,
+        emergencyContactName,
+        emergencyContactRelationship,
+        height,
+        weight,
+        smoking,
+        alcohol,
+        drugUse,
+        pictureIdOcr,
+        insuranceCardOcr,
+        pregnancyStatus
     });
 
 
@@ -528,22 +634,26 @@ const searchPatientsByType = asyncHandler(async (req, res) => {
     const { type, query } = req.body;
 
     // Validate type input
-    if (type !== 'name' && type !== 'email') {
-      return res.status(400).json({ response: false, msg: "Invalid search type" });
+    if (!['name', 'email', 'dob', 'phone'].includes(type)) {
+      return res.status(400).json({ response: false, msg: "Invalid search type. Use: name, email, dob, or phone" });
     }
 
-    // Build the search filter based on the type (name or email)
+    // Build the search filter based on the type
     let filter = {};
     if (type === 'name') {
-      filter = { fullName: { $regex: `^${query}`, $options: 'i' } }; // Case-insensitive regex search
+      filter = { fullName: { $regex: query, $options: 'i' } };
     } else if (type === 'email') {
-      filter = { email: { $regex: `^${query}`, $options: 'i' } }; // Case-insensitive regex search for email
+      filter = { email: { $regex: query, $options: 'i' } };
+    } else if (type === 'dob') {
+      filter = { dateOfBirth: { $regex: query, $options: 'i' } };
+    } else if (type === 'phone') {
+      filter = { phoneNumber: { $regex: query, $options: 'i' } };
     }
 
     // Search patients in the database
     const patients = await Patient.find({
       doc_id: req.user,
-      ...filter  // Spread the filter object directly here
+      ...filter
     });
 
     if (!patients.length) {
@@ -562,16 +672,20 @@ const searchPatientsByTypeAndLimit5 = asyncHandler(async (req, res) => {
     const { type, query } = req.body;
 
     // Validate type input
-    if (type !== 'name' && type !== 'email') {
-      return res.status(400).json({ response: false, msg: "Invalid search type" });
+    if (!['name', 'email', 'dob', 'phone'].includes(type)) {
+      return res.status(400).json({ response: false, msg: "Invalid search type. Use: name, email, dob, or phone" });
     }
 
-    // Build the search filter based on the type (name or email)
+    // Build the search filter based on the type
     let filter = {};
     if (type === 'name') {
-      filter = { fullName: { $regex: `^${query}`, $options: 'i' } }; // Case-insensitive regex search
+      filter = { fullName: { $regex: query, $options: 'i' } };
     } else if (type === 'email') {
-      filter = { email: { $regex: `^${query}`, $options: 'i' } }; // Case-insensitive regex search for email
+      filter = { email: { $regex: query, $options: 'i' } };
+    } else if (type === 'dob') {
+      filter = { dateOfBirth: { $regex: query, $options: 'i' } };
+    } else if (type === 'phone') {
+      filter = { phoneNumber: { $regex: query, $options: 'i' } };
     }
 
     // Search patients in the database
@@ -671,6 +785,40 @@ const searchPatientsByTypeAndLimit5 = asyncHandler(async (req, res) => {
 
 
 
+// Global search across all patient fields (name, email, phone, DOB, address, etc.)
+const searchPatientsGlobal = asyncHandler(async (req, res) => {
+  try {
+    const { query } = req.body;
+
+    if (!query || query.trim() === '') {
+      return res.status(400).json({ response: false, msg: "Search query is required" });
+    }
+
+    const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = { $regex: escapedQuery, $options: 'i' };
+
+    const patients = await Patient.find({
+      doc_id: req.user,
+      $or: [
+        { fullName: regex },
+        { email: regex },
+        { phoneNumber: regex },
+        { dateOfBirth: regex },
+        { address: regex },
+        { insuranceProvider: regex },
+        { insurancePolicyNumber: regex },
+        { medications: regex },
+        { allergies: regex },
+      ]
+    }).limit(20);
+
+    return res.json({ response: true, patients });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ response: false, msg: "Server error" });
+  }
+});
+
 module.exports = {
     createPatient,
     getPatients,
@@ -684,6 +832,7 @@ module.exports = {
     searchPatientsByAlphabet,
     searchPatientsByType,
     searchPatientsByTypeAndLimit5,
+    searchPatientsGlobal,
     exportAllPatients,
     importPatients
 };

@@ -236,8 +236,8 @@ const agingBioHack = asyncHandler(async(req,res)=>{
           host: "smtp.gmail.com",
           service: "Gmail",
           auth: {
-              user: "sportsrecoverypro@gmail.com",
-              pass: "rhea hhfs nlci ldss",
+              user: process.env.AGING_BIOHACK_EMAIL || "sportsrecoverypro@gmail.com",
+              pass: process.env.AGING_BIOHACK_PASS || "rhea hhfs nlci ldss",
           },
           secure: true,
       });
@@ -266,8 +266,8 @@ const sendInpectionDocumentToDoctor = async (buffer) => {
           host: "smtp.gmail.com",
           service: "Gmail",
           auth: {
-              user: "alihamzanasir0306@gmail.com",
-              pass: "rvxk igwu dmxd ecwj",
+              user: process.env.INSPECTION_EMAIL || "alihamzanasir0306@gmail.com",
+              pass: process.env.INSPECTION_PASS || "rvxk igwu dmxd ecwj",
           },
           secure: true,
       });

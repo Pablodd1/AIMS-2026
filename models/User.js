@@ -2,6 +2,11 @@ const mongoose = require('mongoose');
 const { Schema } = mongoose;
 const { getCurrentDateGlobally , getCurrentTimeGlobally } = require('../Helper/getLocalDates')
 
+// Validation for notification phones array
+function arrayLimit(val) {
+  return val.length <= 3;
+}
+
 const UserSchema = new Schema({
     first_name:{
         type:String,
@@ -76,6 +81,15 @@ const UserSchema = new Schema({
     date:{type:String},
     time:{type:String},
     assistants:[],
+    notificationPhones:{
+        type:[String],
+        default:[],
+        validate: [arrayLimit, '{PATH} exceeds the limit of 3']
+    },
+    sendDailySchedule:{
+        type:Boolean,
+        default:true
+    },
     doctors:[]
 
 

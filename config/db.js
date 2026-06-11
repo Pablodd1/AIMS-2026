@@ -2,18 +2,13 @@ const mongoose = require("mongoose");
 
 const connectDB = async () => {
   try {
-    // const azure ="mongodb://dbaims:JW71jlK79I2XuhSAN91eUfMqLj28MeKHrWtZ8LOs8noHDtViK8gJ7TGht6Ypyj9U2cn5bRsiNdMVACDbKhMulg==@dbaims.mongo.cosmos.azure.com:10255/?ssl=true&replicaSet=globaldb&retrywrites=false&maxIdleTimeMS=120000&appName=@dbaims@";
     const local ="mongodb+srv://111:111@e-store.uf5qztz.mongodb.net/AIMS";
-    await mongoose.connect(local, {
-      // useNewUrlParser: true,
-      // useUnifiedTopology: true,
-    });
+    await mongoose.connect(local);
     console.log(`MongoDB Connected`);
   } catch (error) {
     console.error(`Error: ${error.message}`);
-    process.exit(1); // Exit with a non-zero status code to indicate an error
+    process.exit(1);
   }
 };
 
 module.exports = connectDB;
-

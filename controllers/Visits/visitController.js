@@ -51,6 +51,9 @@ const createVisit = asyncHandler(async (req, res) => {
       });
 
       await visit.save();
+      
+      // Increment patient visit counter
+      await Patient.updateOne({ _id: pId }, { $inc: { visitCount: 1 } });
 
       res.json({ response: true, msg: "Visited registered", id: visit._id });
     } else if (mode == "edit") {
@@ -163,8 +166,56 @@ const getVists = asyncHandler(async (req, res) => {
   }
 });
 
+// NEW: Get all visits for a patient (no pagination) — for Visit History modal
+const getAllVisits = asyncHandler(async (req, res) => {
+  try {
+    const { id } = req.query;
+
+    if (!id) {
+      return res.status(400).json({
+        response: false,
+        msg: "Missing required parameter: id",
+      });
+    }
+
+    // Fetch ALL visits, sorted oldest to newest (chronological)
+    const visits = await Visit.find({ pId: id })
+      .sort({ createdAt: 1 })
+      .select('_id date time createdAt chiefComplaint soapNotesSummary');
+
+    const totalCount = visits.length;
+
+    // Also fetch patient name for display
+    const patient = await Patient.findOne({ _id: id }).select('fullName phoneNumber');
+
+    return res.status(200).json({
+      response: true,
+      patient,
+      totalVisits: totalCount,
+      visits: visits.map((v, idx) => ({
+        visitNumber: idx + 1,
+        _id: v._id,
+        date: v.date,
+        time: v.time,
+        createdAt: v.createdAt,
+        chiefComplaint: v.chiefComplaint,
+        summary: v.soapNotesSummary ? v.soapNotesSummary.slice(0, 100) + (v.soapNotesSummary.length > 100 ? '...' : '') : null,
+      })),
+    });
+  } catch (e) {
+    return res.status(500).json({
+      response: false,
+      msg: "An error occurred while fetching visit history.",
+    });
+  }
+});
+
 const delVisit = asyncHandler(async (req, res) => {
   try {
+    const visit = await Visit.findOne({ _id: req.query.id });
+    if (visit) {
+      await Patient.updateOne({ _id: visit.pId }, { $inc: { visitCount: -1 } });
+    }
     await Visit.deleteOne({ _id: req.query.id });
     res.status(200).json({ response: true });
   } catch (e) {
@@ -226,6 +277,9 @@ const newReportMethodStoredIntoDb = asyncHandler(async(req,res)=>{
 
       await visit.save();
 
+      // Increment patient visit counter
+      await Patient.updateOne({ _id: pId }, { $inc: { visitCount: 1 } });
+
      return res.json({ response: true, msg: "Visited registered", id: visit._id });
 
     } else if (mode == "edit") {
@@ -251,6 +305,7 @@ module.exports = {
   createVisit,
   viewReport,
   getVists,
+  getAllVisits,
   editReport,
   delVisit,
   updateVisitDate,

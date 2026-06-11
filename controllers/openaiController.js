@@ -621,7 +621,7 @@ const speechToTextFormWithOcr =  asyncHandler(async(req,res)=>{
         const imageFile = req.files['file2'][0]
 
         if (!audioFile || !imageFile) {
-            return {success:false,msg:"'No file uploaded.'"}
+            return res.status(400).json({success:false,msg:"'No file uploaded.'"})
         }
 
         if(uploadMethod == "both")
@@ -769,8 +769,11 @@ const patientDataToSummary =  asyncHandler(async(req,res)=>{
     try
     {
         
-        const {summary} = await extractSummary(req.body)
-        res.json({success:true,summary});
+        const result = await extractSummary(req.body)
+        if (!result.success) {
+            return res.json({success:false, msg:"Failed to generate summary"});
+        }
+        res.json({success:true, summary: result.summary});
         
     }catch(e)
     {
@@ -804,11 +807,480 @@ function parseData(input) {
 
 
 
+// Extract patient data from insurance card / ID image — replaces dead Flask/Django endpoint
+const extractPatientDataFromImage = asyncHandler(async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    const mimeType = req.file.mimetype;
+    const supportedMimeTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+    if (!supportedMimeTypes.includes(mimeType)) {
+      fs.unlinkSync(req.file.path);
+      return res.status(400).json({ error: "Unsupported image format. Use PNG, JPEG, GIF, or WebP." });
+    }
+
+    const imageBuffer = fs.readFileSync(req.file.path);
+    const base64Image = imageBuffer.toString('base64');
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0,
+      messages: [
+        {
+          role: "system",
+          content: `You are a medical OCR assistant. Extract ALL visible patient information from this insurance card or ID image thoroughly.
+
+Return ONLY valid JSON with these exact field names (use null for missing):
+{
+  "FullName": "First Last",
+  "fullName": "First Last",
+  "birthDate": "YYYY-MM-DD",
+  "gender": "Male/Female/Other",
+  "address": "patient street address",
+  "primaryInsuranceAddress": "insurance company address",
+  "phoneNumber": "patient phone",
+  "email": "email",
+  "provider": "insurance company name",
+  "insuranceProvider": "same as provider",
+  "policyName": "policy/subscriber name",
+  "policyHolderName": "same as policyName",
+  "memberid": "member ID number",
+  "memberId": "same as memberid",
+  "memberID": "same as memberid",
+  "groupNB": "group number",
+  "groupNumber": "same as groupNB",
+  "policyNumber": "policy or contract number"
+}`
+        },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "Extract all visible patient and insurance information from this image." },
+            { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64Image}` } }
+          ]
+        }
+      ]
+    });
+
+    fs.unlinkSync(req.file.path);
+
+    const content = response.choices[0].message.content;
+    const jsonMatch = content.replace(/```json/g, '').replace(/```/g, '').trim();
+    try {
+      const parsed = JSON.parse(jsonMatch);
+      return res.json(parsed);
+    } catch {
+      return res.json({ error: "Failed to parse extracted data", raw: content });
+    }
+  } catch (error) {
+    console.error("Image extraction error:", error);
+    if (req.file && req.file.path && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    return res.status(500).json({ error: error.message || "Error processing image" });
+  }
+});
+
+// Audio download for medical notes — TTS
+const downloadNoteAsAudio = asyncHandler(async (req, res) => {
+  try {
+    const { text, voice = "alloy" } = req.body;
+    if (!text || text.trim().length === 0) {
+      return res.status(400).json({ success: false, msg: "No text provided for audio generation" });
+    }
+
+    const allowedVoices = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"];
+    const selectedVoice = allowedVoices.includes(voice) ? voice : "alloy";
+
+    const mp3 = await openai.audio.speech.create({
+      model: "tts-1",
+      voice: selectedVoice,
+      input: text,
+    });
+
+    const buffer = Buffer.from(await mp3.arrayBuffer());
+    const filename = `aims-note-${Date.now()}.mp3`;
+
+    res.setHeader("Content-Type", "audio/mpeg");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.setHeader("Content-Length", buffer.length);
+    return res.send(buffer);
+  } catch (error) {
+    console.error("TTS audio download error:", error);
+    return res.status(500).json({ success: false, msg: error.message || "Error generating audio" });
+  }
+});
+
+// Red-flag validation for patient intake / symptoms
+const validateRedFlags = asyncHandler(async (req, res) => {
+  try {
+    const { text, answers } = req.body;
+    const inputText = text || JSON.stringify(answers);
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0,
+      messages: [
+        {
+          role: "system",
+          content: `You are a medical triage assistant for a chiropractic clinic. Analyze patient intake data or symptom descriptions and identify any RED FLAGS — signs or symptoms that require immediate medical attention or contraindicate chiropractic treatment.\n\nReturn ONLY valid JSON in this exact format:\n{\n  "redFlags": [\n    {\n      "severity": "critical|warning|caution",\n      "category": "cardiovascular|neurological|infectious|trauma|psychiatric|other",\n      "description": "What was found",\n      "recommendation": "What action to take"\n    }\n  ],\n  "safeToTreat": true|false,\n  "summary": "Brief assessment summary"\n}\n\nIf no red flags are found, return an empty redFlags array and safeToTreat: true.`
+        },
+        {
+          role: "user",
+          content: inputText
+        }
+      ]
+    });
+
+    const content = response.choices[0].message.content;
+    const cleaned = content.replace(/```json/g, '').replace(/```/g, '').trim();
+    try {
+      const parsed = JSON.parse(cleaned);
+      return res.json({ success: true, data: parsed });
+    } catch {
+      return res.json({ success: false, msg: "Failed to parse red-flag data", raw: content });
+    }
+  } catch (error) {
+    console.error("Red-flag validation error:", error);
+    return res.status(500).json({ success: false, msg: error.message || "Error validating red flags" });
+  }
+});
+
+// Auto treatment suggestions based on SOAP / medical notes
+const suggestTreatment = asyncHandler(async (req, res) => {
+  try {
+    const { notes, diagnosis, symptoms } = req.body;
+    const input = notes || `Diagnosis: ${diagnosis || 'N/A'}\nSymptoms: ${symptoms || 'N/A'}`;
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0.2,
+      messages: [
+        {
+          role: "system",
+          content: `You are a chiropractic treatment planning assistant. Based on the provided patient notes, diagnosis, and symptoms, suggest appropriate chiropractic treatment modalities.\n\nReturn ONLY valid JSON in this exact format:\n{\n  "treatments": [\n    {\n      "modality": "Name of treatment (e.g. Spinal Manipulation, Flexion-Distraction, EMS, Therapeutic Exercise)",\n      "targetArea": "Body region",\n      "rationale": "Why this treatment is appropriate",\n      "frequency": "Recommended frequency",\n      "contraindications": ["Any contraindications to check"]\n    }\n  ],\n  "homeCare": [\n    {\n      "instruction": "What the patient should do at home",\n      "frequency": "How often"\n    }\n  ],\n  "followUp": "Recommended follow-up plan",\n  "warnings": ["Any warnings or precautions"]\n}\n\nFocus on evidence-based chiropractic care. Do not suggest treatments outside chiropractic scope.`
+        },
+        {
+          role: "user",
+          content: input
+        }
+      ]
+    });
+
+    const content = response.choices[0].message.content;
+    const cleaned = content.replace(/```json/g, '').replace(/```/g, '').trim();
+    try {
+      const parsed = JSON.parse(cleaned);
+      return res.json({ success: true, data: parsed });
+    } catch {
+      return res.json({ success: false, msg: "Failed to parse treatment data", raw: content });
+    }
+  } catch (error) {
+    console.error("Auto treatment error:", error);
+    return res.status(500).json({ success: false, msg: error.message || "Error generating treatment suggestions" });
+  }
+});
+
+// DX / CPT code extraction and suggestion
+const extractDxCptCodes = asyncHandler(async (req, res) => {
+  try {
+    const { notes, diagnosis, procedures } = req.body;
+    const input = notes || `Diagnosis: ${diagnosis || 'N/A'}\nProcedures performed: ${procedures || 'N/A'}`;
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0,
+      messages: [
+        {
+          role: "system",
+          content: `You are a medical coding assistant specializing in chiropractic billing. Extract or suggest appropriate ICD-10 (diagnosis) and CPT (procedure) codes from the provided clinical notes.\n\nReturn ONLY valid JSON in this exact format:\n{\n  "dxCodes": [\n    {\n      "code": "ICD-10 code (e.g. M54.5)",\n      "description": "Full description",\n      "primary": true|false\n    }\n  ],\n  "cptCodes": [\n    {\n      "code": "CPT code (e.g. 98940)",\n      "description": "Full description",\n      "units": 1,\n      "modifier": "Modifier if applicable"\n    }\n  ],\n  "complianceNotes": [\n    "Any billing compliance notes or documentation requirements"\n  ],\n  "confidence": "high|medium|low"\n}\n\nCommon chiropractic CPT codes to consider: 98940 (1-2 regions), 98941 (3-4 regions), 98942 (5 regions), 98943 (extraspinal), 97110 (therapeutic exercise), 97014 (EMS), 97140 (manual therapy), 99213-99215 (E/M).\nCommon chiropractic ICD-10 codes: M99.01-M99.05 (somatic dysfunction), M54.5 (low back pain), M54.2 (cervicalgia), M25.50 (joint pain), M79.1 (myalgia).`
+        },
+        {
+          role: "user",
+          content: input
+        }
+      ]
+    });
+
+    const content = response.choices[0].message.content;
+    const cleaned = content.replace(/```json/g, '').replace(/```/g, '').trim();
+    try {
+      const parsed = JSON.parse(cleaned);
+      return res.json({ success: true, data: parsed });
+    } catch {
+      return res.json({ success: false, msg: "Failed to parse coding data", raw: content });
+    }
+  } catch (error) {
+    console.error("DX/CPT extraction error:", error);
+    return res.status(500).json({ success: false, msg: error.message || "Error extracting codes" });
+  }
+});
+
+// ===== Smart AI Assistant — generates note with previous visit context =====
+const Visit = require('../models/Visit');
+const Patient = require('../models/Patients');
+
+const generateNoteWithHistory = asyncHandler(async (req, res) => {
+  try {
+    const { patientId, transcription, type } = req.body;
+    if (!patientId || !transcription) {
+      return res.status(400).json({ response: false, msg: 'Patient ID and transcription required' });
+    }
+
+    // Fetch patient info
+    const patient = await Patient.findById(patientId).select('fullName dateOfBirth gender visitCount');
+
+    // Fetch last 3 visits for context
+    const previousVisits = await Visit.find({ pId: patientId })
+      .sort({ createdAt: -1 })
+      .limit(3)
+      .select('soapNotesSummary subjective objective Assessment Plan dxCodes cptCodes date');
+
+    // Build history context
+    let historyContext = '';
+    if (previousVisits && previousVisits.length > 0) {
+      historyContext = 'PREVIOUS VISIT HISTORY:\n';
+      previousVisits.forEach((v, i) => {
+        historyContext += `\n--- Visit ${i + 1} (${v.date || 'unknown date'}) ---\n`;
+        if (v.soapNotesSummary) historyContext += `Summary: ${v.soapNotesSummary}\n`;
+        if (v.subjective) historyContext += `Subjective: ${v.subjective}\n`;
+        if (v.objective) historyContext += `Objective: ${v.objective}\n`;
+        if (v.Assessment) historyContext += `Assessment: ${v.Assessment}\n`;
+        if (v.Plan) historyContext += `Plan: ${v.Plan}\n`;
+        if (v.dxCodes?.length) historyContext += `DX Codes: ${v.dxCodes.map(d => d.code || d).join(', ')}\n`;
+      });
+    } else {
+      historyContext = 'No previous visits found. This appears to be a new patient.';
+    }
+
+    const patientInfo = patient
+      ? `Patient: ${patient.fullName}, DOB: ${patient.dateOfBirth || 'N/A'}, Total visits: ${patient.visitCount || 0}`
+      : '';
+
+    // Generate enhanced note with context
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      temperature: 0,
+      messages: [
+        {
+          role: 'system',
+          content: `You are a medical scribe AI. Generate a structured SOAP note from the current visit transcription.
+          
+${patientInfo}
+
+${historyContext}
+
+INSTRUCTIONS:
+1. Use the previous visit history to understand context, track changes, and avoid repeating information
+2. Highlight any changes or lack of progress since the last visit
+3. Extract ICD-10 codes and CPT codes where applicable
+4. Return ONLY valid JSON with this structure:
+{
+  "subjective": "...",
+  "objective": "...",
+  "assessment": "...",
+  "plan": "...",
+  "soapNotesSummary": "2-3 sentence summary",
+  "dxCodes": [{"code": "M54.5", "description": "Low back pain"}],
+  "cptCodes": [{"code": "99213", "description": "Office visit"}],
+  "changesSinceLastVisit": "What changed or didn't change since last visit"
+}`
+        },
+        {
+          role: 'user',
+          content: transcription
+        }
+      ]
+    });
+
+    const content = response.choices[0].message.content
+      .replace(/```json/g, '').replace(/```/g, '').trim();
+
+    let parsed;
+    try {
+      parsed = JSON.parse(content);
+    } catch {
+      parsed = {
+        soapNotesSummary: content.substring(0, 500),
+        subjective: '',
+        objective: '',
+        assessment: '',
+        plan: '',
+      };
+    }
+
+    res.json({
+      response: true,
+      note: parsed,
+      historyUsed: previousVisits?.length || 0,
+    });
+  } catch (e) {
+    console.error('Smart assistant error:', e);
+    res.status(500).json({ response: false, msg: e.message });
+  }
+});
+
+// ===== 3-Agent Quality Check =====
+const runQualityCheck = asyncHandler(async (req, res) => {
+  try {
+    const { visitId, subjective, objective, assessment, plan, dxCodes, cptCodes } = req.body;
+
+    if (!subjective && !assessment && !plan) {
+      return res.status(400).json({ response: false, msg: 'Note content required for quality check' });
+    }
+
+    const noteText = `
+SUBJECTIVE: ${subjective || 'N/A'}
+OBJECTIVE: ${objective || 'N/A'}
+ASSESSMENT: ${assessment || 'N/A'}
+PLAN: ${plan || 'N/A'}
+DX CODES: ${dxCodes ? (typeof dxCodes === 'string' ? dxCodes : dxCodes.map(d => d.code || d).join(', ')) : 'N/A'}
+CPT CODES: ${cptCodes ? (typeof cptCodes === 'string' ? cptCodes : cptCodes.map(d => d.code || d).join(', ')) : 'N/A'}
+`;
+
+    // Run 3 agents in parallel
+    const [agent1, agent2, agent3] = await Promise.all([
+      // Agent 1: Medical Accuracy
+      openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        temperature: 0,
+        messages: [
+          { role: 'system', content: 'You are a medical accuracy reviewer. Check for contradictions, missing critical information, or clinically implausible statements. Return ONLY JSON: {"score": 0-100, "issues": [{"severity": "high|medium|low", "description": "..."}], "summary": "1 sentence"}' },
+          { role: 'user', content: `Review this SOAP note for medical accuracy:\n${noteText}` }
+        ]
+      }),
+      // Agent 2: Completeness
+      openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        temperature: 0,
+        messages: [
+          { role: 'system', content: 'You are a medical documentation completeness reviewer. Check for missing required elements: chief complaint, HPI, exam findings, assessment, plan. Return ONLY JSON: {"score": 0-100, "missing": [{"field": "...", "importance": "high|medium"}], "summary": "1 sentence"}' },
+          { role: 'user', content: `Check this SOAP note for completeness:\n${noteText}` }
+        ]
+      }),
+      // Agent 3: Coding Accuracy
+      openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        temperature: 0,
+        messages: [
+          { role: 'system', content: 'You are a medical coding reviewer. Check if ICD-10 codes match the diagnosis and if CPT codes match the visit complexity. Return ONLY JSON: {"score": 0-100, "codeIssues": [{"code": "...", "issue": "..."}], "summary": "1 sentence"}' },
+          { role: 'user', content: `Review coding for this SOAP note:\n${noteText}` }
+        ]
+      }),
+    ]);
+
+    const parseJson = (content) => {
+      try {
+        return JSON.parse(content.replace(/```json/g, '').replace(/```/g, '').trim());
+      } catch {
+        return { score: 0, issues: [], summary: 'Parse error' };
+      }
+    };
+
+    const result1 = parseJson(agent1.choices[0].message.content);
+    const result2 = parseJson(agent2.choices[0].message.content);
+    const result3 = parseJson(agent3.choices[0].message.content);
+
+    const allIssues = [
+      ...(result1.issues || []).map(i => ({ ...i, agent: 'accuracy' })),
+      ...(result2.missing || []).map(m => ({ severity: m.importance, description: `Missing: ${m.field}`, agent: 'completeness' })),
+      ...(result3.codeIssues || []).map(c => ({ severity: 'medium', description: `${c.code}: ${c.issue}`, agent: 'coding' })),
+    ];
+
+    const overallScore = Math.round((result1.score + result2.score + result3.score) / 3);
+
+    res.json({
+      response: true,
+      overallScore,
+      agents: {
+        accuracy: result1,
+        completeness: result2,
+        coding: result3,
+      },
+      issues: allIssues,
+      pass: overallScore >= 70,
+    });
+  } catch (e) {
+    console.error('Quality check error:', e);
+    res.status(500).json({ response: false, msg: e.message });
+  }
+});
+
+// ===== Translate Spanish/Creole to English =====
+const translateToEnglish = asyncHandler(async (req, res) => {
+  try {
+    const { text, sourceLang } = req.body;
+    if (!text) return res.status(400).json({ response: false, msg: 'Text required' });
+
+    // If already English, return as-is
+    if (sourceLang === 'en') return res.json({ response: true, translated: text, detected: 'en' });
+
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      temperature: 0,
+      messages: [
+        { role: 'system', content: 'Translate the following text to English. Preserve medical terminology. Return ONLY the translated text, no explanations.' },
+        { role: 'user', content: text }
+      ]
+    });
+
+    const translated = response.choices[0].message.content.trim();
+    res.json({ response: true, translated, detected: sourceLang || 'es' });
+  } catch (e) {
+    console.error('Translation error:', e);
+    res.status(500).json({ response: false, msg: e.message });
+  }
+});
+
+// ===== AI Command Interpreter =====
+const interpretCommand = asyncHandler(async (req, res) => {
+  try {
+    const { text, availableButtons } = req.body;
+    if (!text) return res.status(400).json({ response: false, msg: 'Text required' });
+
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      temperature: 0,
+      messages: [
+        {
+          role: 'system',
+          content: `You interpret voice commands for a medical EHR app. The user said: "${text}".
+Available buttons/links on current page: ${(availableButtons || []).join(', ')}
+
+Return ONLY JSON:
+{
+  "action": "navigate|click|search|create|translate|unknown",
+  "target": "exact button text to click, or page name, or patient name",
+  "page": "route path if navigation",
+  "message": "confirmation message"
+}`
+        },
+      ]
+    });
+
+    const content = response.choices[0].message.content.replace(/```json/g, '').replace(/```/g, '').trim();
+    res.json({ response: true, interpretation: JSON.parse(content) });
+  } catch (e) {
+    res.status(500).json({ response: false, msg: e.message });
+  }
+});
+
 module.exports = {
     patientDataToSummary,
     speechToTextForm,
     speechToTextFormWithOcr,
-    extractSummary
+    extractSummary,
+    extractPatientDataFromImage,
+    downloadNoteAsAudio,
+    validateRedFlags,
+    suggestTreatment,
+    extractDxCptCodes,
+    generateNoteWithHistory,
+    runQualityCheck,
+    translateToEnglish,
+    interpretCommand,
 };
 
 

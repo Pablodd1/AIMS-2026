@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily Schedule SMS Settings — AIMS</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f3f4f6; margin: 0; padding: 40px 20px; display: flex; justify-content: center; }
+  .card { background: #fff; border-radius: 16px; padding: 32px; max-width: 500px; width: 100%; box-shadow: 0 4px 24px rgba(0,0,0,0.1); }
+  h1 { font-size: 22px; margin: 0 0 6px; color: #111; }
+  .subtitle { font-size: 14px; color: #666; margin-bottom: 24px; }
+  .form-group { margin-bottom: 18px; }
+  label { display: block; font-size: 14px; font-weight: 600; color: #333; margin-bottom: 6px; }
+  input[type="tel"], input[type="password"] { width: 100%; padding: 10px 14px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 15px; box-sizing: border-box; }
+  input:focus { outline: none; border-color: #ff6b00; box-shadow: 0 0 0 3px rgba(255,107,0,0.1); }
+  .phone-entry { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .phone-entry input { flex: 1; }
+  .phone-entry .badge { font-size: 12px; background: #e5e7eb; padding: 4px 10px; border-radius: 12px; color: #555; }
+  .toggle-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; }
+  .toggle { position: relative; width: 44px; height: 24px; cursor: pointer; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .slider { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: #d1d5db; border-radius: 24px; transition: .3s; }
+  .slider:before { content: ''; position: absolute; height: 18px; width: 18px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: .3s; }
+  .toggle input:checked + .slider { background: #ff6b00; }
+  .toggle input:checked + .slider:before { transform: translateX(20px); }
+  .btn { width: 100%; padding: 12px; background: #ff6b00; color: #fff; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 8px; }
+  .btn:hover { background: #e85e00; }
+  .btn-secondary { background: #6b7280; }
+  .btn-secondary:hover { background: #4b5563; }
+  .status { padding: 12px; border-radius: 8px; margin-top: 12px; font-size: 14px; display: none; }
+  .status.success { display: block; background: #d1fae5; color: #065f46; }
+  .status.error { display: block; background: #fee2e2; color: #991b1b; }
+  .section-title { font-size: 16px; font-weight: 700; color: #111; margin: 20px 0 10px; padding-bottom: 6px; border-bottom: 1px solid #e5e7eb; }
+  .info { background: #fef3c7; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #92400e; margin: 12px 0; }
+  .test-section { margin-top: 20px; padding-top: 16px; border-top: 1px solid #e5e7eb; }
+  .phone-preview { font-size: 13px; color: #888; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>📅 Daily Schedule SMS</h1>
+  <div class="subtitle">Auto-send today's & tomorrow's appointments via SMS to your team every morning</div>
+
+  <div class="section-title">Login to AIMS</div>
+  <div class="form-group">
+    <label>Email</label>
+    <input type="email" id="email" value="drjeffreydraesel@gmail.com" placeholder="Your AIMS email">
+  </div>
+  <div class="form-group">
+    <label>Password</label>
+    <input type="password" id="password" value="AimsDoc2026!" placeholder="Your AIMS password">
+  </div>
+  <button class="btn btn-secondary" onclick="login()">🔑 Login & Load Settings</button>
+
+  <div id="settingsArea" style="display:none">
+    <div class="section-title" style="margin-top:24px">📱 Notification Phone Numbers</div>
+    <div class="info">Enter up to 3 phone numbers that will receive the daily schedule every morning at 6 AM.</div>
+    
+    <div class="phone-entry"><span class="badge">1</span><input type="tel" id="phone1" placeholder="+1 (305) 555-0101" oninput="updatePreview()"></div>
+    <div class="phone-entry"><span class="badge">2</span><input type="tel" id="phone2" placeholder="+1 (305) 555-0102" oninput="updatePreview()"></div>
+    <div class="phone-entry"><span class="badge">3</span><input type="tel" id="phone3" placeholder="+1 (305) 555-0103" oninput="updatePreview()"></div>
+    <div class="phone-preview" id="phonePreview">No numbers configured</div>
+
+    <div class="section-title">Schedule Delivery</div>
+    <div class="toggle-row">
+      <span style="font-size:14px;font-weight:500">Auto-send daily schedule at 6 AM</span>
+      <label class="toggle"><input type="checkbox" id="autoSend" checked><span class="slider"></span></label>
+    </div>
+
+    <button class="btn" onclick="saveSettings()">💾 Save Settings</button>
+    <div class="test-section">
+      <div style="font-size:14px;font-weight:600;margin-bottom:8px">Test It</div>
+      <button class="btn" onclick="sendNow()" style="background:#2563eb">📤 Send Schedule Now</button>
+    </div>
+  </div>
+
+  <div class="status" id="status"></div>
+</div>
+
+<script>
+let TOKEN = '';
+const API = 'https://hamzaalitesting.site/aims-service1';
+
+function showStatus(msg, type) {
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = 'status ' + type;
+}
+
+async function login() {
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  showStatus('Logging in...', 'success');
+
+  try {
+    const r = await fetch(API + '/api/v1/auth/jwt/create/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, selectedRole: 'admin', adminId: '' })
+    });
+    const d = await r.json();
+    if (d.response) {
+      TOKEN = d.token.access;
+      showStatus('✅ Logged in!', 'success');
+      document.getElementById('settingsArea').style.display = 'block';
+      loadSettings();
+    } else {
+      showStatus('❌ Login failed: ' + (d.msg || 'Check credentials'), 'error');
+    }
+  } catch(e) {
+    showStatus('❌ Network error: ' + e.message, 'error');
+  }
+}
+
+async function loadSettings() {
+  try {
+    const r = await fetch(API + '/api/v1/auth/users/me/', {
+      headers: { 'Authorization': 'Bearer ' + TOKEN }
+    });
+    const d = await r.json();
+    if (d.response && d.user) {
+      const phones = d.user.notificationPhones || [];
+      const enabled = d.user.sendDailySchedule !== false;
+      document.getElementById('phone1').value = phones[0] || '';
+      document.getElementById('phone2').value = phones[1] || '';
+      document.getElementById('phone3').value = phones[2] || '';
+      document.getElementById('autoSend').checked = enabled;
+      updatePreview();
+      showStatus('✅ Settings loaded', 'success');
+    }
+  } catch(e) {
+    showStatus('❌ Failed to load: ' + e.message, 'error');
+  }
+}
+
+function getPhones() {
+  const phones = [
+    document.getElementById('phone1').value.trim(),
+    document.getElementById('phone2').value.trim(),
+    document.getElementById('phone3').value.trim()
+  ].filter(p => p);
+  return phones;
+}
+
+function updatePreview() {
+  const phones = getPhones();
+  document.getElementById('phonePreview').textContent = phones.length + ' number(s) configured' + (phones.length ? ': ' + phones.join(', ') : '');
+}
+
+async function saveSettings() {
+  const phones = getPhones();
+  const enabled = document.getElementById('autoSend').checked;
+  showStatus('Saving...', 'success');
+
+  try {
+    const r = await fetch(API + '/api/post/updateNotificationSettings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
+      body: JSON.stringify({ phones, enabled })
+    });
+    const d = await r.json();
+    if (d.response) {
+      showStatus('✅ Saved! Daily schedule will send to ' + phones.length + ' number(s) at 6 AM.', 'success');
+    } else {
+      showStatus('❌ Save failed: ' + (d.msg || 'Error'), 'error');
+    }
+  } catch(e) {
+    showStatus('❌ Network error: ' + e.message, 'error');
+  }
+}
+
+async function sendNow() {
+  showStatus('Sending schedule to all configured numbers...', 'success');
+  try {
+    const r = await fetch(API + '/api/post/sendDailySchedule', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
+      body: JSON.stringify({ timezone: 'America/New_York' })
+    });
+    const d = await r.json();
+    if (d.response) {
+      const results = d.results || [];
+      const sent = results.filter(r => r.sent).length;
+      const total = results.length;
+      showStatus('✅ Schedule sent! ' + sent + '/' + total + ' delivered.' + (d.msg ? ' ' + d.msg : ''), 'success');
+    } else {
+      showStatus('❌ ' + (d.msg || 'Send failed'), 'error');
+    }
+  } catch(e) {
+    showStatus('❌ Network error: ' + e.message, 'error');
+  }
+}
+</script>
+</body>
+</html>
