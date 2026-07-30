@@ -43,7 +43,7 @@ const exportVisitDocx = asyncHandler(async (req, res) => {
   try {
     const { visitId } = req.params;
 
-    const visit = await Visit.findById(visitId).populate('pId').lean();
+    const visit = await Visit.findById(visitId).lean();
     if (!visit) {
       return res.status(404).json({ response: false, msg: 'Visit not found' });
     }
