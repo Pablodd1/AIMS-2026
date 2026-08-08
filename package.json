@@ -1,17 +1,23 @@
 {
-  "name": "chat-app",
+  "name": "aims-ehr-backend",
   "version": "1.0.0",
-  "description": "",
-  "main": "server.js",
+  "description": "AIMS EHR — AI Smart Medical Assistant backend (EHR, AI clinical assistant, CPT/ICD-10 coding, appointments, Twilio SMS, email, voice intake)",
+  "main": "index.js",
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js"
   },
   "keywords": [
-    "mern",
-    "chat-app"
+    "ehr",
+    "medical",
+    "ai",
+    "chiropractic",
+    "icd-10",
+    "cpt",
+    "soap",
+    "healthcare"
   ],
-  "author": "Piyush Agarwal",
+  "author": "Innovative Medical Wellness",
   "license": "ISC",
   "dependencies": {
     "@aws-sdk/client-s3": "^3.688.0",
