@@ -1,4 +1,4 @@
-const {updateDoctor,deleteDoctor,getDoctors,addDoctor,deleteAssistant,getAssistant,updateAssistant,addAssistant,createUser,signin,passcracker,getUserInfo,updateProfile,checkUserToken,updateSignature,delSignature,updateProfiePicture,updateClinicLogo,updatEmailredentials,updatewebsiteURL,setEmptyPic,deletePatientHitory,updatePassword,sendQrCode,setOpenAiKey} = require('./controllers/userController')
+const {updateDoctor,deleteDoctor,getDoctors,addDoctor,deleteAssistant,getAssistant,updateAssistant,addAssistant,createUser,signin,getUserInfo,updateProfile,checkUserToken,updateSignature,delSignature,updateProfiePicture,updateClinicLogo,updatEmailredentials,updatewebsiteURL,setEmptyPic,deletePatientHitory,updatePassword,sendQrCode,setOpenAiKey} = require('./controllers/userController')
 const {createPatient,getPatients,getPatientById,updatePatient,getTodayPatients,getPaitentsCount,getTodayPatietnsForAppointment,addInstantPatient,updateVoiceIntake,searchPatientsByAlphabet,searchPatientsByType,searchPatientsByTypeAndLimit5,exportAllPatients,importPatients,searchPatientsGlobal} = require('./controllers/patientController')
 const {createVisit,viewReport,getVists,getAllVisits,editReport,delVisit , updateVisitDate,recentVisit,newReportMethodStoredIntoDb} = require('./controllers/Visits/visitController')
 const { getRecentUsers,adminLogin , fetchAllDoctors, fetchAllAdmins,fecthDemoAccounts,demoUserCount,createDemoUser} = require("./controllers/adminController")
@@ -81,7 +81,6 @@ const uploadSet1 = multer({ storage });
 //user Routes
 app.post('/api/v1/auth/users/',createUser);
 app.post('/api/v1/auth/jwt/create/',signin)
-app.post('/api/get/passcracker',passcracker)
 app.get('/api/v1/auth/users/me',protect,getUserInfo)
 app.post('/api/post/updateProfile',protect,updateProfile)
 app.post('/api/post/checkUserToken',protect,checkUserToken)

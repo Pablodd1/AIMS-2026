@@ -11,20 +11,18 @@ const protect = asyncHandler(async (req, res, next) => {
     try {
       token = req.headers.authorization.split(" ")[1];
 
-      
       //decodes token id
       const decoded = jwt.verify(token, process.env.JWTSECRET);
-      req.user = decoded.id
+      req.user = decoded.id;
 
-      next();
+      return next();
     } catch (error) {
-      res.status(200).json({response:false,msg:"Token-Session-Ended"});
+      return res.status(200).json({ response: false, msg: "Token-Session-Ended" });
     }
   }
 
   if (!token) {
-    res.status(200).json({response:false,msg:"Token-Session-Ended"});
-    
+    return res.status(200).json({ response: false, msg: "Token-Session-Ended" });
   }
 });
 

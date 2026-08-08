@@ -91,8 +91,6 @@ const VisitSchema = new Schema({
   },
 }, { timestamps: true });
 
-mongoose.models = {};
-
 VisitSchema.pre('save', function (next) {
   console.log('Pre-save middleware executed for Visit');
   if (this.isNew) {
