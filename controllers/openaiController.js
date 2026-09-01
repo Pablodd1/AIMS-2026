@@ -1267,6 +1267,39 @@ Return ONLY JSON:
   }
 });
 
+
+// @route POST /api/post/generateReportFromAudioFile
+// Quick (Copy-and-Paste / audio upload) report flow.
+// Frontend posts FormData: text|file, type: "text"|"upload", practice.
+// Expects: {success, code, data:{Subjective,Objective,Assessment,Plan,Medications,...}, Ros, original}
+const generateReportFromAudioFile = asyncHandler(async (req, res) => {
+  const { text, type } = req.body || {};
+  let transcript = type === 'upload' ? null : text;
+  if (type === 'upload' && req.file) {
+    const r = await voiceMethod(req.file, 'quick-upload').catch(() => null);
+    transcript = r && r.msg;
+  }
+  if (!transcript || !String(transcript).trim()) {
+    return res.status(400).json({ success: false, msg: 'No consultation text provided' });
+  }
+  try {
+    const prompt = 'You are a medical scribe. Convert the consultation transcript into a structured clinical note. Return ONLY valid JSON: {"Subjective":"","Objective":"","Assessment":"","Plan":"","Medications":"","Ros":[],"History":"","Exam":""}';
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [{ role: 'user', content: prompt + '\n\nTranscript:\n' + transcript }],
+      response_format: { type: 'json_object' },
+    });
+    let data;
+    try { data = JSON.parse(completion.choices[0].message.content); }
+    catch { data = { Subjective: transcript }; }
+    const Ros = Array.isArray(data.Ros) ? data.Ros : [];
+    return res.json({ success: true, code: {}, data, Ros, original: transcript });
+  } catch (e) {
+    console.error('generateReportFromAudioFile error:', e.message);
+    return res.status(500).json({ success: false, msg: (e && e.message) || 'generation failed' });
+  }
+});
+
 module.exports = {
     patientDataToSummary,
     speechToTextForm,
@@ -1281,6 +1314,7 @@ module.exports = {
     runQualityCheck,
     translateToEnglish,
     interpretCommand,
+    generateReportFromAudioFile,
 };
 
 

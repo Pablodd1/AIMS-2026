@@ -4,7 +4,7 @@ const {createVisit,viewReport,getVists,getAllVisits,editReport,delVisit , update
 const { getRecentUsers,adminLogin , fetchAllDoctors, fetchAllAdmins,fecthDemoAccounts,demoUserCount,createDemoUser} = require("./controllers/adminController")
 const { createAppointment , getbyDateAppointment , delAppointment , editAppTime , calenderDates , changeStatus, filterAppointments,userResponseFromEmail,appointmentReport,allAppointments} = require('./controllers/appointmentController')
 const {sendFeedBack , fetchFeedBack , deleteFeedBackById } = require('./controllers/feedbackController')
-const { speechToTextForm ,patientDataToSummary , speechToTextFormWithOcr, extractPatientDataFromImage, downloadNoteAsAudio, validateRedFlags, suggestTreatment, extractDxCptCodes, generateNoteWithHistory, runQualityCheck, translateToEnglish, interpretCommand } = require('./controllers/openaiController')
+const { speechToTextForm ,patientDataToSummary , speechToTextFormWithOcr, extractPatientDataFromImage, downloadNoteAsAudio, validateRedFlags, suggestTreatment, extractDxCptCodes, generateNoteWithHistory, runQualityCheck, translateToEnglish, interpretCommand, generateReportFromAudioFile } = require('./controllers/openaiController')
 const { makeInvoice , getAllInvoices , getInvoiceById , getInvoiceAnalyitcs , updateInvoice , deleteInvoice, invoiceStatus, getAllByStatus } = require('./controllers/Invoice/invoiceController')
 const { uploadPDF, getDocuments , deleteDocument, updateDocumentDate } = require('./controllers/Documents/DocumentController')
 const {  reportDocx , reportPdf ,createQuickDocx , reportDocxDirectDownload,ameriarePatientDocument,inspectionDownload} = require('./controllers/Downloads/downloadController')
@@ -210,6 +210,7 @@ app.post('/api/post/updateClinicLogo',protect,updateClinicLogo)
 
 //oepnai
 app.post('/api/post/speechToText',uploadSet1.single('file'),speechToTextForm)
+app.post('/api/post/generateReportFromAudioFile', uploadSet1.single('file'), generateReportFromAudioFile)
 app.post('/api/post/speechToText/both',uploadSet1.fields([{ name: 'file1', maxCount: 1 },{ name: 'file2', maxCount: 1 },]),speechToTextFormWithOcr)
 // Image OCR — replaces dead Flask/Django endpoint
 app.post('/api/post/extractPatientDataFromImage', uploadSet1.single('image'), extractPatientDataFromImage)
