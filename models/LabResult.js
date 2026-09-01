@@ -49,6 +49,5 @@ const LabResultSchema = new Schema({
   },
 }, { timestamps: true });
 
-mongoose.models = {};
 const LabResult = mongoose.model('LabResult', LabResultSchema);
 module.exports = LabResult;

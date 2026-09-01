@@ -18,7 +18,8 @@ const CheckNotesSchema = new Schema({
   },
   checkOutTime: {
     type: String,
-    required: true,
+    required: false,  // optional — patients can check in without checking out
+    default: '',
   },
   checkInDate: {
     type: String,
@@ -36,7 +37,6 @@ const CheckNotesSchema = new Schema({
 }
 }, { timestamps: true });
 
-mongoose.models = {};
 
 // Middleware to set date and time before saving the document
 CheckNotesSchema.pre('save', function (next) {

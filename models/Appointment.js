@@ -38,7 +38,6 @@ const AppointmentSchema = new Schema({
 
 }, { timestamps: true });
 
-mongoose.models = {};
 
 // Middleware to set date and time before saving the document
 // AppointmentSchema.pre('save', function (next) {

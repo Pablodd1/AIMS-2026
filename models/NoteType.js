@@ -52,6 +52,5 @@ const NoteTypeSchema = new Schema({
   version: { type: Number, default: 1 },
 }, { timestamps: true });
 
-mongoose.models = {};
 const NoteType = mongoose.model('NoteType', NoteTypeSchema);
 module.exports = NoteType;

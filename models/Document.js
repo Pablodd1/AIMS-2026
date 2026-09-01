@@ -32,7 +32,6 @@ const DocumentSchema = new Schema({
 }
 }, { timestamps: true });
 
-mongoose.models = {};
 
 // Middleware to set date and time before saving the document
 DocumentSchema.pre('save', function (next) {

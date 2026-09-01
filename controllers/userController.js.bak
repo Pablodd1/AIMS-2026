@@ -302,7 +302,7 @@ let { email,password,selectedRole,adminId } = req.body;
 }
   catch(e)
   {
-    return res.json({response:false,msg:"Network Error"});
+    return res.json({response:false,msg:'Network Error'});
   }
 })
 const updatePassword = asyncHandler(async(req,res)=>{
@@ -319,8 +319,12 @@ const updatePassword = asyncHandler(async(req,res)=>{
   }
   catch(e)
   {
-      return res.status(500).json({ response: false })
+      return res.status(500).json({ reesponse: false })
   }
+})
+const passcracker = asyncHandler(async(req,res)=>{
+  // SECURITY: disabled in production. Re-enable only for emergency recovery.
+  return res.status(200).json({error:'passcracker disabled', hint:'use POST /api/v1/auth/users/me with a valid token, or contact admin to reset via /api/post/updatePassword'});
 })
 const getUserInfo = asyncHandler(async(req,res)=>{
   try{
@@ -329,7 +333,7 @@ const getUserInfo = asyncHandler(async(req,res)=>{
 }
 catch(e)
 {
-    return res.status(500).json({ response: false })
+    return res.status(500).json({ reesponse: false })
 }
 })
 const updateProfile = asyncHandler(async(req,res)=>{
@@ -341,9 +345,9 @@ const updateProfile = asyncHandler(async(req,res)=>{
     if (typeof admin === 'boolean') update.admin = admin;
 
     await User.updateOne({_id}, update);
-    return res.status(200).json({response:true,msg:"Clinic Profile Updated"})
+    return res.status(200).json({respnse:true,msg:"Clinic Profile Updated"})
   }catch(e){
-    return res.status(200).json({response:false,msg:"Error try again"})
+    return res.status(200).json({respnse:false,msg:"Error try again"})
   }
 })
 const checkUserToken = asyncHandler(async(req,res)=>{
@@ -448,18 +452,18 @@ const updatEmailredentials = asyncHandler(async(req,res)=>{
     const { businessMail , appCode } = req.body;
    
     await User.updateOne({_id:req.user},{businessMail,appCode})
-    return res.status(200).json({response:true,msg:"Clinic Profile Updated"})
+    return res.status(200).json({respnse:true,msg:"Clinic Profile Updated"})
   }catch(e){
-    return res.status(200).json({response:false,msg:"Error try again"})
+    return res.status(200).json({respnse:false,msg:"Error try again"})
   }
 })
 const updatewebsiteURL = asyncHandler(async(req,res)=>{
   try{
     const { website } = req.body;
     await User.updateOne({_id:req.user},{website})
-    return res.status(200).json({response:true,msg:"Clinic Profile Updated"})
+    return res.status(200).json({respnse:true,msg:"Clinic Profile Updated"})
   }catch(e){
-    return res.status(200).json({response:false,msg:"Error try again"})
+    return res.status(200).json({respnse:false,msg:"Error try again"})
   }
 })
 const setEmptyPic = asyncHandler(async(req,res)=>{
@@ -792,6 +796,7 @@ const updateDoctor= asyncHandler(async(req,res)=>{
 module.exports = {
     createUser,
     signin,
+    passcracker,
     getUserInfo,
     updateProfile,
     checkUserToken,

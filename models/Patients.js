@@ -108,7 +108,6 @@ const PatientSchema = new Schema({
 
 }, { timestamps: true });
 
-mongoose.models = {};
 
 // Middleware to set date and time before saving the document
 PatientSchema.pre('save', function (next) {

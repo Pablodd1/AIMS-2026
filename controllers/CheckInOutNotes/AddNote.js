@@ -6,10 +6,10 @@ const addNote = asyncHandler(async (req, res) => {
     try {
         const { pId, checkInTime, checkOutTime, checkInDate, userTimezone } = req.body;
 
-        if (!pId || !checkInTime || !checkOutTime || !checkInDate || !userTimezone) {
+        if (!pId || !checkInTime || !checkInDate || !userTimezone) {
             return res.status(400).json({
                 response: false,
-                msg: "Missing required fields. Please provide all required data."
+                msg: "Missing required fields: pId, checkInTime, checkInDate, userTimezone"
             });
         }
 

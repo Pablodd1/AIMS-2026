@@ -200,14 +200,19 @@ const getPatients = asyncHandler(async (req, res) => {
       // Calculate skip value for pagination
       const skip = (pageNumber - 1) * limitNumber;
 
+      // Admins see ALL patients; doctors see only their own
+      // (Fix for migration gap: imported patients may have no doc_id)
+      const caller = await User.findById(id).select('admin').lean();
+      const query = caller && caller.admin ? {} : { doc_id: id };
+
       // Fetch paginated patients
-      const patients = await Patient.find({ doc_id: id })
+      const patients = await Patient.find(query)
           .sort({ createdAt: -1 }) // Sort by creation date (most recent first)
           .skip(skip)
           .limit(limitNumber);
 
       // Fetch total count for metadata
-      const totalCount = await Patient.countDocuments({ doc_id: id });
+      const totalCount = await Patient.countDocuments(query);
 
       return res.status(200).json({
           response: true,

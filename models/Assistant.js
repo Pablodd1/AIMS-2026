@@ -24,6 +24,4 @@ const AssistantSchema = new Schema({
 
 }, { timestamps: true });
 
-mongoose.models = {};
-
 module.exports = mongoose.model('Assistant', AssistantSchema);
