@@ -137,7 +137,7 @@ let { patientID , time ,number,clinicname,businessMail,
     }finally{
             if(smsChecked)
             {
-                sendMessage(msg,patientInfo.phoneNumber)
+                sendMessage(msg,patientInfo.phoneNumber).catch(e => { console.error('changeStatus sms failed:', e.message); notified.sms = 'failed'; });
             }
 
             if(emailChecked)
@@ -188,40 +188,63 @@ const delAppointment = asyncHandler(async(req,res)=>{
 const editAppTime = asyncHandler(async(req,res)=>{
     const { appId , time , number,businessMail,userTimezone,
         appCode,website,clinic,sendMail  } = req.body
-        let appt;
-   try{
-     appt = await Appointment.findOne({_id:appId})
-    await Appointment.updateOne({_id:appId},{ $set: { createdAt: new Date(time), time, reminder: getOriginalAndReminderDates(time).reminderDate } });
-    
-    return res.json({success:true})
-   }catch(e)
-   {
-    return res.json({success:false})
-   }finally{
-    // Always notify patient of schedule change
-    if (appt && appt.patientID) {
-        const patientInfo = await Patient.findOne({_id: appt.patientID}).select('email phoneNumber fullName');
-        const formattedTime = userInpuDateintoReadableFormat(time, userTimezone);
-        const clinicName = clinic || 'the clinic';
-        
-        // Send email notification
-        const emailTo = appt.email || patientInfo?.email;
-        if (emailTo && sendMail) {
-            if(businessMail == "" || appCode == "") {
+
+    if (!appId || !time) {
+        return res.status(400).json({ success:false, error: 'appId and time are required' });
+    }
+    if (isNaN(new Date(time).getTime())) {
+        return res.status(400).json({ success:false, error: 'invalid time' });
+    }
+
+    let appt;
+    try {
+        appt = await Appointment.findOne({_id:appId});
+        if (!appt) {
+            return res.status(404).json({ success:false, error: 'appointment not found' });
+        }
+        await Appointment.updateOne({_id:appId},{ $set: { createdAt: new Date(time), time, reminder: getOriginalAndReminderDates(time).reminderDate } });
+    } catch(e) {
+        console.error('editAppTime db error:', e.message);
+        return res.status(500).json({ success:false, error: 'update failed' }); // no notify on failure
+    }
+
+    // Notify patient only after a confirmed successful update.
+    // Notify only on confirmed success. Channel failures never fail the request.
+    const notified = { email: 'skipped', sms: 'skipped' };
+    const patientInfo = appt.patientID
+        ? await Patient.findOne({_id: appt.patientID}).select('email phoneNumber fullName').catch(() => null)
+        : null;
+    const formattedTime = userInpuDateintoReadableFormat(time, userTimezone);
+    const clinicName = clinic || 'the clinic';
+
+    const emailTo = appt.email || patientInfo?.email;
+    if (emailTo && sendMail) {
+        try {
+            if(businessMail === "" || appCode === "" || !businessMail || !appCode) {
                 await appUpdate(process.env.NODE_MAILER_USER, process.env.NODE_MAILER_PASS, emailTo, formattedTime, number, website, clinicName, appt.name);
             } else {
                 await appUpdate(businessMail, appCode, emailTo, formattedTime, number, website, clinicName, appt.name);
             }
-        }
-        
-        // Send SMS notification
-        const phoneTo = appt.number || patientInfo?.phoneNumber;
-        if (phoneTo) {
-            const msg = `Your appointment at ${clinicName} has been rescheduled to ${formattedTime}. Please call ${number || 'the office'} if you have questions. Reply STOP to opt out.`;
-            await sendMessage(msg, phoneTo);
+            notified.email = 'sent';
+        } catch (e) {
+            console.error('editAppTime email notify failed:', e.message);
+            notified.email = 'failed';
         }
     }
-   }
+
+    const phoneTo = appt.number || patientInfo?.phoneNumber;
+    if (phoneTo) {
+        try {
+            const msg = `Your appointment at ${clinicName} has been rescheduled to ${formattedTime}. Please call ${number || 'the office'} if you have questions. Reply STOP to opt out.`;
+            await sendMessage(msg, phoneTo);
+            notified.sms = 'sent';
+        } catch (e) {
+            console.error('editAppTime sms notify failed:', e.message);
+            notified.sms = 'failed';
+        }
+    }
+
+    return res.json({ success:true, notified });
 })
 
 const calenderDates = asyncHandler(async(req,res)=>{
@@ -249,9 +272,13 @@ const calenderDates = asyncHandler(async(req,res)=>{
 const changeStatus = asyncHandler(async(req,res)=>{
 
     const { appId , status ,sendMsg , sendMail } = req.body;
+    const notified = { email: 'skipped', sms: 'skipped' };
     try{
-        await Appointment.updateOne({_id:appId},{status})
-        
+        const updated = await Appointment.updateOne({_id:appId},{status});
+        if (updated.matchedCount === 0) {
+            return res.status(404).json({response:false, error: 'appointment not found'});
+        }
+
         // Increment patient visit count when appointment is completed
         if (status === "Complete") {
             const appt = await Appointment.findOne({_id: appId});
@@ -259,19 +286,23 @@ const changeStatus = asyncHandler(async(req,res)=>{
                 await Patient.updateOne({ _id: appt.patientID }, { $inc: { visitCount: 1 } });
             }
         }
-        
-        return res.json({response:true})
     }
     catch(e)
     {
-        return res.json({response:false})
+        console.error('changeStatus db error:', e.message);
+        return res.status(500).json({response:false, error: 'update failed'}); // no notify on failure
     }
-    finally{
-        if(status=="Complete" && sendMsg  || sendMail)
+
+    // Notify only on confirmed success. Parentheses fix: was (Complete && sendMsg) || sendMail,
+    // which emailed "thanks for visiting" on EVERY status change whenever sendMail was set.
+    {
+        if((status==="Complete" && (sendMsg || sendMail)) || (status==="Cancelled" && sendMail))
         {
             const {businessMail, appCode, clinicName , address , website , number ,pic} = req.body 
             const appt = await Appointment.findOne({_id:appId})
+            if (!appt || !appt.patientID) return res.json({response:true, notified});
             const patientInfo = await Patient.findOne({_id:appt.patientID})
+            if (!patientInfo) return res.json({response:true, notified});
             
             // const msg = `Thank you, ${paienInfo.fullName}, for visiting us today! We’d love to hear about your experience.Please leave us a review on Google under ${clinicName}. Address: ${address}.Visit us at ${website}. Call ${number}. To opt-out, reply STOP. `
             if(sendMsg){
@@ -286,7 +317,7 @@ const changeStatus = asyncHandler(async(req,res)=>{
                     msg = `Thank you, ${patientInfo.fullName}, for visiting us today!\nWe’d love to hear about your experience.\nPlease leave us a review on Google under ${clinicName}.\nAddress: ${address}.\nVisit us at ${website}.\nCall ${number}.\nTo opt-out, reply STOP.`;
                 }
 
-                sendMessage(msg,patientInfo.phoneNumber)
+                sendMessage(msg,patientInfo.phoneNumber).catch(e => { console.error('changeStatus sms failed:', e.message); notified.sms = 'failed'; });
             }
 
             if(sendMail)
@@ -311,6 +342,7 @@ const changeStatus = asyncHandler(async(req,res)=>{
                 await appCancel(businessMail,appCode,patientInfo.email,formatDateString(appt.time),number,website,clinicName,patientInfo.fullName)
             }
         }
+        return res.json({response:true, notified});
     }
 
 })
