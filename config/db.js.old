@@ -1,4 +1,0 @@
-const m = require("mongoose");
-m.connect("mongodb+srv://db_usr:ePVl1POtIhBymZli@e-store.uf5qztz.mongodb.net/AIMS", {useNewUrlParser:true, useUnifiedTopology:true})
-.then(()=>{console.log("CONNECTED");process.exit(0)})
-.catch(e=>{console.log("FAIL:"+e.message);process.exit(1)});
