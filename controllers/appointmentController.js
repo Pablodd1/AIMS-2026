@@ -191,7 +191,7 @@ const editAppTime = asyncHandler(async(req,res)=>{
         let appt;
    try{
      appt = await Appointment.findOne({_id:appId})
-    await Appointment.updateOne({_id:appId},{ $set: { createdAt: new Date(time), time } });
+    await Appointment.updateOne({_id:appId},{ $set: { createdAt: new Date(time), time, reminder: getOriginalAndReminderDates(time).reminderDate } });
     
     return res.json({success:true})
    }catch(e)
@@ -206,7 +206,7 @@ const editAppTime = asyncHandler(async(req,res)=>{
         
         // Send email notification
         const emailTo = appt.email || patientInfo?.email;
-        if (emailTo) {
+        if (emailTo && sendMail) {
             if(businessMail == "" || appCode == "") {
                 await appUpdate(process.env.NODE_MAILER_USER, process.env.NODE_MAILER_PASS, emailTo, formattedTime, number, website, clinicName, appt.name);
             } else {
@@ -399,22 +399,26 @@ const allAppointments = asyncHandler(async(req,res)=>{
     let appointments = []
     try {
         const { status , userTimeZone } = req.query
+        // Admins see ALL appointments; doctors see only their own
+        const User = require('../models/User');
+        const caller = await User.findById(req.user).select('admin').lean();
+        const apptQuery = caller && caller.admin ? {} : { doctorID: req.user };
         if(status == 'All')
         {
-            appointments = await Appointment.find({doctorID:req.user}).sort({ createdAt: -1 }).select('status email name time')
+            appointments = await Appointment.find(apptQuery).sort({ createdAt: -1 }).select('status email name time')
         }else if(status == 'Today') {
 
-            appointments = await Appointment.find({doctorID: req.user,time: { $regex: `^${getTodayDateInTimeZone(userTimeZone)}` } // Match 'time' field starting with YYYY-MM-DD
+            appointments = await Appointment.find({...apptQuery, time: { $regex: `^${getTodayDateInTimeZone(userTimeZone)}` } // Match 'time' field starting with YYYY-MM-DD
               }).sort({ createdAt: -1 }).select('status email name time');
         }else{
-             appointments = await Appointment.find({doctorID:req.user,status:status}).sort({ createdAt: -1 }).select('status email name time')
+             appointments = await Appointment.find({...apptQuery, status:status}).sort({ createdAt: -1 }).select('status email name time')
 
         }
         return res.json({ response: true, appointments });
       } catch (e) {
         return res.json({ response: false, appointments });
       }
-}) 
+})
 
 
 
