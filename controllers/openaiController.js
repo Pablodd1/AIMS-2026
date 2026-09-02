@@ -1311,7 +1311,33 @@ const generateReportFromAudioFile = asyncHandler(async (req, res) => {
   }
 });
 
+
+// Patient self-intake: free-order voice/text -> structured createPatient fields
+const extractIntakeEntities = asyncHandler(async (req, res) => {
+  const { text } = req.body || {};
+  if (!text || !String(text).trim()) return res.status(400).json({ success: false, msg: 'No text provided' });
+  const fields = "fullName,dateOfBirth(YYYY-MM-DD),gender(Male/Female/Other),phoneNumber,email,address,occupation,medications,allergies,chronicConditions,pastSurgeries,familyMedicalHistory,primaryCarePhysician,visitReason,symptomDescription,symptomDuration,symptomSeverity,symptomTriggers,painScale(0-10),painLocation,insuranceProvider,insurancePolicyNumber,policyHolderName,groupNumber,secondaryInsurance,smoking,alcohol,exerciseAndDiet,livingArrangement,recentHealthChanges,emergencyContactName,emergencyContactRelationship,emergencyContactPhoneNumber";
+  try {
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      temperature: 0,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: 'You extract patient intake information from spoken or written free-form text given in ANY order. Return ONLY a JSON object whose keys are field names from this list: ' + fields + '. Set a key ONLY if the text clearly provides it; omit keys not mentioned. Normalize dates to YYYY-MM-DD, phone numbers to digits only.' },
+        { role: 'user', content: String(text).slice(0, 4000) }
+      ]
+    });
+    let data = {};
+    try { data = JSON.parse(completion.choices[0].message.content); } catch {}
+    Object.keys(data).forEach(k => { if (data[k] === 'null' || data[k] === null) delete data[k]; });
+    return res.json({ success: true, data });
+  } catch (e) {
+    return res.status(500).json({ success: false, msg: (e && e.message) || 'extraction failed' });
+  }
+});
+
 module.exports = {
+    extractIntakeEntities,
     patientDataToSummary,
     speechToTextForm,
     speechToTextFormWithOcr,
