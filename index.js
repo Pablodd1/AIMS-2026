@@ -4,6 +4,7 @@ const {createVisit,viewReport,getVists,getAllVisits,editReport,delVisit , update
 const { getRecentUsers,adminLogin , fetchAllDoctors, fetchAllAdmins,fecthDemoAccounts,demoUserCount,createDemoUser} = require("./controllers/adminController")
 const { createAppointment , getbyDateAppointment , delAppointment , editAppTime , calenderDates , changeStatus, filterAppointments,userResponseFromEmail,appointmentReport,allAppointments} = require('./controllers/appointmentController')
 const {sendFeedBack , fetchFeedBack , deleteFeedBackById } = require('./controllers/feedbackController')
+require("dotenv").config();
 const { speechToTextForm ,patientDataToSummary , speechToTextFormWithOcr, extractPatientDataFromImage, downloadNoteAsAudio, validateRedFlags, suggestTreatment, extractDxCptCodes, generateNoteWithHistory, runQualityCheck, translateToEnglish, interpretCommand, generateReportFromAudioFile } = require('./controllers/openaiController')
 const { makeInvoice , getAllInvoices , getInvoiceById , getInvoiceAnalyitcs , updateInvoice , deleteInvoice, invoiceStatus, getAllByStatus } = require('./controllers/Invoice/invoiceController')
 const { uploadPDF, getDocuments , deleteDocument, updateDocumentDate } = require('./controllers/Documents/DocumentController')
@@ -43,7 +44,6 @@ const express = require("express");
 const cors = require('cors');
 const multer = require('multer');
 const { agingBioHack } = require('./controllers/mailController')
-require('dotenv').config();
 connectDB()
 
 // Seed default note types on first run

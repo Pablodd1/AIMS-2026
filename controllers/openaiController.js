@@ -4,7 +4,7 @@ const OpenAI = require('openai');
 const fs = require('fs');
 
 const openai = new OpenAI({
-    apiKey: "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", 
+    apiKey: process.env.OPENAI_KEY || "\"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\"", 
 });
 
 async function speechToText(file)
@@ -1282,18 +1282,29 @@ const generateReportFromAudioFile = asyncHandler(async (req, res) => {
   if (!transcript || !String(transcript).trim()) {
     return res.status(400).json({ success: false, msg: 'No consultation text provided' });
   }
+  // Full response contract the deployed frontend expects (minified bundle reads all of these):
+  const ROS_SYS = ['Constitutional', 'Eyes', 'ENT', 'Cardiovascular', 'Respiratory', 'Gastrointestinal',
+                   'Genitourinary', 'Musculoskeletal', 'Skin', 'Neurological', 'Psychiatric'];
+  const rosObj = {};
+  ROS_SYS.forEach(k => { rosObj[k] = { type: 'Not discussed', description: 'Not discussed during the consultation.' }; });
+  const blank = () => ({
+    Subjective: '', Objective: '', Assessment: '', Plan: '', Medications: '', Allergies: '', SUMMARY: '',
+    'History of Present Illness (HPI)': '', 'Past Medical History (PMH)': '', 'Chief Complaint': '',
+    'Physical Examination': '', Constitutional: rosObj,
+  });
   try {
-    const prompt = 'You are a medical scribe. Convert the consultation transcript into a structured clinical note. Return ONLY valid JSON: {"Subjective":"","Objective":"","Assessment":"","Plan":"","Medications":"","Ros":[],"History":"","Exam":""}';
+    const prompt = 'You are a medical scribe. Convert the consultation transcript into a structured clinical note. Return ONLY valid JSON with keys: Subjective, Objective, Assessment, Plan, Medications, Allergies, SUMMARY, "History of Present Illness (HPI)", "Past Medical History (PMH)", "Chief Complaint", "Physical Examination". Fill each with the relevant content from the transcript, empty string if not discussed.';
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [{ role: 'user', content: prompt + '\n\nTranscript:\n' + transcript }],
       response_format: { type: 'json_object' },
     });
-    let data;
-    try { data = JSON.parse(completion.choices[0].message.content); }
-    catch { data = { Subjective: transcript }; }
-    const Ros = Array.isArray(data.Ros) ? data.Ros : [];
-    return res.json({ success: true, code: {}, data, Ros, original: transcript });
+    let parsed = {};
+    try { parsed = JSON.parse(completion.choices[0].message.content); } catch {}
+    const data = blank();
+    Object.keys(data).forEach(k => { if (parsed[k]) data[k] = parsed[k]; });
+    data.Constitutional = rosObj;
+    return res.json({ success: true, code: { 'ICD-10 Codes': [], 'CPT Codes': [] }, data, Ros: rosObj, original: transcript });
   } catch (e) {
     console.error('generateReportFromAudioFile error:', e.message);
     return res.status(500).json({ success: false, msg: (e && e.message) || 'generation failed' });
@@ -1316,17 +1327,3 @@ module.exports = {
     interpretCommand,
     generateReportFromAudioFile,
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
