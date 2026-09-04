@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_KEY || 'sk-pro...1qAA',
+  apiKey: process.env.OPENAI_KEY,
 });
 
 // ===== AI Analysis =====
