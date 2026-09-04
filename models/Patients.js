@@ -6,7 +6,7 @@ const { getCurrentDateGlobally, getCurrentTimeGlobally } = require('../Helper/ge
 const PatientSchema = new Schema({
   doc_id: { type: String, required: true },
   fullName: { type: String, required: true },
-  consents: [{ procedure: String, procedureDetails: String, signedAt: String, consentVersion: String, consentText: String, signatureUrl: String, photoUrl: String, pdfUrl: String }],
+  consents: [{ procedure: String, procedureDetails: String, signedAt: String, consentVersion: String, consentText: String, procedureDate: String, signatureUrl: String, photoUrl: String, pdfUrl: String }],
   dateOfBirth: { type: String },
   gender: { type: String },
   email: { type: String },

@@ -28,7 +28,7 @@ async function uploadImage(buf, folder, name) {
   });
 }
 
-function buildPdf({ patientName, dob, procedure, procedureDetails, signedAt, consentVersion, sigBuf, photoBuf, consentText }) {
+function buildPdf({ patientName, dob, procedure, procedureDetails, signedAt, consentVersion, sigBuf, photoBuf, consentText, procedureDate }) {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: "LETTER", margin: 54 });
     const chunks = [];
@@ -42,6 +42,7 @@ function buildPdf({ patientName, dob, procedure, procedureDetails, signedAt, con
     doc.text(`Patient: ${patientName}`);
     if (dob) doc.text(`Date of Birth: ${dob}`);
     doc.text(`Procedure: ${procedure}`);
+    if (procedureDate) doc.text(`Date of procedure: ${procedureDate}`);
     doc.text(`Signed: ${signedAt}`);
     doc.text(`Consent version: ${consentVersion}`).moveDown();
     doc.moveDown().fontSize(9).text(consentText, { lineGap: 3 });
@@ -70,7 +71,7 @@ async function sendReportEmail(pdfBuf, patientName, procedure, signedAt) {
 }
 
 const submitConsent = asyncHandler(async (req, res) => {
-  const { patientId, procedure, procedureDetails, signatureDataUrl, photoDataUrl, consentVersion, consentText } = req.body || {};
+  const { patientId, procedure, procedureDetails, signatureDataUrl, photoDataUrl, consentVersion, consentText, procedureDate } = req.body || {};
   if (!patientId || !procedure || !signatureDataUrl) {
     return res.status(400).json({ response: false, msg: "patientId, procedure and signature are required" });
   }
@@ -93,6 +94,7 @@ const submitConsent = asyncHandler(async (req, res) => {
     signedAt,
     consentVersion: version,
     consentText: consentText || CONSENT_TEXT,
+    procedureDate: procedureDate || "",
     signatureUrl: sigUrl,
     photoUrl,
   };
@@ -107,6 +109,7 @@ const submitConsent = asyncHandler(async (req, res) => {
     sigBuf,
     photoBuf,
     consentText: consentText || CONSENT_TEXT,
+    procedureDate,
   });
   const pdfUrl = await uploadImage(pdfBuf, base, `consent-${Date.now()}`);
   record.pdfUrl = pdfUrl;
