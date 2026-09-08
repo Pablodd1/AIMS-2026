@@ -59,7 +59,7 @@ ensureUploadsDirectory();
 
 
 const app = express();
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: '15mb' }));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cors());// allow front api's
 app.use(express.json()); // to accept json data
@@ -90,7 +90,7 @@ app.post('/api/v1/auth/jwt/create/',signin)
 app.get('/api/v1/auth/users/me',protect,getUserInfo)
 app.post('/api/post/updateProfile',protect,updateProfile)
 app.post('/api/post/checkUserToken',protect,checkUserToken)
-app.get('/api/get/checkUserToken',(req,res)=>{const t=req.headers.authorization?.split(' ')[1];if(!t)return res.json({response:true,msg:'token is valid',role:'Admin'});try{const d=require('jsonwebtoken').verify(t,process.env.JWTSECRET);return res.json({response:true,msg:'token is valid',role:'Admin'});}catch(e){return res.json({response:false,msg:'token is not valid'})}})
+app.get('/api/get/checkUserToken',async(req,res)=>{const t=req.headers.authorization?.split(' ')[1];if(!t)return res.json({response:false,msg:'token missing'});try{const jwt=require('jsonwebtoken');const d=jwt.verify(t,process.env.JWTSECRET);const User=require('./models/User');const Doctor=require('./models/Doctor');const Assistant=require('./models/Assistant');let role='None';const u=await User.findOne({_id:d.id});if(u)role='Admin';else{const doc=await Doctor.findOne({_id:d.id});if(doc)role='Doctor';else{const a=await Assistant.findOne({_id:d.id});if(a)role='Assistant'}}return res.json({response:true,msg:'token is valid',role});}catch(e){return res.json({response:false,msg:'token is not valid'})}})
 app.post('/api/post/updatEmailredentials',protect,updatEmailredentials)
 app.post('/api/post/updatewebsiteURL',protect,updatewebsiteURL)
 app.post('/api/post/setEmptyPic',setEmptyPic)
@@ -119,13 +119,13 @@ app.post('/api/post/updateDoctor',protect,updateDoctor)
 app.post('/api/post/createPatient',createPatient)
 app.get('/api/get/getPatients',protect,getPatients)
 app.get('/api/get/getTodayPatients',protect,getTodayPatients)
-app.get('/api/get/getPatientById',getPatientById)
-app.post('/api/post/updatePatient',updatePatient)
+app.get('/api/get/getPatientById', protect, getPatientById)
+app.post('/api/post/updatePatient', protect, updatePatient)
 app.get("/api/get/editReport",protect,editReport)
 app.get('/api/get/getPaitentsCount',protect,getPaitentsCount)
 app.get('/api/get/getTodayPatietnsForAppointment',protect,getTodayPatietnsForAppointment)
 app.post('/api/post/addInstantPatient',protect,addInstantPatient)
-app.post('/api/post/updateVoiceIntake',updateVoiceIntake)
+app.post('/api/post/updateVoiceIntake', protect, updateVoiceIntake)
 app.post('/api/post/searchPatientsByAlphabet',protect,searchPatientsByAlphabet)
 app.post('/api/post/searchPatientsByType',protect,searchPatientsByType)
 app.post('/api/post/searchPatientsByTypeAndLimit5',protect,searchPatientsByTypeAndLimit5)
@@ -209,11 +209,11 @@ app.post('/api/post/updateProfiePicture',protect,updateProfiePicture)
 app.post('/api/post/updateClinicLogo',protect,updateClinicLogo)
 
 //oepnai
-app.post('/api/post/speechToText',uploadSet1.single('file'),speechToTextForm)
-app.post('/api/post/generateReportFromAudioFile', uploadSet1.single('file'), generateReportFromAudioFile)
+app.post('/api/post/speechToText', protect, uploadSet1.single('file'),speechToTextForm)
+app.post('/api/post/generateReportFromAudioFile', protect, uploadSet1.single('file'), generateReportFromAudioFile)
 app.post('/api/post/speechToText/both',uploadSet1.fields([{ name: 'file1', maxCount: 1 },{ name: 'file2', maxCount: 1 },]),speechToTextFormWithOcr)
 // Image OCR — replaces dead Flask/Django endpoint
-app.post('/api/post/extractPatientDataFromImage', uploadSet1.single('image'), extractPatientDataFromImage)
+app.post('/api/post/extractPatientDataFromImage', protect, uploadSet1.single('image'), extractPatientDataFromImage)
 // Smart assistant — generates notes with previous visit history
 app.post('/api/post/generateNoteWithHistory', protect, generateNoteWithHistory)
 // Auto-treatment suggestions
@@ -227,9 +227,9 @@ app.get('/api/get/downloadNoteAsAudio', protect, downloadNoteAsAudio)
 // 3-Agent quality check
 app.post('/api/post/runQualityCheck', protect, runQualityCheck)
 // Translation — Spanish/Creole to English
-app.post('/api/post/translateToEnglish', translateToEnglish)
+app.post('/api/post/translateToEnglish', protect, translateToEnglish)
 // AI command interpreter
-app.post('/api/post/interpretCommand', interpretCommand)
+app.post('/api/post/interpretCommand', protect, interpretCommand)
 
 // Medical codes (DX/CPT) — Phase 1 port from NEW-AIMS-UPGRADED
 app.post('/api/post/searchMedicalCodes', protect, searchMedicalCodes)
@@ -243,7 +243,7 @@ app.get('/api/get/getRecentCodes', protect, getRecentCodes)
 app.post('/api/post/runBillingCompliance', protect, runBillingCompliance)
 
 app.post('/api/post/extractIntakeEntities', extractIntakeEntities)
-app.post('/api/post/patientDataToSummary',patientDataToSummary)
+app.post('/api/post/patientDataToSummary', protect, patientDataToSummary)
 
 //appointments
 app.post('/api/post/createAppointment',protect,createAppointment)
@@ -301,6 +301,9 @@ app.delete('/api/delete/deleteObject',protect,deleteObject)
 app.get('/api/get/getNotes',protect,getNotes)
 app.post('/api/post/addNote',protect,addNote)
 app.post('/api/post/checkIn',protect,checkIn)
+const { submitConsent, getConsents } = require('./controllers/consentController')
+app.post('/api/post/submitConsent', protect, submitConsent)
+app.get('/api/get/getConsents', protect, getConsents)
 app.get('/api/get/getTodayCheckIns',protect,getTodayCheckIns)
 app.delete('/api/delete/deleteNote/:id',protect,deleteNote)
 
