@@ -303,9 +303,10 @@ app.delete('/api/delete/deleteObject',protect,deleteObject)
 app.get('/api/get/getNotes',protect,getNotes)
 app.post('/api/post/addNote',protect,addNote)
 app.post('/api/post/checkIn',protect,checkIn)
-const { submitConsent, getConsents } = require('./controllers/consentController')
+const { submitConsent, getConsents, getConsentForms } = require('./controllers/consentController')
 app.post('/api/post/submitConsent', protect, submitConsent)
 app.get('/api/get/getConsents', protect, getConsents)
+app.get('/api/get/getConsentForms', protect, getConsentForms)
 app.get('/api/get/getTodayCheckIns',protect,getTodayCheckIns)
 app.delete('/api/delete/deleteNote/:id',protect,deleteNote)
 
@@ -324,3 +325,11 @@ app.listen(
   PORT,
   console.log(`Server running on PORT ${PORT}...`)
 );
+
+
+// last-resort guard: an undecodable patient image (pdfkit/png-js raises an uncaught zlib
+// error) must not take the whole EHR down. Log it and keep serving; the request that
+// caused it already fails closed (400) in the consent controller.
+process.on("uncaughtException", (err) => {
+  console.error("[uncaughtException]", (err && (err.stack || err.message)) || err);
+});

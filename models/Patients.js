@@ -6,7 +6,31 @@ const { getCurrentDateGlobally, getCurrentTimeGlobally } = require('../Helper/ge
 const PatientSchema = new Schema({
   doc_id: { type: String, required: true },
   fullName: { type: String, required: true },
-  consents: [{ procedure: String, procedureDetails: String, signedAt: String, consentVersion: String, consentText: String, procedureDate: String, signatureUrl: String, photoUrl: String, pdfUrl: String }],
+  // Signed procedure consents. Strict whitelist on purpose: a consent record must
+  // carry the full context of what was signed (text + its hash, version/form, area,
+  // screening, capture snapshots, link to the original document) or the write is dropped.
+  consents: [{
+    procedure: String,
+    area: String,
+    procedureDate: String,
+    procedureDetails: String,
+    screening: String,
+    signedAt: String,
+    capturedAt: String,
+    consentVersion: String,
+    formKey: String,
+    consentText: String,
+    consentTextSource: String,
+    consentTextSha256: String,
+    consentTextClientSha256: String,
+    sourceUrl: String,
+    patientName: String,
+    patientDob: String,
+    capturedBy: String,
+    signatureUrl: String,
+    photoUrl: String,
+    pdfUrl: String
+  }],
   dateOfBirth: { type: String },
   gender: { type: String },
   email: { type: String },
