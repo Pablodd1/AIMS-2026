@@ -5,7 +5,11 @@ const Document = require('../../models/Document');
 
 const getDocuments = asyncHandler(async (req, res) => {
   try {
-      const { pId, page = 1, limit = 3 } = req.body;
+      const { pId } = req.body;
+
+      // page/limit arrive on the query string; body values are kept as a fallback.
+      const page = req.query.page != null ? req.query.page : (req.body.page != null ? req.body.page : 1);
+      const limit = req.query.limit != null ? req.query.limit : (req.body.limit != null ? req.body.limit : 3);
 
       if (!pId) {
           return res.status(400).json({

@@ -9,13 +9,20 @@ const getObject = asyncHandler(async(req,res)=>{
 
         const fs = require("fs");
         const path = require("path");
-        if (fs.existsSync(path.join("/home/aims/uploads", req.query.key))) {
+        const key = req.query.key || "";
+
+        // Legacy documents reference absolute remote URLs (Cloudinary) or VPS-stored files.
+        // Returning those directly is correct; signing an S3 key for them yields a dead link.
+        if (/^https?:\/\//i.test(key)) {
+            return res.json({ response: true, url: key });
+        }
+        if (fs.existsSync(path.join("/home/aims/uploads", key))) {
             const tok = (req.headers.authorization || "").replace(/^Bearer /, "");
-            return res.json({ response: true, url: "/aims-service1/api/get/localFile?key=" + encodeURIComponent(req.query.key) + "&token=" + encodeURIComponent(tok) });
+            return res.json({ response: true, url: "/aims-service1/api/get/localFile?key=" + encodeURIComponent(key) + "&token=" + encodeURIComponent(tok) });
         }
         const command = new GetObjectCommand({
             Bucket:"bucket-aiscribers.com-private",
-            Key:req.query.key
+            Key:key
         })
         const url = await getSignedUrl(s3Client,command,{expiresIn:60});
         return res.json({response:true,url})
