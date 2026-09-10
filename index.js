@@ -5,6 +5,7 @@ const { getRecentUsers,adminLogin , fetchAllDoctors, fetchAllAdmins,fecthDemoAcc
 const { createAppointment , getbyDateAppointment , delAppointment , editAppTime , calenderDates , changeStatus, filterAppointments,userResponseFromEmail,appointmentReport,allAppointments} = require('./controllers/appointmentController')
 const {sendFeedBack , fetchFeedBack , deleteFeedBackById } = require('./controllers/feedbackController')
 require("dotenv").config();
+const { mountLocalStorage } = require("./controllers/localstorage");
 const { speechToTextForm ,patientDataToSummary , speechToTextFormWithOcr, extractPatientDataFromImage, downloadNoteAsAudio, validateRedFlags, suggestTreatment, extractDxCptCodes, generateNoteWithHistory, runQualityCheck, translateToEnglish, interpretCommand, generateReportFromAudioFile, extractIntakeEntities } = require('./controllers/openaiController')
 const { makeInvoice , getAllInvoices , getInvoiceById , getInvoiceAnalyitcs , updateInvoice , deleteInvoice, invoiceStatus, getAllByStatus } = require('./controllers/Invoice/invoiceController')
 const { uploadPDF, getDocuments , deleteDocument, updateDocumentDate } = require('./controllers/Documents/DocumentController')
@@ -59,6 +60,7 @@ ensureUploadsDirectory();
 
 
 const app = express();
+mountLocalStorage(app);
 app.use(bodyParser.json({ limit: '15mb' }));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cors());// allow front api's

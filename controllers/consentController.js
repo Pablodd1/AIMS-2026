@@ -28,6 +28,16 @@ async function uploadImage(buf, folder, name) {
   });
 }
 
+async function uploadRaw(buf, folder, name) {
+  return new Promise((resolve, reject) => {
+    const s = cloudinary.uploader.upload_stream(
+      { folder, public_id: name, resource_type: "raw" },
+      (e, r) => (e ? reject(e) : resolve(r.secure_url))
+    );
+    s.end(buf);
+  });
+}
+
 function buildPdf({ patientName, dob, procedure, procedureDetails, signedAt, consentVersion, sigBuf, photoBuf, consentText, procedureDate }) {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: "LETTER", margin: 54 });
@@ -111,7 +121,7 @@ const submitConsent = asyncHandler(async (req, res) => {
     consentText: consentText || CONSENT_TEXT,
     procedureDate,
   });
-  const pdfUrl = await uploadImage(pdfBuf, base, `consent-${Date.now()}`);
+  const pdfUrl = await uploadRaw(pdfBuf, base, `consent-${Date.now()}.pdf`);
   record.pdfUrl = pdfUrl;
 
   if (!Array.isArray(patient.consents)) patient.consents = [];

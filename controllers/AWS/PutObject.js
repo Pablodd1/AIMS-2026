@@ -15,16 +15,14 @@ const getSignedUrlForUpload = asyncHandler(async(req,res)=>{
         {
             command = new PutObjectCommand({
                 Bucket:"bucket-aiscribers.com-private",
-                Key:`${folder}/${fileName}`,
-                ContentType:contentType
+                Key:`${folder}/${fileName}`
             })
             url = await getSignedUrl(s3Client,command,{expiresIn:180});
         }else
         {
             command = new PutObjectCommand({
                 Bucket:"bucket-aiscribers.com-public",
-                Key:`${folder}/${fileName}`,
-                ContentType:contentType
+                Key:`${folder}/${fileName}`
             })
             url = await getSignedUrl(s3Client,command,{expiresIn:120});
         }
