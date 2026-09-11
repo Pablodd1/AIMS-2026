@@ -69,6 +69,16 @@ const check = (ok, label, extra) => { console.log(`${ok ? "PASS" : "FAIL"}  ${la
   try { health = (await fetch(base + "/api/health")).status; } catch (e) { health = -1; }
   check(health === 200, "B: server still alive after the bad image", "health " + health);
 
+  // ---- C. the per-form source document link travels with the record
+  const src = "https://docs.google.com/document/d/1DDGY13XSALW_Eg11DQeXi-wC_P5WxsAw/edit";
+  const c = await post(base, "/api/post/submitConsent", {
+    patientId, procedure: "TPI Injection", consentVersion: VERSION, sourceUrl: src,
+    procedureDate: "", area: "self-check", screening: "", signatureDataUrl: GOOD_PNG, photoDataUrl: GOOD_PNG,
+  }, token);
+  check(!!c.json.consent && c.json.consent.sourceUrl === src, "C: source document stored", "got " + (c.json.consent || {}).sourceUrl);
+  check(!!c.json.consent && !!c.json.consent.pdfUrl, "C: pdf built with the link");
+  if (c.json.consent) await db.collection("patients").updateOne({ _id: new mongoose.Types.ObjectId(patientId) }, { $pull: { consents: { sourceUrl: src } } });
+
   await mongoose.disconnect();
   console.log(fails ? `\n${fails} CHECK(S) FAILED` : "\nall consent-context checks passed");
   process.exit(fails ? 1 : 0);

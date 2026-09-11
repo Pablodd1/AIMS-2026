@@ -33,7 +33,8 @@ const getText = async (u) => (await get(u)).toString("utf8"); // page is UTF-8 (
   await mongoose.connect(process.env.MONGO_URI);
   const P = mongoose.connection.db.collection("patients");
   const docs = await P.find({ consents: { $exists: true, $ne: [] } }).project({ fullName: 1, consents: 1 }).toArray();
-  let ok = 0, bad = 0, newest = null;
+  let ok = 0, bad = 0;
+  const pdfs = [];
   for (const d of docs) {
     for (const c of d.consents) {
       if (!c.consentText || !c.consentTextSha256) { console.log("  [MISSING text/hash]", d.fullName, "|", c.procedure); bad++; continue; }
@@ -44,16 +45,21 @@ const getText = async (u) => (await get(u)).toString("utf8"); // page is UTF-8 (
         console.log("  [DRIFT]", d.fullName, "|", c.consentVersion, "| stored:", storedOk, "| live:", liveOk);
         bad++;
       } else ok++;
-      if (c.pdfUrl && (!newest || Date.parse(c.capturedAt || c.signedAt || 0) > Date.parse(newest.capturedAt || newest.signedAt || 0))) newest = c;
+      if (c.pdfUrl) pdfs.push(Object.assign({ patient: d.fullName }, c));
     }
   }
   console.log("records: text+hash verified:", ok, "| problems:", bad);
 
-  // ---- 3. newest PDF carries the context
-  if (newest) {
-    console.log("checking PDF:", newest.procedure, "|", newest.pdfUrl.slice(0, 80) + "...");
-    const pdf = await get(newest.pdfUrl);
+  // ---- 3. every stored PDF carries its own record's context
+  let pdfBad = 0;
+  for (const rec of pdfs) {
+    console.log("PDF:", rec.patient, "|", rec.procedure, "|", rec.consentVersion, "|", rec.pdfUrl.slice(-32));
+    const pdf = await get(rec.pdfUrl);
     console.log("pdf bytes:", pdf.length);
+    if (pdf.slice(0, 4).toString("latin1") !== "%PDF") {
+      console.log("  => legacy file (not a PDF — stored as an image when the record was signed); skipped");
+      continue;
+    }
     let content = "", streams = 0, inflated = 0;
     let from = 0;
     while (true) {
@@ -80,22 +86,30 @@ const getText = async (u) => (await get(u)).toString("utf8"); // page is UTF-8 (
     while ((hm = hexRe.exec(content))) {
       try { text += Buffer.from(hm[1], "hex").toString("latin1"); } catch (x) {}
     }
-    const flat = text.replace(/\s+/g, "");   // glyph runs concatenate without separators
+    const flat = text.replace(/[^\x20-\x7E]/g, "").replace(/\s+/g, "");   // glyphs are WinAnsi bytes; drop non-ASCII (em dashes etc.) on both sides
     console.log("streams:", streams, "| inflated bytes:", inflated, "| decoded text bytes:", text.length);
     const checks = {
-      "patient name": newest.patientName,
-      "treatment area": newest.area,
-      "form version": newest.consentVersion,
-      "captured by": (newest.capturedBy || "").split(" <")[0],
-      "text hash": newest.consentTextSha256,
-      "consent body": (newest.consentText || "").slice(0, 60),
-      "screening": newest.screening,
+      "patient name": rec.patientName,
+      "treatment area": rec.area,
+      "form version": rec.consentVersion,
+      "captured by": (rec.capturedBy || "").split(" <")[0],
+      "text hash": rec.consentTextSha256,
+      "consent body": (rec.consentText || "").slice(0, 60),
+      "screening": rec.screening,
+      "source document": rec.sourceUrl,
     };
+    const missing = [];
     for (const k of Object.keys(checks)) {
       if (!checks[k]) { console.log("  -", k, "(not set on record, skipped)"); continue; }
-      const target = String(checks[k]).replace(/\s+/g, "");
-      console.log("  -", k, "in PDF:", flat.indexOf(target) > -1 ? "YES" : "NO");
+      // subset fonts write WinAnsi glyph bytes, not UTF-8: compare ASCII-only, with whitespace stripped
+      const target = String(checks[k]).replace(/[^\x20-\x7E]/g, "").replace(/\s+/g, "");
+      const found = !!target && flat.indexOf(target) > -1;
+      if (!found) missing.push(k);
+      console.log("  -", k, "in PDF:", found ? "YES" : "NO");
     }
+    if (missing.length) pdfBad++;
+    console.log("  => context complete:", missing.length ? "NO (missing " + missing.join(", ") + ")" : "YES");
   }
+  console.log("PDFs checked:", pdfs.length, "| with missing context:", pdfBad);
   await mongoose.disconnect();
 })().catch((e) => { console.error("ERR", e.message); process.exit(1); });

@@ -169,6 +169,11 @@ const submitConsent = asyncHandler(async (req, res) => {
   const signedAt = new Date().toLocaleString("en-US", { timeZone: "America/New_York" });
   const version = consentVersion || DEFAULT_VERSION;
   const resolved = resolveText(version, consentText);
+  // an unknown version means a stale page (or a hand-made post): never record one form under
+  // another form's words — make it reload instead.
+  if (resolved.source === "default") {
+    return res.status(400).json({ response: false, msg: `Unknown consent form version "${version}" — reload the consent page and sign again.` });
+  }
   const textHash = sha256(resolved.text);
 
   const sigBuf = dataUrlToBuffer(signatureDataUrl);
