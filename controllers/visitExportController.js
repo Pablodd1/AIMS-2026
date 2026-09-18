@@ -1,6 +1,7 @@
 const asyncHandler = require('express-async-handler');
 const Visit = require('../models/Visit');
 const Patient = require('../models/Patients');
+const { buildRomTable } = require('../Helper/romCalculator');
 
 // Get visit timeline for a patient
 const getPatientVisits = asyncHandler(async (req, res) => {
@@ -57,49 +58,79 @@ const exportVisitDocx = asyncHandler(async (req, res) => {
     } catch (e) {
       return res.status(500).json({ response: false, msg: 'DOCX module not available. Run: npm install docx' });
     }
-    const { Document, Packer, Paragraph, HeadingLevel, AlignmentType } = docx;
+    const { Document, Packer, Paragraph, HeadingLevel, AlignmentType, Table, TableRow, TableCell, WidthType } = docx;
+
+    // Build a range-of-motion comparison table when the visit has ROM data
+    const romRows = [];
+    if (Array.isArray(visit.rangeOfMotion) && visit.rangeOfMotion.length) {
+      const rom = buildRomTable(visit.rangeOfMotion);
+      romRows.push(new TableRow({
+        children: ['Region / Motion', 'Measured', 'Normal', 'Deficit %', 'Pain Elicited'].map(h =>
+          new TableCell({ children: [new Paragraph({ text: h, bold: true })], width: { size: 20, type: WidthType.PERCENTAGE } })
+        ),
+      }));
+      rom.forEach((r) => {
+        romRows.push(new TableRow({
+          children: [
+            new TableCell({ children: [new Paragraph(`${r.region || '—'} ${r.movement || ''}`)] }),
+            new TableCell({ children: [new Paragraph(r.measured != null ? `${r.measured}°` : '—')] }),
+            new TableCell({ children: [new Paragraph(r.normal != null ? `${r.normal}°` : '—')] }),
+            new TableCell({ children: [new Paragraph(r.deficitPct != null ? `${r.deficitPct}%` : '—')] }),
+            new TableCell({ children: [new Paragraph(r.painElicited ? 'YES (Positive)' : 'No')] }),
+          ],
+        }));
+      });
+    }
+
+    const children = [
+      new Paragraph({
+        text: 'Innovative Medical Wellness',
+        heading: HeadingLevel.HEADING_1,
+        alignment: AlignmentType.CENTER,
+      }),
+      new Paragraph({
+        text: 'Patient Visit Summary',
+        heading: HeadingLevel.HEADING_2,
+        alignment: AlignmentType.CENTER,
+      }),
+      new Paragraph({ spacing: { after: 200 } }),
+      new Paragraph({
+        text: `Patient: ${patient?.fullName || 'N/A'}`,
+        heading: HeadingLevel.HEADING_3,
+      }),
+      new Paragraph(`Date: ${visit.date || visit.createdAt?.toISOString().split('T')[0] || 'N/A'}`),
+      new Paragraph(`DOB: ${patient?.dateOfBirth || 'N/A'} | Phone: ${patient?.phoneNumber || 'N/A'}`),
+      new Paragraph({ spacing: { after: 200 } }),
+      new Paragraph({ text: 'Chief Complaint', heading: HeadingLevel.HEADING_3 }),
+      new Paragraph(visit.chiefComplaint || 'Not recorded'),
+      new Paragraph({ spacing: { after: 200 } }),
+      new Paragraph({ text: 'Subjective', heading: HeadingLevel.HEADING_3 }),
+      new Paragraph(visit.subjective || 'Not recorded'),
+      new Paragraph({ spacing: { after: 200 } }),
+      new Paragraph({ text: 'Objective', heading: HeadingLevel.HEADING_3 }),
+      new Paragraph(visit.objective || 'Not recorded'),
+      new Paragraph({ spacing: { after: 200 } }),
+      new Paragraph({ text: 'Assessment', heading: HeadingLevel.HEADING_3 }),
+      new Paragraph(visit.Assessment || 'Not recorded'),
+      new Paragraph({ spacing: { after: 200 } }),
+      new Paragraph({ text: 'Plan', heading: HeadingLevel.HEADING_3 }),
+      new Paragraph(visit.Plan || 'Not recorded'),
+      new Paragraph({ spacing: { after: 200 } }),
+      new Paragraph({ text: 'Medications', heading: HeadingLevel.HEADING_3 }),
+      new Paragraph(visit.med || 'None'),
+      new Paragraph({ spacing: { after: 200 } }),
+    ];
+
+    if (romRows.length) {
+      children.push(new Paragraph({ text: 'Range of Motion (vs AMA Guides)', heading: HeadingLevel.HEADING_3 }));
+      children.push(new Table({ rows: romRows, width: { size: 100, type: WidthType.PERCENTAGE } }));
+      children.push(new Paragraph({ spacing: { after: 200 } }));
+    }
 
     const doc = new Document({
       sections: [{
         properties: {},
-        children: [
-          new Paragraph({
-            text: 'Innovative Medical Wellness',
-            heading: HeadingLevel.HEADING_1,
-            alignment: AlignmentType.CENTER,
-          }),
-          new Paragraph({
-            text: 'Patient Visit Summary',
-            heading: HeadingLevel.HEADING_2,
-            alignment: AlignmentType.CENTER,
-          }),
-          new Paragraph({ spacing: { after: 200 } }),
-          new Paragraph({
-            text: `Patient: ${patient?.fullName || 'N/A'}`,
-            heading: HeadingLevel.HEADING_3,
-          }),
-          new Paragraph(`Date: ${visit.date || visit.createdAt?.toISOString().split('T')[0] || 'N/A'}`),
-          new Paragraph(`DOB: ${patient?.dateOfBirth || 'N/A'} | Phone: ${patient?.phoneNumber || 'N/A'}`),
-          new Paragraph({ spacing: { after: 200 } }),
-          new Paragraph({ text: 'Chief Complaint', heading: HeadingLevel.HEADING_3 }),
-          new Paragraph(visit.chiefComplaint || 'Not recorded'),
-          new Paragraph({ spacing: { after: 200 } }),
-          new Paragraph({ text: 'Subjective', heading: HeadingLevel.HEADING_3 }),
-          new Paragraph(visit.subjective || 'Not recorded'),
-          new Paragraph({ spacing: { after: 200 } }),
-          new Paragraph({ text: 'Objective', heading: HeadingLevel.HEADING_3 }),
-          new Paragraph(visit.objective || 'Not recorded'),
-          new Paragraph({ spacing: { after: 200 } }),
-          new Paragraph({ text: 'Assessment', heading: HeadingLevel.HEADING_3 }),
-          new Paragraph(visit.Assessment || 'Not recorded'),
-          new Paragraph({ spacing: { after: 200 } }),
-          new Paragraph({ text: 'Plan', heading: HeadingLevel.HEADING_3 }),
-          new Paragraph(visit.Plan || 'Not recorded'),
-          new Paragraph({ spacing: { after: 200 } }),
-          new Paragraph({ text: 'Medications', heading: HeadingLevel.HEADING_3 }),
-          new Paragraph(visit.med || 'None'),
-          new Paragraph({ spacing: { after: 200 } }),
-        ],
+        children,
       }],
     });
 

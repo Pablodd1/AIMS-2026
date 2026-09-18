@@ -2,6 +2,7 @@
 const asyncHandler = require("express-async-handler");
 const OpenAI = require('openai');
 const fs = require('fs');
+const { buildRomTable } = require('../Helper/romCalculator');
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_KEY, 
@@ -1076,7 +1077,9 @@ INSTRUCTIONS:
 1. Use the previous visit history to understand context, track changes, and avoid repeating information
 2. Highlight any changes or lack of progress since the last visit
 3. Extract ICD-10 codes and CPT codes where applicable
-4. Return ONLY valid JSON with this structure:
+4. If the note describes a motor-vehicle accident, slip-and-fall, or work injury, populate "personalInjuryDossier" (otherwise set it to null)
+5. If the objective exam dictates range-of-motion measurements (e.g. "cervical flexion 30 with pain, extension 25, right lateral 30"), populate "rangeOfMotion" (otherwise set it to [])
+6. Return ONLY valid JSON with this structure:
 {
   "subjective": "...",
   "objective": "...",
@@ -1085,7 +1088,30 @@ INSTRUCTIONS:
   "soapNotesSummary": "2-3 sentence summary",
   "dxCodes": [{"code": "M54.5", "description": "Low back pain"}],
   "cptCodes": [{"code": "99213", "description": "Office visit"}],
-  "changesSinceLastVisit": "What changed or didn't change since last visit"
+  "changesSinceLastVisit": "What changed or didn't change since last visit",
+  "rangeOfMotion": [
+    {"region": "Cervical Spine", "movement": "Flexion", "measured": 30, "painElicited": true}
+  ],
+  "personalInjuryDossier": {
+    "accidentRelated": true,
+    "dateOfInjury": "YYYY-MM-DD",
+    "mechanismOfInjury": {
+      "accidentType": "MVA_REAR_END",
+      "impactVelocityMph": null,
+      "patientPosition": "DRIVER",
+      "seatbeltWorn": true,
+      "airbagDeployed": false,
+      "vehicleDamageSeverity": "MODERATE",
+      "narrative": "..."
+    },
+    "adlDeficits": [
+      {"activity": "Sleeping", "severity": "MODERATE", "baselineVsCurrent": "..."}
+    ],
+    "causationStatement": {
+      "attestationText": "...",
+      "confidenceLevel": "PROBABLE"
+    }
+  }
 }`
         },
         {
@@ -1111,10 +1137,17 @@ INSTRUCTIONS:
       };
     }
 
+    // Additive: compute ROM deficit table for the frontend when ROM was extracted
+    let romAnalysis = null;
+    if (parsed && Array.isArray(parsed.rangeOfMotion) && parsed.rangeOfMotion.length) {
+      romAnalysis = buildRomTable(parsed.rangeOfMotion);
+    }
+
     res.json({
       response: true,
       note: parsed,
       historyUsed: previousVisits?.length || 0,
+      romAnalysis,
     });
   } catch (e) {
     console.error('Smart assistant error:', e);
@@ -1293,7 +1326,7 @@ const generateReportFromAudioFile = asyncHandler(async (req, res) => {
     'Physical Examination': '', Constitutional: rosObj,
   });
   try {
-    const prompt = 'You are a medical scribe. Convert the consultation transcript into a structured clinical note. Return ONLY valid JSON with keys: Subjective, Objective, Assessment, Plan, Medications, Allergies, SUMMARY, "History of Present Illness (HPI)", "Past Medical History (PMH)", "Chief Complaint", "Physical Examination". Fill each with the relevant content from the transcript, empty string if not discussed.';
+    const prompt = 'You are a medical scribe. Convert the consultation transcript into a structured clinical note. Return ONLY valid JSON with keys: Subjective, Objective, Assessment, Plan, Medications, Allergies, SUMMARY, "History of Present Illness (HPI)", "Past Medical History (PMH)", "Chief Complaint", "Physical Examination". Fill each with the relevant content from the transcript, empty string if not discussed. Also include: "rangeOfMotion" as an array of {"region","movement","measured","painElicited"} for any dictated range-of-motion measurements (e.g. "cervical flexion 30 with pain"), and "personalInjuryDossier" as an object describing motor-vehicle/slip-and-fall/work injury if one is mentioned (with accidentRelated, dateOfInjury, mechanismOfInjury{accidentType,impactVelocityMph,patientPosition,seatbeltWorn,airbagDeployed,vehicleDamageSeverity,narrative}, adlDeficits[{activity,severity,baselineVsCurrent}], causationStatement{attestationText,confidenceLevel}); set personalInjuryDossier to null and rangeOfMotion to [] when not present.';
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [{ role: 'user', content: prompt + '\n\nTranscript:\n' + transcript }],
@@ -1304,6 +1337,9 @@ const generateReportFromAudioFile = asyncHandler(async (req, res) => {
     const data = blank();
     Object.keys(data).forEach(k => { if (parsed[k]) data[k] = parsed[k]; });
     data.Constitutional = rosObj;
+    // Additive clinical-moat payloads (undefined-safe)
+    data.rangeOfMotion = Array.isArray(parsed.rangeOfMotion) ? parsed.rangeOfMotion : [];
+    data.personalInjuryDossier = parsed.personalInjuryDossier || null;
     return res.json({ success: true, code: { 'ICD-10 Codes': [], 'CPT Codes': [] }, data, Ros: rosObj, original: transcript });
   } catch (e) {
     console.error('generateReportFromAudioFile error:', e.message);

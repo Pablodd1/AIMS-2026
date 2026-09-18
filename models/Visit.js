@@ -89,6 +89,30 @@ const VisitSchema = new Schema({
   audioTranscription: {
     type: String,
   },
+  // --- Clinical moat: Med-Legal / PI Defense Engine ---
+  personalInjuryDossier: {
+    type: Object,
+  },
+  mechanismOfInjury: {
+    type: Object,
+  },
+  impactOnADL: [{
+    type: Object,
+  }],
+  causationStatement: {
+    type: Object,
+  },
+  // --- Clinical moat: Objective MSK / ROM ---
+  rangeOfMotion: [{
+    type: Object,
+  }],
+  romAnalysis: [{
+    type: Object,
+  }],
+  // --- Clinical moat: Pre-billing audit ---
+  auditResults: {
+    type: Object,
+  },
 }, { timestamps: true });
 
 VisitSchema.pre('save', function (next) {

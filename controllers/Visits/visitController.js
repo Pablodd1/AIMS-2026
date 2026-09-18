@@ -2,6 +2,8 @@ const asyncHandler = require("express-async-handler");
 const Visit = require("../../models/Visit");
 const Patient = require("../../models/Patients");
 const OpenAI = require("openai");
+const { buildRomTable, computeReExamDeltas } = require("../../Helper/romCalculator");
+const { auditChiropracticBilling } = require("../../Helper/billingAuditor");
 
 // Reuse the same OpenAI client pattern as openaiController.js
 // Read the key directly from the source to avoid env mismatch
@@ -82,7 +84,22 @@ const createVisit = asyncHandler(async (req, res) => {
       Plan,
       Rationale,
       mode,
+      personalInjuryDossier,
+      mechanismOfInjury,
+      impactOnADL,
+      causationStatement,
+      rangeOfMotion,
     } = req.body;
+
+    // Additive clinical-moat derivations: ROM analysis + billing audit.
+    // Both are computed server-side from the incoming fields; never fail the visit.
+    let romAnalysis;
+    if (Array.isArray(rangeOfMotion) && rangeOfMotion.length) {
+      romAnalysis = buildRomTable(rangeOfMotion);
+    }
+    const auditResults = auditChiropracticBilling({
+      objective, physicalExamination, rangeOfMotion, cptCodes, icdCodes,
+    });
 
     if (mode == "generate") {
       // AUTO-SUMMARIZE: if no summary was provided but SOAP fields exist, generate one
@@ -116,6 +133,13 @@ const createVisit = asyncHandler(async (req, res) => {
         dxCodes,
         Plan,
         Rationale,
+        personalInjuryDossier,
+        mechanismOfInjury,
+        impactOnADL,
+        causationStatement,
+        rangeOfMotion,
+        romAnalysis,
+        auditResults,
       });
 
       await visit.save();
@@ -123,7 +147,7 @@ const createVisit = asyncHandler(async (req, res) => {
       // Increment patient visit counter
       await Patient.updateOne({ _id: pId }, { $inc: { visitCount: 1 } });
 
-      res.json({ response: true, msg: "Visited registered", id: visit._id, soapNotesSummary });
+      res.json({ response: true, msg: "Visited registered", id: visit._id, soapNotesSummary, auditResults, romAnalysis });
     } else if (mode == "edit") {
       // AUTO-SUMMARIZE on edit too if summary is empty
       const hasSummary = soapNotesSummary && soapNotesSummary.trim() && soapNotesSummary !== "N/A";
@@ -155,10 +179,17 @@ const createVisit = asyncHandler(async (req, res) => {
           dxCodes,
           Plan,
           Rationale,
+          personalInjuryDossier,
+          mechanismOfInjury,
+          impactOnADL,
+          causationStatement,
+          rangeOfMotion,
+          romAnalysis,
+          auditResults,
         }
       );
 
-      res.json({ response: true, msg: "Report updated" });
+      res.json({ response: true, msg: "Report updated", auditResults, romAnalysis });
     }
 
     // }
@@ -371,6 +402,74 @@ const newReportMethodStoredIntoDb = asyncHandler(async(req,res)=>{
 
 })
 
+// ===== Longitudinal Re-Exam & Comparison =====
+// POST /api/v1/visits/generate-reexam-report
+// Body: { patientId, baselineVisitId?, currentVisitId? }
+// Computes deterministic deltas, then asks GPT to compile a payer/counsel-ready narrative.
+const generateReExamReport = asyncHandler(async (req, res) => {
+  try {
+    const { patientId, baselineVisitId, currentVisitId } = req.body;
+    if (!patientId) {
+      return res.status(400).json({ response: false, msg: "patientId required" });
+    }
+
+    const q = { pId: patientId };
+    const baseline = baselineVisitId
+      ? await Visit.findOne({ _id: baselineVisitId, pId: patientId }).lean()
+      : await Visit.findOne(q).sort({ createdAt: 1 }).lean();
+    const current = currentVisitId
+      ? await Visit.findOne({ _id: currentVisitId, pId: patientId }).lean()
+      : await Visit.findOne(q).sort({ createdAt: -1 }).lean();
+
+    if (!baseline || !current) {
+      return res.status(404).json({ response: false, msg: "Need at least two visits (baseline + current) to compare" });
+    }
+
+    const deltas = computeReExamDeltas(baseline, current);
+
+    // Compile a narrative formatted for commercial payers / legal counsel.
+    let comparativeNarrative = null;
+    try {
+      const openai = new OpenAI({ apiKey: getOpenAiKey() });
+      const summary = JSON.stringify({
+        patient: patientId,
+        daysBetweenVisits: deltas.daysBetween,
+        painScaleDelta: deltas.vas,
+        rangeOfMotionDeltas: deltas.rom,
+        adlDeltas: deltas.adl,
+        orthopedicTests: deltas.ortho,
+      }, null, 2);
+      const resp = await openai.chat.completions.create({
+        model: "gpt-4o",
+        temperature: 0,
+        messages: [
+          {
+            role: "system",
+            content: "You are a clinical documentation specialist. Write a concise re-examination progress narrative suitable for a third-party commercial payer and legal counsel. Summarize objective functional improvement (pain scale, range of motion, ADL, orthopedic tests) using the structured deltas provided. Be factual, quantify improvement percentages where given, and note anything unresolved. Return plain prose only, no JSON, no markdown.",
+          },
+          { role: "user", content: `Re-exam deltas:\n${summary}` },
+        ],
+      });
+      comparativeNarrative = (resp.choices && resp.choices[0] && resp.choices[0].message && resp.choices[0].message.content || "").trim() || null;
+    } catch (e) {
+      console.error("Re-exam narrative generation failed:", e.message);
+      comparativeNarrative = null;
+    }
+
+    return res.json({
+      response: true,
+      comparativeNarrative,
+      deltas,
+      baselineVisitId: baseline._id,
+      currentVisitId: current._id,
+      readyForExport: true,
+    });
+  } catch (e) {
+    console.error("generateReExamReport error:", e);
+    return res.status(500).json({ response: false, error: e.message });
+  }
+});
+
 module.exports = {
   createVisit,
   viewReport,
@@ -380,5 +479,6 @@ module.exports = {
   delVisit,
   updateVisitDate,
   recentVisit,
-  newReportMethodStoredIntoDb
+  newReportMethodStoredIntoDb,
+  generateReExamReport
 };
