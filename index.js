@@ -273,6 +273,14 @@ app.post('/api/post/getInvoiceAnalyitcs',protect,getInvoiceAnalyitcs)
 app.post('/api/post/updateInvoice',protect,updateInvoice)
 app.delete('/api/delete/deleteInvoice',protect,deleteInvoice)
 app.post('/api/post/invoiceStatus',protect,invoiceStatus)
+// --- Terminal payments (Poynt / GoDaddy Payments) ---
+const { recordTerminalPayment, getUnmatchedPayments, assignPayment, getTerminalPayments } = require('./controllers/Payment/terminalPaymentController')
+const requireInternalKey = require('./middleware/internalKey')
+app.post('/api/internal/terminal-payment', requireInternalKey, recordTerminalPayment)
+app.get('/api/get/getTerminalPayments', protect, getTerminalPayments)
+app.get('/api/get/getUnmatchedPayments', protect, getUnmatchedPayments)
+app.post('/api/post/assignTerminalPayment', protect, assignPayment)
+
 app.get('/api/get/getAllByStatus',protect,getAllByStatus)
 
 
