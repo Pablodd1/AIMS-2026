@@ -234,6 +234,22 @@ app.post('/api/post/translateToEnglish', protect, translateToEnglish)
 // AI command interpreter
 app.post('/api/post/interpretCommand', protect, interpretCommand)
 
+// ── Legacy AI compat (aims-service2) — chat threads, custom-prompt Generate,
+// audio->text, lab interpreter, voice intake 2.0. Old service used the retired
+// OpenAI Assistants API; reimplemented on chat.completions in one controller.
+const legacyAi = require('./controllers/legacyAiCompatController')
+app.get('/api/create/thread', legacyAi.createThread)
+app.post('/api/create/message', legacyAi.createMessage)
+app.post('/api/create/run', legacyAi.createRun)
+app.post('/api/get/runStatus', legacyAi.getRunStatus)
+app.get('/api/get/messages', legacyAi.listMessages)
+app.post('/api/cancel/cancelRun', legacyAi.cancelRun)
+app.post('/api/post/testingNewReportMethod', legacyAi.testingNewReportMethod)
+app.post('/api/get/transcription', uploadSet1.single('file'), legacyAi.getTranscription)
+app.post('/api/post/newAssistant', uploadSet1.single('file'), legacyAi.newAssistant)
+app.post('/api/post/clearConversations', legacyAi.clearConversations)
+app.post('/api/openai/voiceIntake2.0', uploadSet1.single('file'), legacyAi.voiceIntake2o)
+
 // Medical codes (DX/CPT) — Phase 1 port from NEW-AIMS-UPGRADED
 app.post('/api/post/searchMedicalCodes', protect, searchMedicalCodes)
 app.get('/api/get/getCodeCategories', protect, getCodeCategories)
@@ -328,7 +344,7 @@ app.get("/", (req, res) => {
     res.send("AIMS backend api routes running");
 });
 
-const PORT = 4000;
+const PORT = process.env.PORT || 4000;
 
 app.listen(
   PORT,
