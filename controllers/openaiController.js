@@ -1,6 +1,7 @@
 
 const asyncHandler = require("express-async-handler");
-const OpenAI = require('openai');
+const OpenAI = require('openai')
+const { toFile } = require('openai');
 const fs = require('fs');
 const { buildRomTable } = require('../Helper/romCalculator');
 
@@ -11,8 +12,12 @@ const openai = new OpenAI({
 async function speechToText(file)
 {
     try {
+        const __okExt = new Set(['flac','m4a','mp3','mp4','mpeg','mpga','oga','ogg','wav','webm']);
+        const __mimeExt = String(file.mimetype || '').split('/')[1] || '';
+        const __nameExt = String(file.originalname || '').split('.').pop().toLowerCase();
+        const __ext = __okExt.has(__mimeExt) ? __mimeExt : (__okExt.has(__nameExt) ? __nameExt : 'mp3');
         const transcription = await openai.audio.transcriptions.create({
-            file: fs.createReadStream(file.path),
+            file: await toFile(fs.createReadStream(file.path), `audio.${__ext}`, { type: file.mimetype || 'audio/mpeg' }),
             model: "whisper-1",
         });
         return {response:true , msg: transcription.text} 
@@ -985,6 +990,42 @@ const suggestTreatment = asyncHandler(async (req, res) => {
 });
 
 // DX / CPT code extraction and suggestion
+const path = require('path');
+const NOTE_TEMPLATE_PATH = path.join(__dirname, '..', 'noteTemplate.json');
+const DEFAULT_NOTE_TEMPLATE = [
+'AIMS COMPREHENSIVE CLINICAL NOTE — ONE template for every visit type (initial exam, follow-up, re-evaluation).',
+'- Cover BOTH this consultation AND the follow-up plan in a single note.',
+'- Document every clinically relevant element: presenting complaint with onset, mechanism, duration, quality, severity, aggravating/relieving factors; relevant PMH, surgical, social and family history; medications and allergies; full review of systems (all 11 systems); examination findings including vitals, posture, palpation, range of motion with measured degrees when dictated, orthopedic and neurological tests; assessment with clinical reasoning and differential where relevant; treatment performed this visit (specific regions adjusted, techniques, modalities such as manual therapy, therapeutic exercise, EMS/traction) and the patient response; plan with home care, exercises, ergonomic/lifestyle advice, follow-up interval and referrals; prescriptions when given (drug, dose, route, frequency, duration, patient instructions/sig); patient education provided; prognosis.',
+'- Billing-ready detail: exact anatomical regions, techniques and objective findings that substantiate the CPT codes and the ICD-10 diagnoses.',
+'- For follow-ups, note interval improvement or worsening compared with the previous visit.',
+'- Preserve the provider dictation style, expand abbreviations correctly, and NEVER invent clinical data that the transcript does not support.',
+].join('\n');
+function readNoteTemplate() {
+  try {
+    const raw = fs.readFileSync(NOTE_TEMPLATE_PATH, 'utf8');
+    const j = JSON.parse(raw);
+    if (j && typeof j.template === 'string' && j.template.trim()) return j.template;
+  } catch (e) {}
+  return DEFAULT_NOTE_TEMPLATE;
+}
+const getNoteTemplate = asyncHandler(async (req, res) => {
+  res.json({ success: true, template: readNoteTemplate(), isDefault: !fs.existsSync(NOTE_TEMPLATE_PATH) });
+});
+const saveNoteTemplate = asyncHandler(async (req, res) => {
+  try {
+    const { template, reset } = req.body || {};
+    if (reset) {
+      try { fs.unlinkSync(NOTE_TEMPLATE_PATH); } catch (e) {}
+      return res.json({ success: true, template: DEFAULT_NOTE_TEMPLATE, reset: true });
+    }
+    if (typeof template !== 'string' || !template.trim()) return res.status(400).json({ success: false, msg: 'template required' });
+    if (template.length > 20000) return res.status(400).json({ success: false, msg: 'template too long (max 20000 chars)' });
+    fs.writeFileSync(NOTE_TEMPLATE_PATH, JSON.stringify({ template, updatedAt: new Date().toISOString() }, null, 2));
+    res.json({ success: true, template });
+  } catch (e) {
+    res.status(500).json({ success: false, msg: e.message });
+  }
+});
 const extractDxCptCodes = asyncHandler(async (req, res) => {
   try {
     const { notes, diagnosis, procedures } = req.body;
@@ -1309,8 +1350,11 @@ const generateReportFromAudioFile = asyncHandler(async (req, res) => {
   const { text, type } = req.body || {};
   let transcript = type === 'upload' ? null : text;
   if (type === 'upload' && req.file) {
-    const r = await voiceMethod(req.file, 'quick-upload').catch(() => null);
-    transcript = r && r.msg;
+    const r = await speechToText(req.file).catch((e) => ({ response: false, msg: e && e.message }));
+    if (!r || r.response === false) {
+      return res.status(400).json({ success: false, msg: (r && r.msg) || 'transcription failed' });
+    }
+    transcript = r.msg;
   }
   if (!transcript || !String(transcript).trim()) {
     return res.status(400).json({ success: false, msg: 'No consultation text provided' });
@@ -1326,21 +1370,48 @@ const generateReportFromAudioFile = asyncHandler(async (req, res) => {
     'Physical Examination': '', Constitutional: rosObj,
   });
   try {
-    const prompt = 'You are a medical scribe. Convert the consultation transcript into a structured clinical note. Return ONLY valid JSON with keys: Subjective, Objective, Assessment, Plan, Medications, Allergies, SUMMARY, "History of Present Illness (HPI)", "Past Medical History (PMH)", "Chief Complaint", "Physical Examination". Fill each with the relevant content from the transcript, empty string if not discussed. Also include: "rangeOfMotion" as an array of {"region","movement","measured","painElicited"} for any dictated range-of-motion measurements (e.g. "cervical flexion 30 with pain"), and "personalInjuryDossier" as an object describing motor-vehicle/slip-and-fall/work injury if one is mentioned (with accidentRelated, dateOfInjury, mechanismOfInjury{accidentType,impactVelocityMph,patientPosition,seatbeltWorn,airbagDeployed,vehicleDamageSeverity,narrative}, adlDeficits[{activity,severity,baselineVsCurrent}], causationStatement{attestationText,confidenceLevel}); set personalInjuryDossier to null and rangeOfMotion to [] when not present.';
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [{ role: 'user', content: prompt + '\n\nTranscript:\n' + transcript }],
-      response_format: { type: 'json_object' },
-    });
-    let parsed = {};
-    try { parsed = JSON.parse(completion.choices[0].message.content); } catch {}
+    const __template = readNoteTemplate();
+    const NOTE_KEYS_HINT = 'Subjective, Objective, Assessment, Plan, Medications, Allergies, SUMMARY, "History of Present Illness (HPI)", "Past Medical History (PMH)", "Chief Complaint", "Physical Examination"';
+    const notePrompt = 'You are an expert medical scribe for a chiropractic clinic. Convert the consultation transcript into ONE comprehensive clinical note covering the full scope of practice for any visit type (initial exam, follow-up, re-evaluation). Return ONLY valid JSON with keys: ' + NOTE_KEYS_HINT + '. Fill every key with the relevant content from the transcript; use "" ONLY when truly not discussed. Also include "ros": an object with keys Constitutional, Eyes, ENT, Cardiovascular, Respiratory, Gastrointestinal, Genitourinary, Musculoskeletal, Skin, Neurological, Psychiatric — each {"type":"Discussed" or "Not discussed","description":"findings for that system"}. Mark a system "Discussed" whenever ANY symptom, history or examination finding for it appears ANYWHERE in the transcript (for example any spinal, joint, muscle or range-of-motion finding makes Musculoskeletal "Discussed"); otherwise description = \'Not discussed during the consultation.\'. Also include: "rangeOfMotion" as an array of {"region","movement","measured","painElicited"} for dictated range-of-motion measurements, and "personalInjuryDossier" as an object for motor-vehicle/slip-and-fall/work injuries if mentioned (accidentRelated, dateOfInjury, mechanismOfInjury{accidentType,impactVelocityMph,patientPosition,seatbeltWorn,airbagDeployed,vehicleDamageSeverity,narrative}, adlDeficits[{activity,severity,baselineVsCurrent}], causationStatement{attestationText,confidenceLevel}); personalInjuryDossier null and rangeOfMotion [] when absent. Only document what the transcript supports — never invent findings.\n\nCLINICIAN NOTE TEMPLATE (follow its structure, scope and voice exactly; it is the provider\'s documentation standard):\n' + __template;
+    const billPrompt = 'You are a certified professional medical coder and clinical safety reviewer for a chiropractic clinic (billing & safety pass). From the consultation transcript return ONLY valid JSON with: "dxCodes": array of {"code":"ICD-10 code (e.g. M54.6)","description":"full description","primary":true or false} — every diagnosis supported by the transcript, most specific first, including comorbidities that affect care (e.g. I10). "cptCodes": array of {"code":"CPT code","description":"full description","units":1} — codes supported by what was actually performed AND documented this visit: 98940 (1-2 spinal regions), 98941 (3-4 regions), 98942 (5 regions), 98943 (extraspinal), 97110 (therapeutic exercise), 97140 (manual therapy), 97014 (EMS), E/M 99213-99215 when supported; if the transcript supports a higher code than the documentation proves, still code what is proven and note the gap in complianceNotes. "prescriptions": array of {"medication":"drug name","dosage":"e.g. 600 mg","frequency":"e.g. every 8 hours as needed","duration":"e.g. 5 days","instructions":"patient sig — how to take it, e.g. take with food","refills":0} — EVERY medication actually prescribed, ordered or recommended in the consultation (common: ibuprofen, naproxen, cyclobenzaprine, acetaminophen, muscle relaxants). Empty array ONLY if no medication was mentioned. "redFlags": array of {"severity":"critical" or "warning" or "caution","category":"cardiovascular|neurological|infectious|trauma|psychiatric|other","description":"what was found OR what is missing from the documentation that is necessary to support or exclude the diagnosis","recommendation":"what the provider should ask, examine or document next"} — include both true clinical red flags (cauda equina signs, fracture risk, cancer/ infection screens, progressive neuro deficits) AND documentation gaps the provider must close for the diagnosis (e.g. missing vitals, no outcome measures, no neuro screen when indicated). "complianceNotes": array of billing-compliance notes. "confidence":"high|medium|low". "safeToTreat": true or false. RULES: include a "caution" redFlags entry for EVERY important documentation gap (missing vitals, missing outcome measures such as pain scale/ROM baseline, missing neurological or orthopedic screening when indicated, missing consent for manipulation, no follow-up plan) and a "warning"/"critical" entry for every true clinical red flag present in the transcript; return redFlags [] ONLY when the documentation is complete and no clinical concern exists.';
+    const [noteCall, billCall] = await Promise.all([
+      openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: notePrompt + '\n\nTranscript:\n' + transcript }],
+        response_format: { type: 'json_object' },
+      }),
+      openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        temperature: 0,
+        messages: [{ role: 'user', content: billPrompt + '\n\nTranscript:\n' + transcript }],
+        response_format: { type: 'json_object' },
+      }),
+    ]);
+    let parsed = {}, bill = {};
+    try { parsed = JSON.parse(noteCall.choices[0].message.content); } catch {}
+    try { bill = JSON.parse(billCall.choices[0].message.content); } catch {}
     const data = blank();
     Object.keys(data).forEach(k => { if (parsed[k]) data[k] = parsed[k]; });
-    data.Constitutional = rosObj;
+    const rosFinal = {};
+    ROS_SYS.forEach(k => {
+      const v = parsed.ros && parsed.ros[k];
+      if (v && typeof v === 'object' && typeof v.description === 'string' && v.description.trim() && v.description.trim().toLowerCase() !== 'not discussed during the consultation.') {
+        rosFinal[k] = { type: (String(v.type || '').toLowerCase().includes('discuss') && !String(v.type || '').toLowerCase().includes('not') ? 'Discussed' : 'Discussed'), description: v.description };
+      } else {
+        rosFinal[k] = rosObj[k];
+      }
+    });
+    data.Constitutional = rosFinal;
     // Additive clinical-moat payloads (undefined-safe)
     data.rangeOfMotion = Array.isArray(parsed.rangeOfMotion) ? parsed.rangeOfMotion : [];
     data.personalInjuryDossier = parsed.personalInjuryDossier || null;
-    return res.json({ success: true, code: { 'ICD-10 Codes': [], 'CPT Codes': [] }, data, Ros: rosObj, original: transcript });
+    const pDx = Array.isArray(bill.dxCodes) ? bill.dxCodes.filter(x => x && x.code).slice(0, 25) : [];
+    const pCpt = Array.isArray(bill.cptCodes) ? bill.cptCodes.filter(x => x && x.code).slice(0, 25) : [];
+    const pRx = Array.isArray(bill.prescriptions) ? bill.prescriptions.filter(x => x && x.medication).slice(0, 25) : [];
+    const pRf = Array.isArray(bill.redFlags) ? bill.redFlags.slice(0, 25) : [];
+    data.prescriptions = pRx;
+    data.redFlags = pRf;
+    return res.json({ success: true, code: { 'ICD-10 Codes': pDx, 'CPT Codes': pCpt }, data, Ros: rosFinal, original: transcript, prescriptions: pRx, redFlags: pRf, billing: { complianceNotes: Array.isArray(bill.complianceNotes) ? bill.complianceNotes : [], confidence: bill.confidence || null, safeToTreat: (bill.safeToTreat !== false) } });
   } catch (e) {
     console.error('generateReportFromAudioFile error:', e.message);
     return res.status(500).json({ success: false, msg: (e && e.message) || 'generation failed' });
@@ -1388,4 +1459,6 @@ module.exports = {
     translateToEnglish,
     interpretCommand,
     generateReportFromAudioFile,
+    getNoteTemplate,
+    saveNoteTemplate,
 };

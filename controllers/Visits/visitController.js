@@ -89,6 +89,7 @@ const createVisit = asyncHandler(async (req, res) => {
       impactOnADL,
       causationStatement,
       rangeOfMotion,
+      redFlags,
     } = req.body;
 
     // Additive clinical-moat derivations: ROM analysis + billing audit.
@@ -138,6 +139,7 @@ const createVisit = asyncHandler(async (req, res) => {
         impactOnADL,
         causationStatement,
         rangeOfMotion,
+        redFlags,
         romAnalysis,
         auditResults,
       });
@@ -184,6 +186,7 @@ const createVisit = asyncHandler(async (req, res) => {
           impactOnADL,
           causationStatement,
           rangeOfMotion,
+          redFlags,
           romAnalysis,
           auditResults,
         }

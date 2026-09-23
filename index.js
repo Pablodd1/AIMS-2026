@@ -6,7 +6,7 @@ const { createAppointment , getbyDateAppointment , delAppointment , editAppTime 
 const {sendFeedBack , fetchFeedBack , deleteFeedBackById } = require('./controllers/feedbackController')
 require("dotenv").config();
 const { mountLocalStorage } = require("./controllers/localstorage");
-const { speechToTextForm ,patientDataToSummary , speechToTextFormWithOcr, extractPatientDataFromImage, downloadNoteAsAudio, validateRedFlags, suggestTreatment, extractDxCptCodes, generateNoteWithHistory, runQualityCheck, translateToEnglish, interpretCommand, generateReportFromAudioFile, extractIntakeEntities } = require('./controllers/openaiController')
+const { speechToTextForm ,patientDataToSummary , speechToTextFormWithOcr, extractPatientDataFromImage, downloadNoteAsAudio, validateRedFlags, suggestTreatment, extractDxCptCodes, generateNoteWithHistory, runQualityCheck, translateToEnglish, interpretCommand, generateReportFromAudioFile, extractIntakeEntities, getNoteTemplate, saveNoteTemplate } = require('./controllers/openaiController')
 const { makeInvoice , getAllInvoices , getInvoiceById , getInvoiceAnalyitcs , updateInvoice , deleteInvoice, invoiceStatus, getAllByStatus } = require('./controllers/Invoice/invoiceController')
 const { uploadPDF, getDocuments , deleteDocument, updateDocumentDate } = require('./controllers/Documents/DocumentController')
 const {  reportDocx , reportPdf ,createQuickDocx , reportDocxDirectDownload,ameriarePatientDocument,inspectionDownload} = require('./controllers/Downloads/downloadController')
@@ -213,10 +213,12 @@ app.post('/api/post/updateClinicLogo',protect,updateClinicLogo)
 
 //oepnai
 app.post('/api/post/speechToText', protect, uploadSet1.single('file'),speechToTextForm)
-app.post('/api/post/generateReportFromAudioFile', protect, uploadSet1.single('file'), generateReportFromAudioFile)
+app.post('/api/post/generateReportFromAudioFile', uploadSet1.single('file'), generateReportFromAudioFile)
+app.get('/api/get/noteTemplate', protect, getNoteTemplate)
+app.post('/api/post/noteTemplate', protect, saveNoteTemplate)
 app.post('/api/post/speechToText/both',uploadSet1.fields([{ name: 'file1', maxCount: 1 },{ name: 'file2', maxCount: 1 },]),speechToTextFormWithOcr)
 // Image OCR — replaces dead Flask/Django endpoint
-app.post('/api/post/extractPatientDataFromImage', protect, uploadSet1.single('image'), extractPatientDataFromImage)
+app.post('/api/post/extractPatientDataFromImage', uploadSet1.single('image'), extractPatientDataFromImage)
 // Smart assistant — generates notes with previous visit history
 app.post('/api/post/generateNoteWithHistory', protect, generateNoteWithHistory)
 // Auto-treatment suggestions
