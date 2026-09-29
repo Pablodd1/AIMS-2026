@@ -26,6 +26,10 @@ const csv = require('csv-parser')
 const openai = new OpenAI({ apiKey: process.env.OPENAI_KEY })
 
 const CHAT_MODEL = process.env.LEGACY_CHAT_MODEL || 'gpt-4o-mini'
+// Live-chunk transcription model. Benchmarked on the clinic VPS 2026-09-29: 20s clip
+// 1.3s (gpt-4o-mini-transcribe) vs 2.3s (whisper-1), and whisper-1 spiked to 14.2s on
+// one 8s chunk — its known latency instability, fatal for live streaming. Quality equal+.
+const TRANSCRIBE_MODEL = process.env.TRANSCRIBE_MODEL || 'gpt-4o-mini-transcribe'
 const MAX_TURNS = 30 // messages of history sent to the model per run
 const MAX_CHARS_PER_MSG = 20000
 
@@ -176,7 +180,13 @@ const getTranscription = asyncHandler(async (req, res) => {
     try {
         const transcription = await openai.audio.transcriptions.create({
             file: await audioFileParam(req.file),
-            model: 'whisper-1',
+            model: TRANSCRIBE_MODEL,
+            // Live chunks pass the transcript tail as prompt for word/term continuity.
+            // No default prompt: uploads may be Spanish — an English prompt can make the
+            // model translate instead of transcribe.
+            prompt: (typeof (req.body || {}).prompt === 'string' && req.body.prompt.trim())
+                ? String(req.body.prompt).trim().slice(-400)
+                : undefined,
         })
         return res.json({ response: true, msg: 'transcription generated', transcription: removeNewlinesAndPlus(transcription.text) })
     } catch (e) {
