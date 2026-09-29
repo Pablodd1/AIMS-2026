@@ -6,6 +6,7 @@ const { appointmentCancelled } = require('../Template/Appointments/appointmentCa
 const { appointmentUpdate } = require('../Template/Appointments/appointmentUpdate');
 const { addInstantPatient , addInstantPatientICare } = require('../Template/Patients/addInstantPatient')
 const { appointmentComplete} = require('../Template/Appointments/appoitmentComplete');
+const { appointmentReminder } = require('../Template/Appointments/appointmentReminder');
 const { innovativeGoogleReviewUrl } = require("../constants/global");
 const { contactTemplate } = require('../Template/agingBioHack/contact')
 const appMail = async (businessMail,appCode,userEmail,time,phone_number,clinicname,patient,website,address,pic,link,apptID) => {
@@ -297,6 +298,48 @@ const sendInpectionDocumentToDoctor = async (buffer) => {
 
 
 
+const appointmentReminderMail = async (businessMail, appCode, userEmail, time, patient, clinicname, confirmLink) => {
+  try {
+    const transporter = nodemailer.createTransport({
+      port: 465,
+      host: "smtp.gmail.com",
+      service: "Gmail",
+      auth: { user: businessMail, pass: appCode },
+      secure: true,
+    });
+    await transporter.sendMail({
+      from: businessMail,
+      to: userEmail,
+      subject: `Appointment Reminder — ${time}`,
+      html: appointmentReminder(time, patient, clinicname, confirmLink),
+    });
+    return true
+  } catch (error) {
+    console.error('appointmentReminderMail error:', error.message)
+    return false
+  }
+}
+
+const clinicAlertMail = async (businessMail, appCode, to, subject, text) => {
+  try {
+    const transporter = nodemailer.createTransport({
+      port: 465,
+      host: "smtp.gmail.com",
+      service: "Gmail",
+      auth: { user: businessMail, pass: appCode },
+      secure: true,
+    });
+    await transporter.sendMail({ from: businessMail, to, subject, text });
+    return true
+  } catch (error) {
+    console.error('clinicAlertMail error:', error.message)
+    return false
+  }
+}
+
+
+
+
 module.exports = {
     appMail,
     appCancel,
@@ -306,5 +349,7 @@ module.exports = {
     sendQrCodeToPatient,
     sendPatientDocumentToDoctor,
     agingBioHack,
-    sendInpectionDocumentToDoctor
+    sendInpectionDocumentToDoctor,
+    appointmentReminderMail,
+    clinicAlertMail
 };

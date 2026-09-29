@@ -2,7 +2,7 @@ const {updateDoctor,deleteDoctor,getDoctors,addDoctor,deleteAssistant,getAssista
 const {createPatient,getPatients,getPatientById,updatePatient,getTodayPatients,getPaitentsCount,getTodayPatietnsForAppointment,addInstantPatient,updateVoiceIntake,searchPatientsByAlphabet,searchPatientsByType,searchPatientsByTypeAndLimit5,exportAllPatients,importPatients,searchPatientsGlobal} = require('./controllers/patientController')
 const {createVisit,viewReport,getVists,getAllVisits,editReport,delVisit , updateVisitDate,recentVisit,newReportMethodStoredIntoDb,generateReExamReport} = require('./controllers/Visits/visitController')
 const { getRecentUsers,adminLogin , fetchAllDoctors, fetchAllAdmins,fecthDemoAccounts,demoUserCount,createDemoUser} = require("./controllers/adminController")
-const { createAppointment , getbyDateAppointment , delAppointment , editAppTime , calenderDates , changeStatus, filterAppointments,userResponseFromEmail,appointmentReport,allAppointments} = require('./controllers/appointmentController')
+const { createAppointment , getbyDateAppointment , delAppointment , editAppTime , calenderDates , changeStatus, filterAppointments,userResponseFromEmail,appointmentReport,allAppointments,triggerAppointmentReminders} = require('./controllers/appointmentController')
 const {sendFeedBack , fetchFeedBack , deleteFeedBackById } = require('./controllers/feedbackController')
 require("dotenv").config();
 const { mountLocalStorage } = require("./controllers/localstorage");
@@ -276,6 +276,7 @@ app.post('/api/get/calenderDates',calenderDates)
 app.post('/api/post/filterAppointments',protect,filterAppointments)
 app.post('/api/post/userResponseFromEmail',userResponseFromEmail) // change status
 app.get('/api/get/userResponseFromEmail',userResponseFromEmail) /// allow to user to change status
+app.get('/api/get/triggerAppointmentReminders',triggerAppointmentReminders) // internal cron: 24h + 2h patient reminders
 app.get('/api/get/appointmentReport',protect,appointmentReport)
 app.get('/api/get/allAppointments',protect,allAppointments)
 // documents 
