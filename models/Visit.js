@@ -113,6 +113,33 @@ const VisitSchema = new Schema({
   auditResults: {
     type: Object,
   },
+  // --- Scribe: present vs future, kept apart on purpose ---
+  // performedToday: what was actually done in THIS visit.
+  // plannedFuture: what the provider plans/orders for later — never mixed into the above.
+  performedToday: {
+    type: String,
+  },
+  plannedFuture: {
+    type: String,
+  },
+  // --- Scribe: provider signature & pre-sign attestation (gate) ---
+  signedBy: {
+    type: String,
+  },
+  signedAt: {
+    type: Date,
+  },
+  signatureName: {
+    type: String,
+  },
+  // {studies, medications, therapy, icd10, cpt, redFlags} -> 'yes' | 'no'
+  attestations: {
+    type: Object,
+  },
+  // second-agent quality check verdict captured at sign time
+  qualityCheck: {
+    type: Object,
+  },
 }, { timestamps: true });
 
 VisitSchema.pre('save', function (next) {

@@ -1,12 +1,12 @@
 const {updateDoctor,deleteDoctor,getDoctors,addDoctor,deleteAssistant,getAssistant,updateAssistant,addAssistant,createUser,signin,getUserInfo,updateProfile,checkUserToken,updateSignature,delSignature,updateProfiePicture,updateClinicLogo,updatEmailredentials,updatewebsiteURL,setEmptyPic,deletePatientHitory,updatePassword,sendQrCode,setOpenAiKey} = require('./controllers/userController')
 const {createPatient,getPatients,getPatientById,updatePatient,getTodayPatients,getPaitentsCount,getTodayPatietnsForAppointment,addInstantPatient,updateVoiceIntake,searchPatientsByAlphabet,searchPatientsByType,searchPatientsByTypeAndLimit5,exportAllPatients,importPatients,searchPatientsGlobal} = require('./controllers/patientController')
-const {createVisit,viewReport,getVists,getAllVisits,editReport,delVisit , updateVisitDate,recentVisit,newReportMethodStoredIntoDb,generateReExamReport} = require('./controllers/Visits/visitController')
+const {createVisit,signVisit,viewReport,getVists,getAllVisits,editReport,delVisit , updateVisitDate,recentVisit,newReportMethodStoredIntoDb,generateReExamReport} = require('./controllers/Visits/visitController')
 const { getRecentUsers,adminLogin , fetchAllDoctors, fetchAllAdmins,fecthDemoAccounts,demoUserCount,createDemoUser} = require("./controllers/adminController")
 const { createAppointment , getbyDateAppointment , delAppointment , editAppTime , calenderDates , changeStatus, filterAppointments,userResponseFromEmail,appointmentReport,allAppointments,triggerAppointmentReminders} = require('./controllers/appointmentController')
 const {sendFeedBack , fetchFeedBack , deleteFeedBackById } = require('./controllers/feedbackController')
 require("dotenv").config();
 const { mountLocalStorage } = require("./controllers/localstorage");
-const { speechToTextForm ,patientDataToSummary , speechToTextFormWithOcr, extractPatientDataFromImage, downloadNoteAsAudio, validateRedFlags, suggestTreatment, extractDxCptCodes, generateNoteWithHistory, runQualityCheck, translateToEnglish, interpretCommand, generateReportFromAudioFile, extractIntakeEntities, getNoteTemplate, saveNoteTemplate } = require('./controllers/openaiController')
+const { speechToTextForm ,patientDataToSummary , speechToTextFormWithOcr, extractPatientDataFromImage, downloadNoteAsAudio, validateRedFlags, suggestTreatment, extractDxCptCodes, generateNoteWithHistory, runQualityCheck, translateToEnglish, interpretCommand, generateReportFromAudioFile, extractIntakeEntities, getNoteTemplate, saveNoteTemplate, preSignAudit } = require('./controllers/openaiController')
 const { makeInvoice , getAllInvoices , getInvoiceById , getInvoiceAnalyitcs , updateInvoice , deleteInvoice, invoiceStatus, getAllByStatus } = require('./controllers/Invoice/invoiceController')
 const { uploadPDF, getDocuments , deleteDocument, updateDocumentDate } = require('./controllers/Documents/DocumentController')
 const {  reportDocx , reportPdf ,createQuickDocx , reportDocxDirectDownload,ameriarePatientDocument,inspectionDownload} = require('./controllers/Downloads/downloadController')
@@ -154,6 +154,8 @@ app.get('/api/get/getQuestionsForIntake', getQuestionsForIntake)
 
 //visit routes
 app.post('/api/post/createVisit',protect,createVisit);
+app.post('/api/post/signVisit',protect,signVisit);
+app.post('/api/post/preSignAudit',protect,preSignAudit);
 app.get("/api/get/viewReport",protect,viewReport)
 app.get('/api/get/getVists',protect,getVists)
 app.get('/api/get/getAllVisits',protect,getAllVisits)

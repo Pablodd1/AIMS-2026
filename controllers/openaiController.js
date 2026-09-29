@@ -4,6 +4,7 @@ const OpenAI = require('openai')
 const { toFile } = require('openai');
 const fs = require('fs');
 const { buildRomTable } = require('../Helper/romCalculator');
+const { auditChiropracticBilling } = require('../Helper/billingAuditor');
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_KEY, 
@@ -998,6 +999,7 @@ const DEFAULT_NOTE_TEMPLATE = [
 '- Document every clinically relevant element: presenting complaint with onset, mechanism, duration, quality, severity, aggravating/relieving factors; relevant PMH, surgical, social and family history; medications and allergies; full review of systems (all 11 systems); examination findings including vitals, posture, palpation, range of motion with measured degrees when dictated, orthopedic and neurological tests; assessment with clinical reasoning and differential where relevant; treatment performed this visit (specific regions adjusted, techniques, modalities such as manual therapy, therapeutic exercise, EMS/traction) and the patient response; plan with home care, exercises, ergonomic/lifestyle advice, follow-up interval and referrals; prescriptions when given (drug, dose, route, frequency, duration, patient instructions/sig); patient education provided; prognosis.',
 '- Billing-ready detail: exact anatomical regions, techniques and objective findings that substantiate the CPT codes and the ICD-10 diagnoses.',
 '- For follow-ups, note interval improvement or worsening compared with the previous visit.',
+'- Keep PRESENT and FUTURE apart: "Performed Today (present)" lists only what was done, ordered or performed in this encounter; "Planned / Future (not yet done)" lists what the provider plans, orders or refers for a later date (future visits, imaging/studies, labs, referrals, therapy courses, re-exam interval). Never write a planned item as if it were performed, and never hide a performed item in the plan.',
 '- Preserve the provider dictation style, expand abbreviations correctly, and NEVER invent clinical data that the transcript does not support.',
 ].join('\n');
 function readNoteTemplate() {
@@ -1368,11 +1370,12 @@ const generateReportFromAudioFile = asyncHandler(async (req, res) => {
     Subjective: '', Objective: '', Assessment: '', Plan: '', Medications: '', Allergies: '', SUMMARY: '',
     'History of Present Illness (HPI)': '', 'Past Medical History (PMH)': '', 'Chief Complaint': '',
     'Physical Examination': '', Constitutional: rosObj,
+    'Performed Today (present)': '', 'Planned / Future (not yet done)': '',
   });
   try {
     const __template = readNoteTemplate();
-    const NOTE_KEYS_HINT = 'Subjective, Objective, Assessment, Plan, Medications, Allergies, SUMMARY, "History of Present Illness (HPI)", "Past Medical History (PMH)", "Chief Complaint", "Physical Examination"';
-    const notePrompt = 'You are an expert medical scribe for a chiropractic clinic. Convert the consultation transcript into ONE comprehensive clinical note covering the full scope of practice for any visit type (initial exam, follow-up, re-evaluation). Return ONLY valid JSON with keys: ' + NOTE_KEYS_HINT + '. Fill every key with the relevant content from the transcript; use "" ONLY when truly not discussed. Also include "ros": an object with keys Constitutional, Eyes, ENT, Cardiovascular, Respiratory, Gastrointestinal, Genitourinary, Musculoskeletal, Skin, Neurological, Psychiatric — each {"type":"Discussed" or "Not discussed","description":"findings for that system"}. Mark a system "Discussed" whenever ANY symptom, history or examination finding for it appears ANYWHERE in the transcript (for example any spinal, joint, muscle or range-of-motion finding makes Musculoskeletal "Discussed"); otherwise description = \'Not discussed during the consultation.\'. Also include: "rangeOfMotion" as an array of {"region","movement","measured","painElicited"} for dictated range-of-motion measurements, and "personalInjuryDossier" as an object for motor-vehicle/slip-and-fall/work injuries if mentioned (accidentRelated, dateOfInjury, mechanismOfInjury{accidentType,impactVelocityMph,patientPosition,seatbeltWorn,airbagDeployed,vehicleDamageSeverity,narrative}, adlDeficits[{activity,severity,baselineVsCurrent}], causationStatement{attestationText,confidenceLevel}); personalInjuryDossier null and rangeOfMotion [] when absent. Only document what the transcript supports — never invent findings.\n\nCLINICIAN NOTE TEMPLATE (follow its structure, scope and voice exactly; it is the provider\'s documentation standard):\n' + __template;
+    const NOTE_KEYS_HINT = 'Subjective, Objective, Assessment, Plan, Medications, Allergies, SUMMARY, "History of Present Illness (HPI)", "Past Medical History (PMH)", "Chief Complaint", "Physical Examination", "Performed Today (present)", "Planned / Future (not yet done)"';
+    const notePrompt = 'You are an expert medical scribe for a chiropractic clinic. Convert the consultation transcript into ONE comprehensive clinical note covering the full scope of practice for any visit type (initial exam, follow-up, re-evaluation). Return ONLY valid JSON with keys: ' + NOTE_KEYS_HINT + '. Fill every key with the relevant content from the transcript; use "" ONLY when truly not discussed. Also include "ros": an object with keys Constitutional, Eyes, ENT, Cardiovascular, Respiratory, Gastrointestinal, Genitourinary, Musculoskeletal, Skin, Neurological, Psychiatric — each {"type":"Discussed" or "Not discussed","description":"findings for that system"}. Mark a system "Discussed" whenever ANY symptom, history or examination finding for it appears ANYWHERE in the transcript (for example any spinal, joint, muscle or range-of-motion finding makes Musculoskeletal "Discussed"); otherwise description = \'Not discussed during the consultation.\'. Also include: "rangeOfMotion" as an array of {"region","movement","measured","painElicited"} for dictated range-of-motion measurements, and "personalInjuryDossier" as an object for motor-vehicle/slip-and-fall/work injuries if mentioned (accidentRelated, dateOfInjury, mechanismOfInjury{accidentType,impactVelocityMph,patientPosition,seatbeltWorn,airbagDeployed,vehicleDamageSeverity,narrative}, adlDeficits[{activity,severity,baselineVsCurrent}], causationStatement{attestationText,confidenceLevel}); personalInjuryDossier null and rangeOfMotion [] when absent. Only document what the transcript supports — never invent findings. PRESENT vs FUTURE (critical): "Performed Today (present)" holds ONLY what was actually done, ordered or performed during THIS encounter (specific regions adjusted, techniques, modalities, exercises, education, tests done today). "Planned / Future (not yet done)" holds everything the provider plans, orders, refers or recommends for a LATER date (future visits, imaging/studies, labs, referrals, therapy courses, re-exam interval, what to do if not improving) — including anything phrased as will, want to, next time or in the future. NEVER record a planned or future item as if it were performed today, and NEVER leave a performed item only in the plan.\n\nCLINICIAN NOTE TEMPLATE (follow its structure, scope and voice exactly; it is the provider\'s documentation standard):\n' + __template;
     const billPrompt = 'You are a certified professional medical coder and clinical safety reviewer for a chiropractic clinic (billing & safety pass). From the consultation transcript return ONLY valid JSON with: "dxCodes": array of {"code":"ICD-10 code (e.g. M54.6)","description":"full description","primary":true or false} — every diagnosis supported by the transcript, most specific first, including comorbidities that affect care (e.g. I10). "cptCodes": array of {"code":"CPT code","description":"full description","units":1} — codes supported by what was actually performed AND documented this visit: 98940 (1-2 spinal regions), 98941 (3-4 regions), 98942 (5 regions), 98943 (extraspinal), 97110 (therapeutic exercise), 97140 (manual therapy), 97014 (EMS), E/M 99213-99215 when supported; if the transcript supports a higher code than the documentation proves, still code what is proven and note the gap in complianceNotes. "prescriptions": array of {"medication":"drug name","dosage":"e.g. 600 mg","frequency":"e.g. every 8 hours as needed","duration":"e.g. 5 days","instructions":"patient sig — how to take it, e.g. take with food","refills":0} — EVERY medication actually prescribed, ordered or recommended in the consultation (common: ibuprofen, naproxen, cyclobenzaprine, acetaminophen, muscle relaxants). Empty array ONLY if no medication was mentioned. "redFlags": array of {"severity":"critical" or "warning" or "caution","category":"cardiovascular|neurological|infectious|trauma|psychiatric|other","description":"what was found OR what is missing from the documentation that is necessary to support or exclude the diagnosis","recommendation":"what the provider should ask, examine or document next"} — include both true clinical red flags (cauda equina signs, fracture risk, cancer/ infection screens, progressive neuro deficits) AND documentation gaps the provider must close for the diagnosis (e.g. missing vitals, no outcome measures, no neuro screen when indicated). "complianceNotes": array of billing-compliance notes. "confidence":"high|medium|low". "safeToTreat": true or false. RULES: include a "caution" redFlags entry for EVERY important documentation gap (missing vitals, missing outcome measures such as pain scale/ROM baseline, missing neurological or orthopedic screening when indicated, missing consent for manipulation, no follow-up plan) and a "warning"/"critical" entry for every true clinical red flag present in the transcript; return redFlags [] ONLY when the documentation is complete and no clinical concern exists.';
     const [noteCall, billCall] = await Promise.all([
       openai.chat.completions.create({
@@ -1443,6 +1446,19 @@ const extractIntakeEntities = asyncHandler(async (req, res) => {
   }
 });
 
+// POST /api/post/preSignAudit — the SAME billing audit createVisit runs, but BEFORE signing.
+// The provider must see the pre-billing findings while they can still fix the note; the
+// audit that runs at save time stays authoritative (this is a preview, not a substitute).
+const preSignAudit = asyncHandler(async (req, res) => {
+  try {
+    const { objective, physicalExamination, rangeOfMotion, cptCodes, icdCodes } = req.body || {};
+    const auditResults = auditChiropracticBilling({ objective, physicalExamination, rangeOfMotion, cptCodes, icdCodes });
+    return res.json({ response: true, auditResults });
+  } catch (e) {
+    return res.status(500).json({ response: false, msg: (e && e.message) || 'audit failed' });
+  }
+});
+
 module.exports = {
     extractIntakeEntities,
     patientDataToSummary,
@@ -1461,4 +1477,5 @@ module.exports = {
     generateReportFromAudioFile,
     getNoteTemplate,
     saveNoteTemplate,
+    preSignAudit,
 };
