@@ -44,9 +44,12 @@ const removeNewlinesAndPlus = (input) => String(input).replace(/\n+/g, ' ').trim
 // rejects by extension. Hand whisper a clean filename with a supported extension instead.
 const AUDIO_EXTS = new Set(['flac', 'm4a', 'mp3', 'mp4', 'mpeg', 'mpga', 'oga', 'ogg', 'wav', 'webm'])
 function audioFileParam(file) {
-    const mimeExt = String(file.mimetype || '').split('/')[1].toLowerCase()
+    const mimeExt = String(file.mimetype || '').split('/')[1].toLowerCase().replace(/^x-/, '')
     const nameExt = path.extname(file.originalname || '').slice(1).toLowerCase()
-    const ext = AUDIO_EXTS.has(mimeExt) ? mimeExt : (AUDIO_EXTS.has(nameExt) ? nameExt : 'mp3')
+    // Prefer the real filename extension: OpenAI sniffs by name, and '.mpeg' (what audio/mpeg
+    // maps to) makes it reject otherwise-valid mp3 bytes. Verified on the clinic VPS 2026-09-30.
+    let ext = AUDIO_EXTS.has(nameExt) ? nameExt : (AUDIO_EXTS.has(mimeExt) ? mimeExt : 'mp3')
+    if (ext === 'mpeg') ext = 'mp3'
     return toFile(fs.createReadStream(file.path), `audio.${ext}`, { type: file.mimetype || 'audio/mpeg' })
 }
 

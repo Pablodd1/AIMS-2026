@@ -14,9 +14,11 @@ async function speechToText(file)
 {
     try {
         const __okExt = new Set(['flac','m4a','mp3','mp4','mpeg','mpga','oga','ogg','wav','webm']);
-        const __mimeExt = String(file.mimetype || '').split('/')[1] || '';
+        const __mimeExt = String(file.mimetype || '').split('/')[1].toLowerCase().replace(/^x-/, '') || '';
         const __nameExt = String(file.originalname || '').split('.').pop().toLowerCase();
-        const __ext = __okExt.has(__mimeExt) ? __mimeExt : (__okExt.has(__nameExt) ? __nameExt : 'mp3');
+        // Real extension first; '.mpeg' (from audio/mpeg) is rejected by OpenAI's decoder for mp3 bytes.
+        let __ext = __okExt.has(__nameExt) ? __nameExt : (__okExt.has(__mimeExt) ? __mimeExt : 'mp3');
+        if (__ext === 'mpeg') __ext = 'mp3';
         const transcription = await openai.audio.transcriptions.create({
             file: await toFile(fs.createReadStream(file.path), `audio.${__ext}`, { type: file.mimetype || 'audio/mpeg' }),
             model: "whisper-1",
@@ -1344,6 +1346,53 @@ Return ONLY JSON:
 });
 
 
+// --- Scribe note generation helpers (added 2026-09-30) ---
+// Model is env-configurable so a faster model can be A/B tested without a code change:
+//   export AIMS_SCRIBE_MODEL=... ; pm2 restart aims-backend --update-env
+const SCRIBE_MODEL = process.env.AIMS_SCRIBE_MODEL || 'gpt-4o-mini';
+
+const normKey = (s) => String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]/g, '');
+// The model occasionally drifts on key names (e.g. "HPI" instead of the full label) — map back.
+const NOTE_KEY_ALIASES = {
+  chiefcomplaint: ['cc', 'complaint', 'chiefcomplaints', 'reasonforvisit', 'presentingcomplaint'],
+  historyofpresentillnesshpi: ['hpi', 'historyofpresentillness', 'presentillness'],
+  pastmedicalhistorypmh: ['pmh', 'pastmedicalhistory'],
+  physicalexamination: ['physicalexam', 'exam'],
+  medicalrationale: ['rationale', 'clinicalrationale', 'medicalnecessity'],
+  performedtodaypresent: ['performedtoday', 'performed'],
+  plannedfuturenotyetdone: ['plannedfuture', 'planned', 'future'],
+  medications: ['meds', 'medication'],
+  allergies: ['allergy'],
+  summary: ['summary', 'clinicalsummary', 'impression', 'summaryofvisit'],
+};
+// Find the parsed value for an expected key: exact/alias first, then containment
+// (skipping parsed keys that another section already claimed — never duplicate content).
+function pickParsed(parsed, key, used) {
+  if (!parsed || typeof parsed !== 'object') return null;
+  const kn = normKey(key);
+  const aliases = [kn].concat((NOTE_KEY_ALIASES[kn] || []).map(normKey));
+  const keys = Object.keys(parsed);
+  for (const pk of keys) if (aliases.indexOf(normKey(pk)) >= 0) return { v: parsed[pk], k: pk };
+  if (parsed[key] != null) return { v: parsed[key], k: key };
+  const usedSet = used || {};
+  for (const pk of keys) {
+    if (usedSet[pk]) continue;
+    const pn = normKey(pk);
+    if (pn.length >= 4 && kn.length >= 4 && (pn.indexOf(kn) === 0 || kn.indexOf(pn) === 0)) return { v: parsed[pk], k: pk };
+  }
+  return null;
+}
+// The model sometimes returns nested objects/arrays for a section (e.g. Objective {Vitals: ...}).
+// Textareas and exports need plain strings — flatten deterministically instead of "[object Object]".
+function toTextVal(v) {
+  if (v == null) return '';
+  if (typeof v === 'string') return v;
+  if (typeof v === 'number' || typeof v === 'boolean') return String(v);
+  if (Array.isArray(v)) return v.map(toTextVal).filter(Boolean).join('\n');
+  if (typeof v === 'object') return Object.keys(v).map((k) => String(k).replace(/[_-]+/g, ' ').trim() + ': ' + toTextVal(v[k])).filter(Boolean).join('\n');
+  return String(v);
+}
+
 // @route POST /api/post/generateReportFromAudioFile
 // Quick (Copy-and-Paste / audio upload) report flow.
 // Frontend posts FormData: text|file, type: "text"|"upload", practice.
@@ -1373,36 +1422,61 @@ const generateReportFromAudioFile = asyncHandler(async (req, res) => {
     'Medical Rationale': '', 'Performed Today (present)': '', 'Planned / Future (not yet done)': '',
   });
   try {
+    const __t0 = Date.now();
     const __template = readNoteTemplate();
     const NOTE_KEYS_HINT = 'Subjective, Objective, Assessment, "Medical Rationale", Plan, Medications, Allergies, SUMMARY, "History of Present Illness (HPI)", "Past Medical History (PMH)", "Chief Complaint", "Physical Examination", "Performed Today (present)", "Planned / Future (not yet done)"';
-    const notePrompt = 'You are an expert medical scribe for a chiropractic clinic. Convert the consultation transcript into ONE comprehensive clinical note covering the full scope of practice for any visit type (initial exam, follow-up, re-evaluation). Return ONLY valid JSON with keys: ' + NOTE_KEYS_HINT + '. Fill every key with the relevant content from the transcript; use "" ONLY when truly not discussed. "Medical Rationale" must state the clinical reasoning and medical necessity justifying the Assessment and Plan (why this diagnosis, why this treatment, why medically necessary), based only on the transcript. Also include "ros": an object with keys Constitutional, Eyes, ENT, Cardiovascular, Respiratory, Gastrointestinal, Genitourinary, Musculoskeletal, Skin, Neurological, Psychiatric — each {"type":"Discussed" or "Not discussed","description":"findings for that system"}. Mark a system "Discussed" whenever ANY symptom, history or examination finding for it appears ANYWHERE in the transcript (for example any spinal, joint, muscle or range-of-motion finding makes Musculoskeletal "Discussed"); otherwise description = \'Not discussed during the consultation.\'. Also include: "rangeOfMotion" as an array of {"region","movement","measured","painElicited"} for dictated range-of-motion measurements, and "personalInjuryDossier" as an object for motor-vehicle/slip-and-fall/work injuries if mentioned (accidentRelated, dateOfInjury, mechanismOfInjury{accidentType,impactVelocityMph,patientPosition,seatbeltWorn,airbagDeployed,vehicleDamageSeverity,narrative}, adlDeficits[{activity,severity,baselineVsCurrent}], causationStatement{attestationText,confidenceLevel}); personalInjuryDossier null and rangeOfMotion [] when absent. Only document what the transcript supports — never invent findings. PRESENT vs FUTURE (critical): "Performed Today (present)" holds ONLY what was actually done, ordered or performed during THIS encounter (specific regions adjusted, techniques, modalities, exercises, education, tests done today). "Planned / Future (not yet done)" holds everything the provider plans, orders, refers or recommends for a LATER date (future visits, imaging/studies, labs, referrals, therapy courses, re-exam interval, what to do if not improving) — including anything phrased as will, want to, next time or in the future. NEVER record a planned or future item as if it were performed today, and NEVER leave a performed item only in the plan.\n\nCLINICIAN NOTE TEMPLATE (follow its structure, scope and voice exactly; it is the provider\'s documentation standard):\n' + __template;
+    const notePrompt = 'You are an expert medical scribe for a chiropractic clinic. Convert the consultation transcript into ONE comprehensive clinical note covering the full scope of practice for any visit type (initial exam, follow-up, re-evaluation). Return ONLY valid JSON with keys: ' + NOTE_KEYS_HINT + '. Fill every key with the relevant content from the transcript; use "" ONLY when truly not discussed. "Medical Rationale" must state the clinical reasoning and medical necessity justifying the Assessment and Plan (why this diagnosis, why this treatment, why medically necessary), based only on the transcript. Also include "ros": an object with keys Constitutional, Eyes, ENT, Cardiovascular, Respiratory, Gastrointestinal, Genitourinary, Musculoskeletal, Skin, Neurological, Psychiatric — each {"type":"Discussed" or "Not discussed","description":"findings for that system"}. Mark a system "Discussed" whenever ANY symptom, history or examination finding for it appears ANYWHERE in the transcript (for example any spinal, joint, muscle or range-of-motion finding makes Musculoskeletal "Discussed"); otherwise description = \'Not discussed during the consultation.\'. Also include: "rangeOfMotion" as an array of {"region","movement","measured","painElicited"} for dictated range-of-motion measurements, and "personalInjuryDossier" as an object for motor-vehicle/slip-and-fall/work injuries if mentioned (accidentRelated, dateOfInjury, mechanismOfInjury{accidentType,impactVelocityMph,patientPosition,seatbeltWorn,airbagDeployed,vehicleDamageSeverity,narrative}, adlDeficits[{activity,severity,baselineVsCurrent}], causationStatement{attestationText,confidenceLevel}); personalInjuryDossier null and rangeOfMotion [] when absent. Only document what the transcript supports — never invent findings. Every value of the main note keys must be a plain string (never a nested object or array). PRESENT vs FUTURE (critical): "Performed Today (present)" holds ONLY what was actually done, ordered or performed during THIS encounter (specific regions adjusted, techniques, modalities, exercises, education, tests done today). "Planned / Future (not yet done)" holds everything the provider plans, orders, refers or recommends for a LATER date (future visits, imaging/studies, labs, referrals, therapy courses, re-exam interval, what to do if not improving) — including anything phrased as will, want to, next time or in the future. NEVER record a planned or future item as if it were performed today, and NEVER leave a performed item only in the plan.\n\nCLINICIAN NOTE TEMPLATE (follow its structure, scope and voice exactly; it is the provider\'s documentation standard):\n' + __template;
     const billPrompt = 'You are a certified professional medical coder and clinical safety reviewer for a chiropractic clinic (billing & safety pass). From the consultation transcript return ONLY valid JSON with: "dxCodes": array of {"code":"ICD-10 code (e.g. M54.6)","description":"full description","primary":true or false} — every diagnosis supported by the transcript, most specific first, including comorbidities that affect care (e.g. I10). "cptCodes": array of {"code":"CPT code","description":"full description","units":1} — codes supported by what was actually performed AND documented this visit: 98940 (1-2 spinal regions), 98941 (3-4 regions), 98942 (5 regions), 98943 (extraspinal), 97110 (therapeutic exercise), 97140 (manual therapy), 97014 (EMS), E/M 99213-99215 when supported; if the transcript supports a higher code than the documentation proves, still code what is proven and note the gap in complianceNotes. "prescriptions": array of {"medication":"drug name","dosage":"e.g. 600 mg","frequency":"e.g. every 8 hours as needed","duration":"e.g. 5 days","instructions":"patient sig — how to take it, e.g. take with food","refills":0} — EVERY medication actually prescribed, ordered or recommended in the consultation (common: ibuprofen, naproxen, cyclobenzaprine, acetaminophen, muscle relaxants). Empty array ONLY if no medication was mentioned. "redFlags": array of {"severity":"critical" or "warning" or "caution","category":"cardiovascular|neurological|infectious|trauma|psychiatric|other","description":"what was found OR what is missing from the documentation that is necessary to support or exclude the diagnosis","recommendation":"what the provider should ask, examine or document next"} — include both true clinical red flags (cauda equina signs, fracture risk, cancer/ infection screens, progressive neuro deficits) AND documentation gaps the provider must close for the diagnosis (e.g. missing vitals, no outcome measures, no neuro screen when indicated). "complianceNotes": array of billing-compliance notes. "confidence":"high|medium|low". "safeToTreat": true or false. RULES: include a "caution" redFlags entry for EVERY important documentation gap (missing vitals, missing outcome measures such as pain scale/ROM baseline, missing neurological or orthopedic screening when indicated, missing consent for manipulation, no follow-up plan) and a "warning"/"critical" entry for every true clinical red flag present in the transcript; return redFlags [] ONLY when the documentation is complete and no clinical concern exists.';
     const gapPrompt = 'You are a clinical care-gap and safety reviewer for a chiropractic clinic (doctor review pass — runs BEFORE the provider signs). From the consultation transcript return ONLY valid JSON with "gapItems": an array of {"category":"red_flag"|"missing_question"|"missing_therapy"|"missing_testing"|"missing_referral"|"other","severity":"critical"|"warning"|"caution","description":"what is missing, unclear or concerning","recommendation":"the specific question to ask, therapy to consider, test to order, referral to make or action to take"}. Cover ALL of: red_flag — clinical red flags a clinician must exclude for these findings (e.g. cauda equina, fracture, infection, malignancy, progressive neuro deficit) AND documentation needed to exclude them; missing_question — history/exam questions the provider did NOT ask but should have for this presentation; missing_therapy — therapies (adjustment, modalities, exercise, medication) that could be indicated but were not performed, prescribed or planned; missing_testing — imaging or labs not ordered that may be indicated; missing_referral — referrals not made that may be indicated (specialist, imaging, PT); other — any other documentation or care gap. Include ONLY items a reasonable clinician would want flagged for THIS specific encounter — never generic filler. Order: red_flag first, then by clinical importance. Return "gapItems": [] only if truly nothing is missing.';
-    const [noteCall, billCall, gapCall] = await Promise.all([
+    let [noteCall, billCall, gapCall] = await Promise.all([
       openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: SCRIBE_MODEL,
         messages: [{ role: 'user', content: notePrompt + '\n\nTranscript:\n' + transcript }],
         response_format: { type: 'json_object' },
       }),
       openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: SCRIBE_MODEL,
         temperature: 0,
         messages: [{ role: 'user', content: billPrompt + '\n\nTranscript:\n' + transcript }],
         response_format: { type: 'json_object' },
       }),
       openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: SCRIBE_MODEL,
         temperature: 0,
         messages: [{ role: 'user', content: gapPrompt + '\n\nTranscript:\n' + transcript }],
         response_format: { type: 'json_object' },
       }),
     ]);
     let parsed = {}, bill = {}, gap = {};
-    try { parsed = JSON.parse(noteCall.choices[0].message.content); } catch {}
+    // The note JSON is the critical payload: if it does not parse (e.g. truncated output),
+    // the whole note would silently come back empty — retry once before giving up.
+    try { parsed = JSON.parse(noteCall.choices[0].message.content); }
+    catch (e) {
+      console.error('[scribe-gen] note JSON parse failed, retrying:', e.message);
+      try {
+        noteCall = await openai.chat.completions.create({
+          model: SCRIBE_MODEL,
+          temperature: 0,
+          messages: [{ role: 'user', content: notePrompt + '\n\nTranscript:\n' + transcript + '\n\nReturn ONLY the JSON object.' }],
+          response_format: { type: 'json_object' },
+        });
+        parsed = JSON.parse(noteCall.choices[0].message.content);
+        console.log('[scribe-gen] note JSON retry OK');
+      } catch (e2) { console.error('[scribe-gen] note JSON retry failed:', e2.message); }
+    }
     try { bill = JSON.parse(billCall.choices[0].message.content); } catch {}
     try { gap = JSON.parse(gapCall.choices[0].message.content); } catch {}
     const data = blank();
-    Object.keys(data).forEach(k => { if (parsed[k]) data[k] = parsed[k]; });
+    // Tolerant fill: exact/alias/containment key matching + object/array -> readable text,
+    // so a near-miss key or a nested value can never leave a note section silently empty.
+    const missing = [];
+    const usedKeys = {};
+    Object.keys(data).forEach((k) => {
+      if (k === 'Constitutional') return; // built from ros below
+      const hit = pickParsed(parsed, k, usedKeys);
+      if (hit) { data[k] = toTextVal(hit.v); usedKeys[hit.k] = true; }
+      if (!String(data[k] == null ? '' : data[k]).trim()) missing.push(k);
+    });
     const rosFinal = {};
     ROS_SYS.forEach(k => {
       const v = parsed.ros && parsed.ros[k];
@@ -1424,6 +1498,14 @@ const generateReportFromAudioFile = asyncHandler(async (req, res) => {
     data.prescriptions = pRx;
     data.redFlags = pRf;
     data.clinicalReview = pGap;
+    // Ops telemetry: wall time + tokens + which sections came back empty (visible in pm2 logs).
+    try {
+      const uu = (c) => (c && c.usage) ? (c.usage.prompt_tokens + '+' + c.usage.completion_tokens) : '?';
+      console.log('[scribe-gen]', (Date.now() - __t0) + 'ms', 'model=' + SCRIBE_MODEL,
+        'input_chars=' + String(transcript).length,
+        'tokens=' + uu(noteCall) + '|' + uu(billCall) + '|' + uu(gapCall),
+        'missing=' + JSON.stringify(missing));
+    } catch (e) {}
     return res.json({ success: true, code: { 'ICD-10 Codes': pDx, 'CPT Codes': pCpt }, data, Ros: rosFinal, original: transcript, prescriptions: pRx, redFlags: pRf, clinicalReview: pGap, billing: { complianceNotes: Array.isArray(bill.complianceNotes) ? bill.complianceNotes : [], confidence: bill.confidence || null, safeToTreat: (bill.safeToTreat !== false) } });
   } catch (e) {
     console.error('generateReportFromAudioFile error:', e.message);

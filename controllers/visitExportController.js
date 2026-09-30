@@ -82,50 +82,93 @@ const exportVisitDocx = asyncHandler(async (req, res) => {
       });
     }
 
-    const children = [
-      new Paragraph({
-        text: 'Innovative Medical Wellness',
-        heading: HeadingLevel.HEADING_1,
-        alignment: AlignmentType.CENTER,
-      }),
-      new Paragraph({
-        text: 'Patient Visit Summary',
-        heading: HeadingLevel.HEADING_2,
-        alignment: AlignmentType.CENTER,
-      }),
-      new Paragraph({ spacing: { after: 200 } }),
-      new Paragraph({
-        text: `Patient: ${patient?.fullName || 'N/A'}`,
-        heading: HeadingLevel.HEADING_3,
-      }),
-      new Paragraph(`Date: ${visit.date || visit.createdAt?.toISOString().split('T')[0] || 'N/A'}`),
-      new Paragraph(`DOB: ${patient?.dateOfBirth || 'N/A'} | Phone: ${patient?.phoneNumber || 'N/A'}`),
-      new Paragraph({ spacing: { after: 200 } }),
-      new Paragraph({ text: 'Chief Complaint', heading: HeadingLevel.HEADING_3 }),
-      new Paragraph(visit.chiefComplaint || 'Not recorded'),
-      new Paragraph({ spacing: { after: 200 } }),
-      new Paragraph({ text: 'Subjective', heading: HeadingLevel.HEADING_3 }),
-      new Paragraph(visit.subjective || 'Not recorded'),
-      new Paragraph({ spacing: { after: 200 } }),
-      new Paragraph({ text: 'Objective', heading: HeadingLevel.HEADING_3 }),
-      new Paragraph(visit.objective || 'Not recorded'),
-      new Paragraph({ spacing: { after: 200 } }),
-      new Paragraph({ text: 'Assessment', heading: HeadingLevel.HEADING_3 }),
-      new Paragraph(visit.Assessment || 'Not recorded'),
-      new Paragraph({ spacing: { after: 200 } }),
-      new Paragraph({ text: 'Plan', heading: HeadingLevel.HEADING_3 }),
-      new Paragraph(visit.Plan || 'Not recorded'),
-      new Paragraph({ spacing: { after: 200 } }),
-      new Paragraph({ text: 'Medications', heading: HeadingLevel.HEADING_3 }),
-      new Paragraph(visit.med || 'None'),
-      new Paragraph({ spacing: { after: 200 } }),
-    ];
+    // ---- document helpers ----------------------------------------------
+    const P = (text, opts) => new Paragraph(Object.assign({ text: String(text == null ? '' : text) }, opts || {}));
+    const H = (text) => new Paragraph({ text: String(text), heading: HeadingLevel.HEADING_3, spacing: { before: 220, after: 60 } });
+    const sec = (label, value) => {
+      const t = String(value == null ? '' : value).trim();
+      if (!t) return [];
+      return [H(label), P(t, { spacing: { after: 120 } })];
+    };
+    // Older visits stored some fields as JSON blobs (physicalExamination, etc.) — flatten for print.
+    const flatten = (v) => {
+      if (v == null || typeof v !== 'string') return v;
+      const s = v.trim();
+      if (s.startsWith('{') || s.startsWith('[')) {
+        try {
+          const o = JSON.parse(s);
+          if (Array.isArray(o)) return o.map((x) => (typeof x === 'string' ? x : JSON.stringify(x))).join('\n');
+          return Object.keys(o).map((k) => k.replace(/[_-]+/g, ' ').trim() + ': ' + (typeof o[k] === 'object' && o[k] !== null ? JSON.stringify(o[k]) : o[k])).join('\n');
+        } catch (e) { return v; }
+      }
+      return v;
+    };
+    const codeTable = (label, items, withUnits) => {
+      if (!Array.isArray(items) || !items.length) return [];
+      const headers = withUnits ? ['Code', 'Description', 'Units'] : ['Code', 'Description'];
+      const rows = [
+        new TableRow({ children: headers.map((h2) => new TableCell({ children: [new Paragraph({ text: h2, bold: true })], width: { size: 20, type: WidthType.PERCENTAGE } })) }),
+        ...items.map((it) => new TableRow({
+          children: (withUnits ? [it.code, it.description || '', String(it.units || 1)] : [it.code, it.description || ''])
+            .map((c2) => new TableCell({ children: [new Paragraph(String(c2 == null ? '—' : c2))] })),
+        })),
+      ];
+      return [H(label), new Table({ rows, width: { size: 100, type: WidthType.PERCENTAGE } }), P('', { spacing: { after: 120 } })];
+    };
 
-    if (romRows.length) {
-      children.push(new Paragraph({ text: 'Range of Motion (vs AMA Guides)', heading: HeadingLevel.HEADING_3 }));
-      children.push(new Table({ rows: romRows, width: { size: 100, type: WidthType.PERCENTAGE } }));
-      children.push(new Paragraph({ spacing: { after: 200 } }));
+    // ---- document body: full structured note, no red flags (final record) ----
+    const provider = visit.signedBy || visit.signatureName || '';
+    const children = [
+      new Paragraph({ text: 'Innovative Medical Wellness', heading: HeadingLevel.HEADING_1, alignment: AlignmentType.CENTER }),
+      new Paragraph({ text: 'Patient Visit Note', heading: HeadingLevel.HEADING_2, alignment: AlignmentType.CENTER }),
+      P(`Patient: ${patient?.fullName || 'N/A'}    DOB: ${patient?.dateOfBirth || 'N/A'}`, { spacing: { before: 160 } }),
+      P(`Date of service: ${visit.date || 'N/A'}${visit.time ? ' — ' + visit.time : ''}    Phone: ${patient?.phoneNumber || 'N/A'}`),
+      P(`Provider: ${provider || '_______________________'}`, { spacing: { after: 120 } }),
+      ...sec('Chief Complaint', flatten(visit.chiefComplaint)),
+      ...sec('History of Present Illness (HPI)', flatten(visit.HPI)),
+      ...sec('Past Medical History (PMH)', flatten(visit.PMH)),
+      ...sec('Subjective', flatten(visit.subjective)),
+      ...sec('Objective', flatten(visit.objective)),
+      ...sec('Physical Examination', flatten(visit.physicalExamination)),
+      ...sec('Performed Today', flatten(visit.performedToday)),
+      ...sec('Planned / Future (not yet done)', flatten(visit.plannedFuture)),
+      ...sec('Assessment', flatten(visit.Assessment)),
+    ];
+    // Medical rationale is stored as JSON ({"Medical Rationale": "..."}) — decode for print.
+    let rationaleText = '';
+    if (visit.Rationale) {
+      try {
+        const rj = JSON.parse(visit.Rationale);
+        rationaleText = (rj && typeof rj === 'object') ? Object.keys(rj).map((k) => k + ': ' + rj[k]).join('\n') : String(visit.Rationale);
+      } catch (e) { rationaleText = String(visit.Rationale); }
     }
+    children.push(...sec('Medical Rationale', rationaleText));
+    children.push(...sec('Plan', flatten(visit.Plan)));
+    children.push(...sec('Medications', flatten(visit.med)));
+    children.push(...sec('Allergies', flatten(visit.Allergy)));
+    children.push(...sec('Summary', flatten(visit.soapNotesSummary)));
+    if (typeof visit.ROS === 'string' && visit.ROS.trim()) {
+      try {
+        const ros = JSON.parse(visit.ROS);
+        const lines = Object.keys(ros)
+          .filter((k) => ros[k] && String(ros[k].description || '').trim() && !/^not discussed during the consultation\.?$/i.test(String(ros[k].description).trim()))
+          .map((k) => `${k}: ${ros[k].description}`);
+        if (lines.length) children.push(...sec('Review of Systems', lines.join('\n')));
+      } catch (e) {}
+    }
+    children.push(...codeTable('Diagnosis (ICD-10)', (Array.isArray(visit.icdCodes) && visit.icdCodes.length) ? visit.icdCodes : visit.dxCodes));
+    children.push(...codeTable('Procedures (CPT)', visit.cptCodes, true));
+    if (romRows.length) {
+      children.push(H('Range of Motion (vs AMA Guides)'));
+      children.push(new Table({ rows: romRows, width: { size: 100, type: WidthType.PERCENTAGE } }));
+      children.push(P('', { spacing: { after: 120 } }));
+    }
+    children.push(P('', { spacing: { before: 300 } }));
+    children.push(P('_______________________________________'));
+    children.push(P(visit.signedAt
+      ? `Signed electronically by ${visit.signatureName || visit.signedBy} on ${new Date(visit.signedAt).toLocaleString()}`
+      : `${provider || 'Provider'} — signature`));
+    children.push(P(`Generated from the recorded consultation by AIMS Scribe — ${new Date().toLocaleString()}`, { spacing: { before: 80 } }));
 
     const doc = new Document({
       sections: [{
@@ -135,7 +178,7 @@ const exportVisitDocx = asyncHandler(async (req, res) => {
     });
 
     const buffer = await Packer.toBuffer(doc);
-    const filename = `visit-summary-${visit.date || 'export'}.docx`;
+    const filename = `visit-note-${visit.date || 'export'}.docx`;
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);

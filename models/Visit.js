@@ -140,6 +140,10 @@ const VisitSchema = new Schema({
   qualityCheck: {
     type: Object,
   },
+  // care-gap / doctor-review items from the scribe generation pass (never part of the final note)
+  clinicalReview: [{
+    type: Object,
+  }],
 }, { timestamps: true });
 
 VisitSchema.pre('save', function (next) {

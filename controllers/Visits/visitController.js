@@ -97,7 +97,16 @@ const createVisit = asyncHandler(async (req, res) => {
       signatureName,
       attestations,
       qualityCheck,
+      medicalRationale,
+      clinicalReview,
+      reportType,
+      userTimezone,
     } = req.body;
+
+    // `Rationale` is the field the schema and the report page use; the scribe UI historically
+    // sent `medicalRationale` and it was silently dropped. Accept both, prefer the canonical one.
+    const rationaleFinal = Rationale != null ? Rationale : (medicalRationale != null ? medicalRationale : undefined);
+    const clinicalReviewArr = Array.isArray(clinicalReview) ? clinicalReview : [];
 
     // A signature is a legal attestation — never store one without the provider's name.
     if (signedAt && !signedBy) {
@@ -129,6 +138,7 @@ const createVisit = asyncHandler(async (req, res) => {
       const visit = new Visit({
         doc_id,
         pId,
+        userTimezone: userTimezone || undefined,
         all,
         soapNotesSummary,
         subjective,
@@ -145,7 +155,9 @@ const createVisit = asyncHandler(async (req, res) => {
         icdCodes,
         dxCodes,
         Plan,
-        Rationale,
+        Rationale: rationaleFinal,
+        clinicalReview: clinicalReviewArr,
+        reportType: reportType || undefined,
         personalInjuryDossier,
         mechanismOfInjury,
         impactOnADL,
@@ -199,7 +211,8 @@ const createVisit = asyncHandler(async (req, res) => {
           icdCodes,
           dxCodes,
           Plan,
-          Rationale,
+          Rationale: rationaleFinal,
+          clinicalReview: clinicalReviewArr,
           personalInjuryDossier,
           mechanismOfInjury,
           impactOnADL,
