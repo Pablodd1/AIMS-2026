@@ -89,7 +89,29 @@ const createVisit = asyncHandler(async (req, res) => {
       impactOnADL,
       causationStatement,
       rangeOfMotion,
+      redFlags,
+      performedToday,
+      plannedFuture,
+      signedBy,
+      signedAt,
+      signatureName,
+      attestations,
+      qualityCheck,
+      medicalRationale,
+      clinicalReview,
+      reportType,
+      userTimezone,
     } = req.body;
+
+    // `Rationale` is the field the schema and the report page use; the scribe UI historically
+    // sent `medicalRationale` and it was silently dropped. Accept both, prefer the canonical one.
+    const rationaleFinal = Rationale != null ? Rationale : (medicalRationale != null ? medicalRationale : undefined);
+    const clinicalReviewArr = Array.isArray(clinicalReview) ? clinicalReview : [];
+
+    // A signature is a legal attestation — never store one without the provider's name.
+    if (signedAt && !signedBy) {
+      return res.status(400).json({ response: false, msg: "signedBy is required when signing a visit" });
+    }
 
     // Additive clinical-moat derivations: ROM analysis + billing audit.
     // Both are computed server-side from the incoming fields; never fail the visit.
@@ -116,6 +138,7 @@ const createVisit = asyncHandler(async (req, res) => {
       const visit = new Visit({
         doc_id,
         pId,
+        userTimezone: userTimezone || undefined,
         all,
         soapNotesSummary,
         subjective,
@@ -132,12 +155,22 @@ const createVisit = asyncHandler(async (req, res) => {
         icdCodes,
         dxCodes,
         Plan,
-        Rationale,
+        Rationale: rationaleFinal,
+        clinicalReview: clinicalReviewArr,
+        reportType: reportType || undefined,
         personalInjuryDossier,
         mechanismOfInjury,
         impactOnADL,
         causationStatement,
         rangeOfMotion,
+        redFlags,
+        performedToday,
+        plannedFuture,
+        signedBy,
+        signedAt,
+        signatureName,
+        attestations,
+        qualityCheck,
         romAnalysis,
         auditResults,
       });
@@ -178,12 +211,21 @@ const createVisit = asyncHandler(async (req, res) => {
           icdCodes,
           dxCodes,
           Plan,
-          Rationale,
+          Rationale: rationaleFinal,
+          clinicalReview: clinicalReviewArr,
           personalInjuryDossier,
           mechanismOfInjury,
           impactOnADL,
           causationStatement,
           rangeOfMotion,
+          redFlags,
+          performedToday,
+          plannedFuture,
+          signedBy,
+          signedAt,
+          signatureName,
+          attestations,
+          qualityCheck,
           romAnalysis,
           auditResults,
         }
@@ -470,8 +512,37 @@ const generateReExamReport = asyncHandler(async (req, res) => {
   }
 });
 
+// POST /api/post/signVisit — sign (or re-sign) an existing visit.
+// The note body is NEVER touched here: signing records who attested, when, what they
+// confirmed, and the second-agent verdict that was on screen at that moment.
+const signVisit = asyncHandler(async (req, res) => {
+  try {
+    const { id, signedBy, signatureName, attestations, qualityCheck } = req.body || {};
+    if (!id) return res.status(400).json({ response: false, msg: "id required" });
+    if (!signedBy || !String(signedBy).trim()) {
+      return res.status(400).json({ response: false, msg: "signedBy required" });
+    }
+    if (!signatureName || String(signatureName).trim().length < 3) {
+      return res.status(400).json({ response: false, msg: "signatureName required (typed provider signature)" });
+    }
+    const signedAt = new Date();
+    const upd = await Visit.updateOne(
+      { _id: id },
+      { signedBy, signatureName, signedAt, attestations: attestations || {}, qualityCheck: qualityCheck || undefined }
+    );
+    // mongoose 5 returns {n, nModified}; mongoose 6+ returns {matchedCount} — accept both,
+    // otherwise a successful update still reports "visit not found".
+    const matched = upd && (upd.matchedCount != null ? upd.matchedCount : upd.n);
+    if (!matched) return res.status(404).json({ response: false, msg: "visit not found" });
+    res.json({ response: true, msg: "Visit signed", id, signedBy, signatureName, signedAt: signedAt.toISOString() });
+  } catch (e) {
+    res.status(500).json({ response: false, msg: e.message });
+  }
+});
+
 module.exports = {
   createVisit,
+  signVisit,
   viewReport,
   getVists,
   getAllVisits,

@@ -34,7 +34,21 @@ const AppointmentSchema = new Schema({
   userTimezone: {
     type: String, // Store the timezone
     required: true, // Ensure it's always provided
-}
+  },
+  /* --- reminder pipeline (24h + 2h patient reminders; see triggerAppointmentReminders) --- */
+  reminder24hSentAt: {
+    type: Date,
+  },
+  reminder2hSentAt: {
+    type: Date,
+  },
+  rescheduleRequested: {
+    type: Boolean,
+    default: false,
+  },
+  rescheduleRequestedAt: {
+    type: Date,
+  },
 
 }, { timestamps: true });
 

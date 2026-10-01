@@ -1,12 +1,12 @@
 const {updateDoctor,deleteDoctor,getDoctors,addDoctor,deleteAssistant,getAssistant,updateAssistant,addAssistant,createUser,signin,getUserInfo,updateProfile,checkUserToken,updateSignature,delSignature,updateProfiePicture,updateClinicLogo,updatEmailredentials,updatewebsiteURL,setEmptyPic,deletePatientHitory,updatePassword,sendQrCode,setOpenAiKey} = require('./controllers/userController')
 const {createPatient,getPatients,getPatientById,updatePatient,getTodayPatients,getPaitentsCount,getTodayPatietnsForAppointment,addInstantPatient,updateVoiceIntake,searchPatientsByAlphabet,searchPatientsByType,searchPatientsByTypeAndLimit5,exportAllPatients,importPatients,searchPatientsGlobal} = require('./controllers/patientController')
-const {createVisit,viewReport,getVists,getAllVisits,editReport,delVisit , updateVisitDate,recentVisit,newReportMethodStoredIntoDb,generateReExamReport} = require('./controllers/Visits/visitController')
+const {createVisit,signVisit,viewReport,getVists,getAllVisits,editReport,delVisit , updateVisitDate,recentVisit,newReportMethodStoredIntoDb,generateReExamReport} = require('./controllers/Visits/visitController')
 const { getRecentUsers,adminLogin , fetchAllDoctors, fetchAllAdmins,fecthDemoAccounts,demoUserCount,createDemoUser} = require("./controllers/adminController")
-const { createAppointment , getbyDateAppointment , delAppointment , editAppTime , calenderDates , changeStatus, filterAppointments,userResponseFromEmail,appointmentReport,allAppointments} = require('./controllers/appointmentController')
+const { createAppointment , getbyDateAppointment , delAppointment , editAppTime , calenderDates , changeStatus, filterAppointments,userResponseFromEmail,appointmentReport,allAppointments,triggerAppointmentReminders} = require('./controllers/appointmentController')
 const {sendFeedBack , fetchFeedBack , deleteFeedBackById } = require('./controllers/feedbackController')
 require("dotenv").config();
 const { mountLocalStorage } = require("./controllers/localstorage");
-const { speechToTextForm ,patientDataToSummary , speechToTextFormWithOcr, extractPatientDataFromImage, downloadNoteAsAudio, validateRedFlags, suggestTreatment, extractDxCptCodes, generateNoteWithHistory, runQualityCheck, translateToEnglish, interpretCommand, generateReportFromAudioFile, extractIntakeEntities } = require('./controllers/openaiController')
+const { speechToTextForm ,patientDataToSummary , speechToTextFormWithOcr, extractPatientDataFromImage, downloadNoteAsAudio, validateRedFlags, suggestTreatment, extractDxCptCodes, generateNoteWithHistory, runQualityCheck, translateToEnglish, interpretCommand, generateReportFromAudioFile, extractIntakeEntities, getNoteTemplate, saveNoteTemplate, preSignAudit } = require('./controllers/openaiController')
 const { makeInvoice , getAllInvoices , getInvoiceById , getInvoiceAnalyitcs , updateInvoice , deleteInvoice, invoiceStatus, getAllByStatus } = require('./controllers/Invoice/invoiceController')
 const { uploadPDF, getDocuments , deleteDocument, updateDocumentDate } = require('./controllers/Documents/DocumentController')
 const {  reportDocx , reportPdf ,createQuickDocx , reportDocxDirectDownload,ameriarePatientDocument,inspectionDownload} = require('./controllers/Downloads/downloadController')
@@ -118,7 +118,7 @@ app.post('/api/post/updateDoctor',protect,updateDoctor)
 
 
 //patient Routes
-app.post('/api/post/createPatient',createPatient)
+app.post('/api/post/createPatient',protect,createPatient)
 app.get('/api/get/getPatients',protect,getPatients)
 app.get('/api/get/getTodayPatients',protect,getTodayPatients)
 app.get('/api/get/getPatientById', protect, getPatientById)
@@ -154,6 +154,8 @@ app.get('/api/get/getQuestionsForIntake', getQuestionsForIntake)
 
 //visit routes
 app.post('/api/post/createVisit',protect,createVisit);
+app.post('/api/post/signVisit',protect,signVisit);
+app.post('/api/post/preSignAudit',protect,preSignAudit);
 app.get("/api/get/viewReport",protect,viewReport)
 app.get('/api/get/getVists',protect,getVists)
 app.get('/api/get/getAllVisits',protect,getAllVisits)
@@ -177,7 +179,7 @@ app.get('/api/get/fetchAllDoctors',protect,fetchAllDoctors)
 //admin->admins
 app.get('/api/get/fetchAllAdmins',protect,fetchAllAdmins)
 //test routes
-app.get('/api/get/test',testFunc)
+app.get('/api/get/test',protect,testFunc)
 // System health
 app.get('/api/health', async (req, res) => {
   const mongoose = require('mongoose');
@@ -213,10 +215,12 @@ app.post('/api/post/updateClinicLogo',protect,updateClinicLogo)
 
 //oepnai
 app.post('/api/post/speechToText', protect, uploadSet1.single('file'),speechToTextForm)
-app.post('/api/post/generateReportFromAudioFile', protect, uploadSet1.single('file'), generateReportFromAudioFile)
+app.post('/api/post/generateReportFromAudioFile', uploadSet1.single('file'), generateReportFromAudioFile)
+app.get('/api/get/noteTemplate', protect, getNoteTemplate)
+app.post('/api/post/noteTemplate', protect, saveNoteTemplate)
 app.post('/api/post/speechToText/both',uploadSet1.fields([{ name: 'file1', maxCount: 1 },{ name: 'file2', maxCount: 1 },]),speechToTextFormWithOcr)
 // Image OCR — replaces dead Flask/Django endpoint
-app.post('/api/post/extractPatientDataFromImage', protect, uploadSet1.single('image'), extractPatientDataFromImage)
+app.post('/api/post/extractPatientDataFromImage',protect,uploadSet1.single('image'), extractPatientDataFromImage)
 // Smart assistant — generates notes with previous visit history
 app.post('/api/post/generateNoteWithHistory', protect, generateNoteWithHistory)
 // Auto-treatment suggestions
@@ -233,6 +237,22 @@ app.post('/api/post/runQualityCheck', protect, runQualityCheck)
 app.post('/api/post/translateToEnglish', protect, translateToEnglish)
 // AI command interpreter
 app.post('/api/post/interpretCommand', protect, interpretCommand)
+
+// ── Legacy AI compat (aims-service2) — chat threads, custom-prompt Generate,
+// audio->text, lab interpreter, voice intake 2.0. Old service used the retired
+// OpenAI Assistants API; reimplemented on chat.completions in one controller.
+const legacyAi = require('./controllers/legacyAiCompatController')
+app.get('/api/create/thread', legacyAi.createThread)
+app.post('/api/create/message', legacyAi.createMessage)
+app.post('/api/create/run', legacyAi.createRun)
+app.post('/api/get/runStatus', legacyAi.getRunStatus)
+app.get('/api/get/messages', legacyAi.listMessages)
+app.post('/api/cancel/cancelRun', legacyAi.cancelRun)
+app.post('/api/post/testingNewReportMethod', legacyAi.testingNewReportMethod)
+app.post('/api/get/transcription', uploadSet1.single('file'), legacyAi.getTranscription)
+app.post('/api/post/newAssistant', uploadSet1.single('file'), legacyAi.newAssistant)
+app.post('/api/post/clearConversations', legacyAi.clearConversations)
+app.post('/api/openai/voiceIntake2.0', uploadSet1.single('file'), legacyAi.voiceIntake2o)
 
 // Medical codes (DX/CPT) — Phase 1 port from NEW-AIMS-UPGRADED
 app.post('/api/post/searchMedicalCodes', protect, searchMedicalCodes)
@@ -254,10 +274,11 @@ app.post('/api/get/getbyDateAppointment',protect,getbyDateAppointment)
 app.post('/api/del/delAppointment',protect,delAppointment)
 app.post('/api/edit/editAppTime',protect,editAppTime)
 app.post('/api/post/changeStatus',protect,changeStatus)
-app.post('/api/get/calenderDates',calenderDates)
+app.post('/api/get/calenderDates',protect,calenderDates)
 app.post('/api/post/filterAppointments',protect,filterAppointments)
 app.post('/api/post/userResponseFromEmail',userResponseFromEmail) // change status
 app.get('/api/get/userResponseFromEmail',userResponseFromEmail) /// allow to user to change status
+app.get('/api/get/triggerAppointmentReminders',triggerAppointmentReminders) // internal cron: 24h + 2h patient reminders
 app.get('/api/get/appointmentReport',protect,appointmentReport)
 app.get('/api/get/allAppointments',protect,allAppointments)
 // documents 
@@ -289,8 +310,8 @@ app.get('/api/get/getAllByStatus',protect,getAllByStatus)
 app.get('/api/get/reportDocx',protect,reportDocx)
 app.get('/api/get/reportPdf',protect,reportPdf)
 app.get('/api/post/createQuickDocx',protect,createQuickDocx)
-app.post('/api/post/reportDocxDirectDownload',reportDocxDirectDownload)
-app.post('/api/post/ameriarePatientDocument',ameriarePatientDocument)
+app.post('/api/post/reportDocxDirectDownload',protect,reportDocxDirectDownload)
+app.post('/api/post/ameriarePatientDocument',protect,ameriarePatientDocument)
 //inspection
 app.post('/api/post/inspectionDownload',inspectionDownload)
 // Visit timeline & export
@@ -323,12 +344,33 @@ app.delete('/api/delete/deleteNote/:id',protect,deleteNote)
 //agingBioHack
 app.post('/api/post/email/agingbiohack',agingBioHack)
 
-// route 
+// Core web and API discovery routes
 app.get("/", (req, res) => {
     res.send("AIMS backend api routes running");
 });
+app.get("/robots.txt", (req, res) => {
+    res.type("text/plain").send("User-agent: *\nAllow: /\nSitemap: /sitemap.xml\n");
+});
+app.get("/sitemap.xml", (req, res) => {
+    res.type("application/xml").send(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>/</loc></url>
+  <url><loc>/categories</loc></url>
+  <url><loc>/products</loc></url>
+  <url><loc>/contact</loc></url>
+</urlset>`);
+});
+app.get("/categories", (req, res) => {
+    res.json({ response: true, categories: ["Chiropractic", "Physical Therapy", "Rehabilitation", "Wellness"] });
+});
+app.get("/products", (req, res) => {
+    res.json({ response: true, services: ["SOAP Note Scribe", "CPT/ICD-10 Coding", "Patient Portal"] });
+});
+app.get("/contact", (req, res) => {
+    res.json({ response: true, clinic: "AIMS Medical Wellness", status: "operational" });
+});
 
-const PORT = 4000;
+const PORT = process.env.PORT || 4000;
 
 app.listen(
   PORT,

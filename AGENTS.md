@@ -1,78 +1,65 @@
-# AGENTS.md — Mandatory Agent Rules
+# AIMS-2026 AGENT DIRECTIVES & ARCHITECTURAL STANDARDS
 
-**This file is binding on ALL agents operating in this repository.**  
-Any agent that ignores these rules produces invalid work.
-
----
-
-## 1. GitHub Open Code Review & Verification
-**Source:** `coderabbitai/skills` -> `code-review`, `autofix`
-
-Every agent MUST apply these checks before any commit lands:
-
-- **Pre-commit diff check** — No secrets, keys, tokens, or PII in diffs. Run `git diff --cached` and scan.
-- **Security audit** — No `eval`, `innerHTML` with user data, unsanitized redirects, or prototype pollution vectors.
-- **Build gates** — `npm run build` (or project equivalent) exits 0 with **zero warnings**.
-- **Clean commits** — Conventional commit messages (`feat:`, `fix:`, `chore:`), one logical change per commit, no "wip" or "fixup" in history.
-- **Autofix first** — Run the skill's autofix before manual edits. If autofix cannot resolve, escalate with a precise reason.
+> **MANDATORY POLICY FOR ALL AGENTS & AI ASSISTANTS**  
+> Every agent operating in this repository is strictly required to apply, enforce, and adhere to both core skill suites established in `.agents/skills/` and tracked in `skills-lock.json`. No code shall be merged, committed, or deployed without passing these gates.
 
 ---
 
-## 2. Modern Web Quality & React Best Practices
-**Source:** `vercel-labs/agent-skills` + `addyosmani/web-quality-skills`
+## 1. Core Skill Sets & Required Frameworks
 
-Every agent MUST enforce these standards on every web change:
+All agents must leverage the 13 installed official skills across three specialized domains:
 
-### Performance (Core Web Vitals)
-- **LCP < 2.5s** — Eliminate waterfalls: preload critical CSS/fonts, inline critical CSS, defer non-critical JS.
-- **INP < 200ms** — No main-thread blocking >50ms. Use `requestIdleCallback`, web workers, or `useDeferredValue`.
-- **CLS < 0.1** — Reserve space for images/ads/iframes with `aspect-ratio` or explicit dimensions. No layout shifts on font load (`font-display: optional` or `fallback` with size-adjust).
+### A. GitHub Open Code Review & Security Suite (`coderabbitai/skills`)
+- **`code-review`**: High-signal code quality review, diff inspection, error handling validation, architectural alignment.
+- **`autofix`**: Automated resolution of lint, type, and runtime hazards prior to submission.
 
-### Bundle Optimization
-- **Code-split by route** — Dynamic `import()` for every non-critical page/component.
-- **Tree-shake aggressively** — No barrel exports that pull in unused code. Side-effect-free packages only.
-- **No duplicate deps** — `npm ls` shows single version per package. Deduplicate or explain why not.
+### B. Modern Web Quality, SEO & Accessibility Suite (`addyosmani/web-quality-skills`)
+- **`accessibility`**: Strict WCAG 2.2 AA compliance, color contrast (>= 4.5:1 text, >= 3:1 UI), keyboard navigability, semantic ARIA roles.
+- **`performance`**: Request waterfall elimination, non-blocking I/O, server-side caching, bundle trimming.
+- **`core-web-vitals`**: LCP <= 2.5s, INP <= 200ms, CLS <= 0.1 on all patient- and doctor-facing routes.
+- **`seo`**: Technical SEO enforcement, clean canonical URLs with trailing-slash normalization, dynamic XML sitemaps, open graph metadata.
+- **`best-practices`**: Resilient error boundaries, defensive input validation, structured response envelopes.
+- **`web-quality-audit`**: Automated audits combining performance, accessibility, SEO, and operational reliability.
 
-### Technical SEO
-- **Canonical URLs with trailing slashes** — `<link rel="canonical" href="https://domain.com/path/">` always.
-- **Meta tags on every page** — `title`, `description`, `og:*`, `twitter:*`, `robots`.
-- **Structured data** — `application/ld+json` for Article, Product, Organization, BreadcrumbList.
-- **Sitemap & robots.txt** — Auto-generated, served with correct content-types (`application/xml`, `text/plain`).
-
-### Accessibility (WCAG 2.2 AA)
-- **Semantic HTML** — `<main>`, `<nav>`, `<article>`, `<section>`, heading hierarchy (h1-h6, no skips).
-- **Color contrast** — 4.5:1 text, 3:1 UI elements. Test with `axe-core` or equivalent.
-- **Keyboard navigation** — Focus visible, tab order logical, no keyboard traps. `focus-visible` polyfill if needed.
-- **ARIA only when native HTML fails** — Prefer `<button>` over `<div role="button">`.
-- **Alt text** — Every `<img>` has meaningful `alt` (empty `alt=""` only for decorative).
-
-### React Specifics (Vercel Patterns)
-- **Server Components by default** — `'use client'` only for interactivity (state, effects, browser APIs).
-- **No `useEffect` for data fetching** — Use Server Components, `fetch` with `next/cache`, or SWR/TanStack Query on client.
-- **Suspense boundaries** — Every async boundary wrapped in `<Suspense fallback={<Skeleton />}>`. No naked promises in render.
-- **Stable keys** — `key={item.id}` never `key={index}` or `key={Math.random()}`.
-- **Memoization only when measured** — `React.memo`, `useMemo`, `useCallback` after profiling proves necessity.
+### C. Vercel Architecture & Optimization Suite (`vercel-labs/agent-skills`)
+- **`vercel-react-best-practices`**: React Server Components / client boundary minimization, suspense patterns, zero hydration mismatch.
+- **`vercel-composition-patterns`**: Modular component composition, slot pattern architecture, separation of clinical business logic from UI rendering.
+- **`vercel-optimize`**: Script optimization, dynamic image compression, route-level code splitting.
+- **`web-design-guidelines`**: High-clarity clinical ergonomics, responsive layout hierarchy, mobile-friendly forms.
+- **`deploy-to-vercel`**: Edge runtime compatibility, zero-downtime deployments, atomic preview builds.
 
 ---
 
-## Enforcement
-- **CI fails** if any rule is violated (see `.github/workflows/jev-monitor.yml`).
-- **CodeRabbit review** runs on every PR — unaddressed findings block merge.
-- **Jev audit** runs every 6h + on push — critical errors = failed deployment.
+## 2. Mandatory Agent Rules & Pre-Commit Gates
+
+### Rule 1: Zero Secret Exposure & DevSecOps Integrity
+1. **Never commit secrets**: No API keys, credentials, JWT secrets, passwords, or connection strings in code or git history.
+2. **Environment Isolation**: Always use `process.env.*`. Local secrets belong strictly in `.env` (which must remain in `.gitignore`).
+3. **Database Guardrails**: Never expose raw MongoDB connection strings or unhashed credentials in transcripts or commits.
+
+### Rule 2: Pre-Commit Code Review & Static Analysis
+Before any commit, every agent must perform:
+1. `git diff` review: Confirm only intentional, minimal, and well-scoped changes are staged.
+2. Syntax & Build Validation: Execute `npm run build` (and `node --check` across modified files). There must be **0 errors and 0 warnings**.
+3. Regression Verification: Run existing test suites (`node tests/remediation_verification_suite.js`) to guarantee zero functional regressions.
+
+### Rule 3: Clinical & Healthcare Backwards Compatibility
+1. **Zero Downtime**: Production APIs must never break live clinical web or mobile clients.
+2. **Dual-Casing & Response Envelopes**: Maintain backwards-compatible response fields (e.g. `Assessment` / `assessment`, `Plan` / `plan`).
+3. **Audit Trail & Integrity**: Never alter clinical histories without an audit trail; avoid destructive regex or unvalidated updates.
+
+### Rule 4: Automated Error Monitoring & Quality Gates (Jev System-1)
+1. **Continuous Monitoring**: All key application routes (`/`, `/categories`, `/products`, `/contact`, `/sitemap.xml`, `/robots.txt`) are audited by Jev's System-1 model (`scripts/jev-audit.mjs`).
+2. **CI/CD Build Gate**: Automated CI workflow (`.github/workflows/jev-monitor.yml`) runs on push and cron every 6 hours.
+3. **Deterministic Alerting**: When severity is `medium` or `high`, alerts dispatch automatically to Resend / Webhook channels.
 
 ---
 
-## Quick Reference: Skill Commands
-```bash
-# Code review (run before commit)
-npx @coderabbitai/code-review
+## 3. Commit Message Standards
 
-# Web quality audit
-npx @addyosmani/web-quality-audit
-
-# Performance budget check
-npx @vercel-labs/vercel-optimize
-
-# SEO validation
-npx @addyosmani/seo
-```
+All commits must follow Conventional Commits format:
+- `feat(scope): ...` for new features or capabilities
+- `fix(scope): ...` for bug fixes and patches
+- `refactor(scope): ...` for architectural refactors
+- `chore(scope): ...` for dependencies and configuration updates
+- `test(scope): ...` for tests and verification scripts

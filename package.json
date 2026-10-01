@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
+    "build": "node --check index.js",
     "test": "node scripts/jev-audit.mjs",
     "audit": "node scripts/jev-audit.mjs"
   },
@@ -51,6 +52,7 @@
     "nodemailer": "^6.9.14",
     "nodemon": "^2.0.22",
     "openai": "^4.52.3",
+    "pdf-parse": "^2.4.5",
     "pdfkit": "^0.20.2",
     "pizzip": "^3.1.7",
     "puppeteer": "^23.6.1",

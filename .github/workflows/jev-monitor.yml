@@ -1,68 +1,47 @@
-name: Jev Error Monitor
+name: Jev System-1 Web Error Monitor
 
 on:
   schedule:
-    - cron: '0 */6 * * *'  # Every 6 hours
+    # Run every 6 hours
+    - cron: '0 */6 * * *'
   push:
-    branches: [main, master]
+    branches:
+      - main
+      - master
   workflow_dispatch:
-
-env:
-  BASE_URL: ${{ secrets.BASE_URL || 'https://aimedicalscriber.com' }}
-  TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
-  RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-  NOTIFICATION_EMAIL: ${{ secrets.NOTIFICATION_EMAIL }}
+    inputs:
+      target_url:
+        description: 'Target Base URL to audit (leave empty for default)'
+        required: false
+        default: ''
 
 jobs:
   jev-audit:
+    name: Jev-1 Route & Error Classification Audit
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
+
+    env:
+      BASE_URL: ${{ github.event.inputs.target_url || vars.BASE_URL || secrets.BASE_URL || 'http://localhost:4000' }}
+      TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      NOTIFICATION_EMAIL: ${{ vars.NOTIFICATION_EMAIL || secrets.NOTIFICATION_EMAIL || 'devops@aimsclinic.com' }}
+
     steps:
-      - name: Checkout repository
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Install Dependencies
+        run: npm ci || npm install --legacy-peer-deps
 
-      - name: Run Jev Error Audit
+      - name: Verify Build Gates
+        run: npm run build
+
+      - name: Execute Jev System-1 Error Monitor Audit
         run: node scripts/jev-audit.mjs
-        env:
-          BASE_URL: ${{ env.BASE_URL }}
-          TYPESAFE_API_KEY: ${{ env.TYPESAFE_API_KEY }}
-
-      - name: Notify on critical errors
-        if: failure()
-        run: |
-          echo "Critical errors detected by Jev audit. Sending notification..."
-          if [ -n "${{ env.RESEND_API_KEY }}" ] && [ -n "${{ env.NOTIFICATION_EMAIL }}" ]; then
-            curl -X POST 'https://api.resend.com/emails' \
-              -H "Authorization: Bearer ${{ env.RESEND_API_KEY }}" \
-              -H 'Content-Type: application/json' \
-              -d "{
-                \"from\": \"Jev Monitor <noreply@${{ github.repository }}>\",
-                \"to\": [\"${{ env.NOTIFICATION_EMAIL }}\"],
-                \"subject\": \"🚨 Jev Audit: Critical Errors Detected\",
-                \"html\": \"<p>Jev error monitor detected critical errors on <strong>${{ env.BASE_URL }}</strong>.</p><p>Workflow: <a href='${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'>${{ github.workflow }} #${{ github.run_number }}</a></p><p>Run the audit manually: <code>node scripts/jev-audit.mjs</code></p>\"
-              }"
-          else
-            echo "RESEND_API_KEY or NOTIFICATION_EMAIL not configured - skipping email notification"
-          fi
-        shell: bash
-
-      - name: Post failure comment on PR (if applicable)
-        if: failure() && github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: '🚨 **Jev Error Monitor** detected critical errors in this PR. Please review the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.'
-            })

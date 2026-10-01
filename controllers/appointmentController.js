@@ -2,7 +2,7 @@ const asyncHandler = require("express-async-handler");
 const Appointment = require('../models/Appointment')
 const Patient = require('../models/Patients')
 const User = require('../models/User')
-const {appMail,appCancel,appUpdate,onComplete} = require('./mailController')
+const {appMail,appCancel,appUpdate,onComplete,appointmentReminderMail,clinicAlertMail} = require('./mailController')
 const { sendMessage } = require('../controllers/Twilio/twilio'); 
 const { getTodayDateInTimeZone } = require('../Helper/getLocalDates');
 
@@ -393,7 +393,26 @@ const userResponseFromEmail = asyncHandler(async (req,res)=>{
             
     }else{
 
-            const { appId ,  status } = req.body
+            const { appId ,  status, rescheduleRequested } = req.body
+            if (!appId) return res.send(false)
+
+            if (rescheduleRequested) {
+                const appt = await Appointment.findOne({_id:appId})
+                if (!appt) return res.send(false)
+                await Appointment.updateOne({_id:appId},{ $set:{ rescheduleRequested:true, rescheduleRequestedAt:new Date() } })
+                // best-effort clinic alert — never fail the patient response because of it
+                try {
+                    const patientInfo = appt.patientID ? await Patient.findOne({_id:appt.patientID}).select('fullName phoneNumber').catch(()=>null) : null
+                    const who = (patientInfo && patientInfo.fullName) || appt.name || 'A patient'
+                    const phone = (patientInfo && patientInfo.phoneNumber) || ''
+                    const to = process.env.CLINIC_ALERT_EMAIL || process.env.NODE_MAILER_USER
+                    if (to) await clinicAlertMail(process.env.NODE_MAILER_USER, process.env.NODE_MAILER_PASS, to,
+                        `Reschedule request — ${who} (${appt.time})`,
+                        `Patient requested to reschedule.\n\nPatient: ${who}\nPhone: ${phone}\nAppointment: ${appt.time}\nChart: https://aimedicalscriber.com/PatientFich/${appt.patientID}\n\nOpen AIMS to call and rebook.`)
+                } catch(e) { console.error('reschedule alert failed:', e.message) }
+                return res.json({response:true, msg:'Reschedule requested'})
+            }
+
             await Appointment.updateOne({_id:appId},{status})
             return res.send(true)
             
@@ -458,6 +477,99 @@ const allAppointments = asyncHandler(async(req,res)=>{
 
 
 
+/* ================= Appointment reminders (24h + 2h before, clinic timezone) =================
+   Fired by VPS cron: GET /api/get/triggerAppointmentReminders every 15 min.
+   - 24h stage: fires when 24h10m >= time-to-appt > 2h30m  (catch-up safe)
+   - 2h  stage: fires when 2h30m >= time-to-appt > 15m
+   Stage flags reminder24hSentAt / reminder2hSentAt prevent duplicates.
+   Message contains a confirm / cancel / reschedule link (AppointmentConfirmation page).
+   ?dryRun=1 reports what WOULD be sent without sending or flagging. */
+
+const CLINIC_TZ = process.env.CLINIC_TZ || 'America/New_York';
+const CLINIC_NAME = process.env.CLINIC_NAME || 'Innovative Medical Wellness';
+
+function toE164(n) {
+    const d = String(n||'').replace(/\D/g,'');
+    if (d.length === 10) return '+1' + d;
+    if (d.length === 11 && d[0] === '1') return '+' + d;
+    return String(n||'');
+}
+
+function nowPartsInTZ(tz) {
+    const fmt = new Intl.DateTimeFormat('en-US', { timeZone: tz, year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', hour12:false });
+    const p = {};
+    fmt.formatToParts(new Date()).forEach(x => { if (x.type !== 'literal') p[x.type] = x.value; });
+    return { y:+p.year, m:+p.month, d:+p.day, h:(+p.hour) % 24, mi:+p.minute };
+}
+
+function parseApptWallClock(timeStr) {
+    // stored format: "YYYY-MM-DD hh:mm AM/PM" — wall clock in the clinic timezone
+    const m = String(timeStr||'').match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+    if (!m) return null;
+    let h = +m[4];
+    const ap = (m[6]||'').toUpperCase();
+    if (ap === 'PM' && h !== 12) h += 12;
+    if (ap === 'AM' && h === 12) h = 0;
+    return Date.UTC(+m[1], +m[2]-1, +m[3], h, +m[5]);
+}
+
+const triggerAppointmentReminders = asyncHandler(async (req, res) => {
+    const dryRun = String(req.query.dryRun) === '1';
+    const nowP = nowPartsInTZ(CLINIC_TZ);
+    const nowMs = Date.UTC(nowP.y, nowP.m - 1, nowP.d, nowP.h, nowP.mi);
+    const outcomes = [];
+    try {
+        const start = new Date(nowMs - 12 * 3600e3).toISOString().slice(0, 10); // string >= today (lexicographic on YYYY-MM-DD)
+        const appts = await Appointment.find({
+            status: { $in: ['Pending', 'Scheduled'] },
+            time: { $gte: start }
+        });
+        for (const a of appts) {
+            const ms = parseApptWallClock(a.time);
+            if (!ms) continue;
+            const diffMin = Math.round((ms - nowMs) / 60000);
+            if (diffMin <= 0) continue; // past appointment
+            let stage = null;
+            if (diffMin <= 1450 && diffMin > 150 && !a.reminder24hSentAt) stage = '24h';
+            else if (diffMin <= 150 && diffMin > 15 && !a.reminder2hSentAt) stage = '2h';
+            if (!stage) continue;
+
+            const confirmLink = `https://www.aiscribers.com/AppointmentConfirmation/${a._id}`;
+            const patient = a.patientID ? await Patient.findOne({ _id: a.patientID }).select('fullName phoneNumber email').catch(() => null) : null;
+            const name = (patient && patient.fullName) || a.name || 'there';
+            const phone = patient && patient.phoneNumber;
+            const email = a.email || (patient && patient.email);
+            const outcome = { id: String(a._id), stage, when: a.time, sms: 'no-contact', email: 'no-contact' };
+            if (dryRun) {
+                outcome.sms = phone ? 'WOULD SEND' : 'no-phone';
+                outcome.email = email ? 'WOULD SEND' : 'no-email';
+            } else {
+                const smsMsg = `Reminder: your appointment at ${CLINIC_NAME} is on ${a.time}.\nConfirm, cancel or reschedule here: ${confirmLink}\nCall 305-864-1373 with any questions. Reply STOP to opt out.`;
+                if (phone) {
+                    try {
+                        const ok = await sendMessage(smsMsg, toE164(phone));
+                        outcome.sms = ok === false ? 'failed' : 'sent';
+                    } catch (e) { outcome.sms = 'failed'; console.error('reminder sms failed:', e.message); }
+                }
+                if (email) {
+                    try {
+                        const ok = await appointmentReminderMail(process.env.NODE_MAILER_USER, process.env.NODE_MAILER_PASS, email, a.time, name, CLINIC_NAME, confirmLink);
+                        outcome.email = ok === false ? 'failed' : 'sent';
+                    } catch (e) { outcome.email = 'failed'; console.error('reminder email failed:', e.message); }
+                }
+                // flag even if a channel failed — better a missed retry than repeat spam; endpoint logs make failures visible
+                await Appointment.updateOne({ _id: a._id }, { $set: stage === '24h' ? { reminder24hSentAt: new Date() } : { reminder2hSentAt: new Date() } });
+            }
+            outcomes.push(outcome);
+        }
+        const pad = n => String(n).padStart(2, '0');
+        return res.json({ response: true, dryRun, tz: CLINIC_TZ, now: `${nowP.y}-${pad(nowP.m)}-${pad(nowP.d)} ${pad(nowP.h)}:${pad(nowP.mi)}`, pending: outcomes });
+    } catch (e) {
+        console.error('triggerAppointmentReminders error:', e.message);
+        return res.json({ response: false, error: e.message });
+    }
+});
+
 module.exports = {
     createAppointment,
     getbyDateAppointment,
@@ -468,6 +580,7 @@ module.exports = {
     filterAppointments,
     userResponseFromEmail,
     appointmentReport,
-    allAppointments
+    allAppointments,
+    triggerAppointmentReminders
     
 }
