@@ -118,7 +118,7 @@ app.post('/api/post/updateDoctor',protect,updateDoctor)
 
 
 //patient Routes
-app.post('/api/post/createPatient',createPatient)
+app.post('/api/post/createPatient',protect,createPatient)
 app.get('/api/get/getPatients',protect,getPatients)
 app.get('/api/get/getTodayPatients',protect,getTodayPatients)
 app.get('/api/get/getPatientById', protect, getPatientById)
@@ -179,7 +179,7 @@ app.get('/api/get/fetchAllDoctors',protect,fetchAllDoctors)
 //admin->admins
 app.get('/api/get/fetchAllAdmins',protect,fetchAllAdmins)
 //test routes
-app.get('/api/get/test',testFunc)
+app.get('/api/get/test',protect,testFunc)
 // System health
 app.get('/api/health', async (req, res) => {
   const mongoose = require('mongoose');
@@ -220,7 +220,7 @@ app.get('/api/get/noteTemplate', protect, getNoteTemplate)
 app.post('/api/post/noteTemplate', protect, saveNoteTemplate)
 app.post('/api/post/speechToText/both',uploadSet1.fields([{ name: 'file1', maxCount: 1 },{ name: 'file2', maxCount: 1 },]),speechToTextFormWithOcr)
 // Image OCR — replaces dead Flask/Django endpoint
-app.post('/api/post/extractPatientDataFromImage', uploadSet1.single('image'), extractPatientDataFromImage)
+app.post('/api/post/extractPatientDataFromImage',protect,uploadSet1.single('image'), extractPatientDataFromImage)
 // Smart assistant — generates notes with previous visit history
 app.post('/api/post/generateNoteWithHistory', protect, generateNoteWithHistory)
 // Auto-treatment suggestions
@@ -274,7 +274,7 @@ app.post('/api/get/getbyDateAppointment',protect,getbyDateAppointment)
 app.post('/api/del/delAppointment',protect,delAppointment)
 app.post('/api/edit/editAppTime',protect,editAppTime)
 app.post('/api/post/changeStatus',protect,changeStatus)
-app.post('/api/get/calenderDates',calenderDates)
+app.post('/api/get/calenderDates',protect,calenderDates)
 app.post('/api/post/filterAppointments',protect,filterAppointments)
 app.post('/api/post/userResponseFromEmail',userResponseFromEmail) // change status
 app.get('/api/get/userResponseFromEmail',userResponseFromEmail) /// allow to user to change status
@@ -310,8 +310,8 @@ app.get('/api/get/getAllByStatus',protect,getAllByStatus)
 app.get('/api/get/reportDocx',protect,reportDocx)
 app.get('/api/get/reportPdf',protect,reportPdf)
 app.get('/api/post/createQuickDocx',protect,createQuickDocx)
-app.post('/api/post/reportDocxDirectDownload',reportDocxDirectDownload)
-app.post('/api/post/ameriarePatientDocument',ameriarePatientDocument)
+app.post('/api/post/reportDocxDirectDownload',protect,reportDocxDirectDownload)
+app.post('/api/post/ameriarePatientDocument',protect,ameriarePatientDocument)
 //inspection
 app.post('/api/post/inspectionDownload',inspectionDownload)
 // Visit timeline & export
@@ -344,9 +344,30 @@ app.delete('/api/delete/deleteNote/:id',protect,deleteNote)
 //agingBioHack
 app.post('/api/post/email/agingbiohack',agingBioHack)
 
-// route 
+// Core web and API discovery routes
 app.get("/", (req, res) => {
     res.send("AIMS backend api routes running");
+});
+app.get("/robots.txt", (req, res) => {
+    res.type("text/plain").send("User-agent: *\nAllow: /\nSitemap: /sitemap.xml\n");
+});
+app.get("/sitemap.xml", (req, res) => {
+    res.type("application/xml").send(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>/</loc></url>
+  <url><loc>/categories</loc></url>
+  <url><loc>/products</loc></url>
+  <url><loc>/contact</loc></url>
+</urlset>`);
+});
+app.get("/categories", (req, res) => {
+    res.json({ response: true, categories: ["Chiropractic", "Physical Therapy", "Rehabilitation", "Wellness"] });
+});
+app.get("/products", (req, res) => {
+    res.json({ response: true, services: ["SOAP Note Scribe", "CPT/ICD-10 Coding", "Patient Portal"] });
+});
+app.get("/contact", (req, res) => {
+    res.json({ response: true, clinic: "AIMS Medical Wellness", status: "operational" });
 });
 
 const PORT = process.env.PORT || 4000;

@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js"
+    "dev": "nodemon index.js",
+    "build": "node --check index.js"
   },
   "keywords": [
     "ehr",
@@ -60,5 +61,8 @@
     "twilio": "^5.3.1",
     "ws": "^8.17.1",
     "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@typesafe-ai/sdk": "^0.6.0"
   }
 }
