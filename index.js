@@ -7,6 +7,8 @@ const {sendFeedBack , fetchFeedBack , deleteFeedBackById } = require('./controll
 require("dotenv").config();
 const { mountLocalStorage } = require("./controllers/localstorage");
 const { speechToTextForm ,patientDataToSummary , speechToTextFormWithOcr, extractPatientDataFromImage, downloadNoteAsAudio, validateRedFlags, suggestTreatment, extractDxCptCodes, generateNoteWithHistory, runQualityCheck, translateToEnglish, interpretCommand, generateReportFromAudioFile, extractIntakeEntities, getNoteTemplate, saveNoteTemplate, preSignAudit } = require('./controllers/openaiController')
+const { getRealtimeToken } = require('./controllers/voiceRealtimeController')
+const { searchPatientFn, getPatientCalendarFn, scheduleAppointmentFn, startMedicalScribeFn, createPaymentFn, getPatientInfoFn, listTodayAppointmentsFn } = require('./controllers/voiceRealtimeFunctions')
 const { makeInvoice , getAllInvoices , getInvoiceById , getInvoiceAnalyitcs , updateInvoice , deleteInvoice, invoiceStatus, getAllByStatus } = require('./controllers/Invoice/invoiceController')
 const { uploadPDF, getDocuments , deleteDocument, updateDocumentDate } = require('./controllers/Documents/DocumentController')
 const {  reportDocx , reportPdf ,createQuickDocx , reportDocxDirectDownload,ameriarePatientDocument,inspectionDownload} = require('./controllers/Downloads/downloadController')
@@ -267,6 +269,16 @@ app.post('/api/post/runBillingCompliance', protect, runBillingCompliance)
 
 app.post('/api/post/extractIntakeEntities', extractIntakeEntities)
 app.post('/api/post/patientDataToSummary', protect, patientDataToSummary)
+
+// Voice Realtime API
+app.post('/api/v1/voice/realtime-token', protect, getRealtimeToken)
+app.post('/api/v1/voice/search-patient', protect, searchPatientFn)
+app.post('/api/v1/voice/patient-calendar', protect, getPatientCalendarFn)
+app.post('/api/v1/voice/schedule-appointment', protect, scheduleAppointmentFn)
+app.post('/api/v1/voice/start-scribe', protect, startMedicalScribeFn)
+app.post('/api/v1/voice/create-payment', protect, createPaymentFn)
+app.post('/api/v1/voice/patient-info', protect, getPatientInfoFn)
+app.post('/api/v1/voice/today-appointments', protect, listTodayAppointmentsFn)
 
 //appointments
 app.post('/api/post/createAppointment',protect,createAppointment)
