@@ -29,6 +29,9 @@ const PatientSchema = new Schema({
     capturedBy: String,
     signatureUrl: String,
     photoUrl: String,
+    providerName: String,
+    providerSignatureUrl: String,
+    providerSignedAt: String,
     pdfUrl: String
   }],
   dateOfBirth: { type: String },
@@ -135,7 +138,7 @@ const PatientSchema = new Schema({
 
 
 // Middleware to set date and time before saving the document
-PatientSchema.pre('save', function (next) {
+PatientSchema.pre('save', async function () {
   console.log('Pre-save middleware executed for Patient');
 
   // Set date and time only for new documents
@@ -151,7 +154,7 @@ PatientSchema.pre('save', function (next) {
       console.log(`Date set to: ${currentDate}, Time set to: ${currentTime}`);
     }
   }
-  next();
+
 });
 
 const Patient = mongoose.model("Patient", PatientSchema);

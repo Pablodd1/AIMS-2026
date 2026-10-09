@@ -37,7 +37,7 @@ const InvoiceSchema = new Schema({
 }, { timestamps: true });
 
 // Middleware to set date and time before saving the document
-InvoiceSchema.pre('save', function (next) {
+InvoiceSchema.pre('save', async function () {
   console.log('Pre-save middleware executed for Invoice');
 
   // Set date and time only for new documents
@@ -53,7 +53,6 @@ InvoiceSchema.pre('save', function (next) {
       console.log(`Date set to: ${currentDate}, Time set to: ${currentTime}`);
     }
   }
-  next();
 });
 
 module.exports = mongoose.model('Invoice', InvoiceSchema);

@@ -431,9 +431,9 @@ const addInstantPatient = asyncHandler(async(req,res)=>{
     const patient =  await newPatient.save();
     
     const doctorDetails = await User.findOne({_id:req.user})
-    let link = `https://www.aiscribers.com/updatePatient/${patient._id}`
+    let link = `https://www.aimedicalscriber.com/updatePatient/${patient._id}`
     if(doctorDetails.email === "kmcneal@awclinics.com"){
-      link = `https://www.aiscribers.com/americare`
+      link = `https://www.aimedicalscriber.com/americare`
     }
     
     let msg=""

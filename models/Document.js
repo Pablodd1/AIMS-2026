@@ -34,7 +34,7 @@ const DocumentSchema = new Schema({
 
 
 // Middleware to set date and time before saving the document
-DocumentSchema.pre('save', function (next) {
+DocumentSchema.pre('save', async function () {
   console.log('Pre-save middleware executed for Document');
 
   // Set date and time only for new documents
@@ -50,7 +50,7 @@ DocumentSchema.pre('save', function (next) {
       console.log(`Date set to: ${currentDate}, Time set to: ${currentTime}`);
     }
   }
-  next();
+
 });
 
 module.exports = mongoose.model('Document', DocumentSchema);

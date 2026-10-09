@@ -93,7 +93,7 @@ async function uploadRaw(buf, folder, name) {
   });
 }
 
-function buildPdf({ patientName, dob, procedure, procedureDetails, signedAt, consentVersion, sigBuf, photoBuf, consentText, procedureDate, area, screening, sourceUrl, textHash, capturedBy }) {
+function buildPdf({ patientName, dob, procedure, procedureDetails, signedAt, consentVersion, sigBuf, photoBuf, providerName, provSigBuf, consentText, procedureDate, area, screening, sourceUrl, textHash, capturedBy }) {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: "LETTER", margin: 54 });
     const chunks = [];
@@ -121,6 +121,19 @@ function buildPdf({ patientName, dob, procedure, procedureDetails, signedAt, con
     doc.moveDown();
     if (sigBuf) { doc.text("Patient signature:"); doc.image(sigBuf, { width: 220 }); doc.moveDown(); }
     if (photoBuf) doc.image(photoBuf, doc.page.width - 54 - 160, doc.y - 10, { width: 160 });
+    if (provSigBuf) { doc.moveDown().text(`Provider signature — ${providerName}:`, { width: 300 }); doc.image(provSigBuf, { width: 220 }); doc.moveDown(); }
+
+    // Wet-ink block: printed/scanned copies for medical-records requests must be
+    // hand-signable. Always printed, even when e-signatures exist above.
+    doc.addPage();
+    doc.fontSize(11).text("Signatures for printed copies (medical records release)", { underline: true }).moveDown();
+    doc.fontSize(10).text("If this form is printed or scanned for a records request, sign below in ink.").moveDown().moveDown();
+    doc.text("Patient / authorized representative signature:").moveDown().moveDown().moveDown();
+    doc.text("______________________________________________     Date: ______________").moveDown().moveDown();
+    doc.text("Printed name: ____________________________________").moveDown().moveDown().moveDown();
+    doc.text("Provider (physician) signature:").moveDown().moveDown().moveDown();
+    doc.text("______________________________________________     Date: ______________").moveDown().moveDown();
+    doc.text("Printed name: ____________________________________").moveDown();
 
     doc.moveDown().fontSize(8).fillColor("#555");
     if (sourceUrl) doc.text(`Original consent document: ${sourceUrl}`);
@@ -144,6 +157,7 @@ async function sendReportEmail(pdfBuf, patientName, procedure, signedAt, record)
   if (record.area) lines.push(`Treatment area: ${record.area}`);
   if (record.procedureDate) lines.push(`Date of procedure: ${record.procedureDate}`);
   if (record.screening) lines.push(`Safety screening: ${record.screening}`);
+  lines.push(`Provider countersignature: ${record.providerName} at ${record.providerSignedAt} (signature on record)`);
   if (record.sourceUrl) lines.push(`Original consent document: ${record.sourceUrl}`);
   lines.push(`Consent text SHA-256: ${record.consentTextSha256}`);
   await transporter.sendMail({
@@ -158,6 +172,7 @@ async function sendReportEmail(pdfBuf, patientName, procedure, signedAt, record)
 const submitConsent = asyncHandler(async (req, res) => {
   const {
     patientId, procedure, procedureDetails, signatureDataUrl, photoDataUrl,
+    providerName, providerSignatureDataUrl,
     consentVersion, consentText, procedureDate, area, screening, sourceUrl,
   } = req.body || {};
   if (!patientId || !procedure || !signatureDataUrl) {
@@ -183,6 +198,14 @@ const submitConsent = asyncHandler(async (req, res) => {
   if (!imageOk(sigBuf)) return res.status(400).json({ response: false, msg: "The signature image could not be read — clear it and sign again." });
   if (!imageOk(photoBuf)) return res.status(400).json({ response: false, msg: "The patient photo could not be read — retake or re-upload it." });
 
+  // provider countersignature: the physician who performed the procedure signs the same
+  // record (a patient-only consent is incomplete for the clinic's chart).
+  const provName = (providerName || "").trim();
+  const provSigBuf = dataUrlToBuffer(providerSignatureDataUrl);
+  if (!provName) return res.status(400).json({ response: false, msg: "Provider name is required" });
+  if (!provSigBuf) return res.status(400).json({ response: false, msg: "Provider signature is required" });
+  if (!imageOk(provSigBuf)) return res.status(400).json({ response: false, msg: "The provider signature image could not be read — clear it and sign again." });
+
   // who captured it (req.user is the decoded user id from protect)
   let capturedBy = "";
   try {
@@ -192,6 +215,7 @@ const submitConsent = asyncHandler(async (req, res) => {
 
   const base = `aims/consents/${patientId}`;
   const sigUrl = await uploadImage(sigBuf, base, `signature-${Date.now()}`);
+  const provSigUrl = await uploadImage(provSigBuf, base, `provider-signature-${Date.now()}`);
   const photoUrl = photoBuf ? await uploadImage(photoBuf, base, `photo-${Date.now()}`) : null;
 
   const record = {
@@ -213,6 +237,9 @@ const submitConsent = asyncHandler(async (req, res) => {
     capturedBy,
     signatureUrl: sigUrl,
     photoUrl,
+    providerName: provName,
+    providerSignatureUrl: provSigUrl,
+    providerSignedAt: signedAt,
   };
   if (resolved.drift) record.consentTextClientSha256 = sha256(resolved.drift);
 
@@ -225,6 +252,8 @@ const submitConsent = asyncHandler(async (req, res) => {
     consentVersion: version,
     sigBuf,
     photoBuf,
+    providerName: provName,
+    provSigBuf,
     consentText: resolved.text,
     procedureDate,
     area: record.area,

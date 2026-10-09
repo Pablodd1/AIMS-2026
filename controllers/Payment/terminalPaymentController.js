@@ -3,7 +3,7 @@ const Invoice = require('../../models/Invoice');
 const TerminalPayment = require('../../models/TerminalPayment');
 const Patient = require('../../models/Patients');
 const { applyPayment } = require('./paymentApplier');
-const { CLINIC_TZ, tzOffsetMinutes, dayBounds, chooseInvoice } = require('./matchLogic');
+const { CLINIC_TZ, tzOffsetMinutes, dayBounds, chooseInvoice, invoiceOwner } = require('./matchLogic');
 
 /* ------------------------------------------------------------------ Mongo-backed store
  * The only place that touches the database. All decisions live in paymentApplier.js.
@@ -97,7 +97,7 @@ const assignPayment = asyncHandler(async (req, res) => {
     invoice = await Invoice.findOne({ pId: String(patient._id), subTotal, status: 'Unpaid' }).sort({ createdAt: -1 });
     if (!invoice) {
       invoice = await Invoice.create({
-        docId: req.user,
+        docId: invoiceOwner(patient, req.user),
         pId: String(patient._id),
         item: [{ itemName: 'Card payment', itemQuantity: 1, Price: subTotal }],
         subTotal,

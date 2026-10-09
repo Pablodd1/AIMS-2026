@@ -39,7 +39,7 @@ const CheckNotesSchema = new Schema({
 
 
 // Middleware to set date and time before saving the document
-CheckNotesSchema.pre('save', function (next) {
+CheckNotesSchema.pre('save', async function () {
   console.log('Pre-save middleware executed for Invoice');
 
   // Set date and time only for new documents
@@ -55,7 +55,7 @@ CheckNotesSchema.pre('save', function (next) {
       console.log(`Date set to: ${currentDate}, Time set to: ${currentTime}`);
     }
   }
-  next();
+
 });
 
 module.exports = mongoose.model('CheckNotes', CheckNotesSchema);

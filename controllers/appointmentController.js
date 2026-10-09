@@ -114,12 +114,12 @@ let { patientID , time ,number,clinicname,businessMail,
             })
 
             const doctorDetails = await User.findOne({_id:req.user})
-            link = `https://www.aiscribers.com/updatePatient/${patientID}`
+            link = `https://www.aimedicalscriber.com/updatePatient/${patientID}`
             if(doctorDetails.email === "kmcneal@awclinics.com"){
-                link = `https://www.aiscribers.com/americare`
+                link = `https://www.aimedicalscriber.com/americare`
             }
 
-             const confirmLink = `https://www.aiscribers.com/AppointmentConfirmation/${newAppointment._id}`
+             const confirmLink = `https://www.aimedicalscriber.com/AppointmentConfirmation/${newAppointment._id}`
             if(clinicname == "Icare" || clinicname == "icare" || clinicname == "Icare Mobile Medicine")
             {
                  msg = `Hi ${patientInfo.fullName},\n\nYour appointment is confirmed for ${newAppointment.time}.\n\nPlease complete the intake form ahead of time using this link: ${link}.\n\nThe form is voice-to-text enabled and works on both your phone and computer.\n\nCall us at ${number} if you need to reschedule.\n\nAddress: ${address}\nVisit us at: ${website}\nTo opt out, reply STOP.\nConfirm your appointment using this -> link\n${confirmLink} `;
@@ -534,7 +534,7 @@ const triggerAppointmentReminders = asyncHandler(async (req, res) => {
             else if (diffMin <= 150 && diffMin > 15 && !a.reminder2hSentAt) stage = '2h';
             if (!stage) continue;
 
-            const confirmLink = `https://www.aiscribers.com/AppointmentConfirmation/${a._id}`;
+            const confirmLink = `https://www.aimedicalscriber.com/AppointmentConfirmation/${a._id}`;
             const patient = a.patientID ? await Patient.findOne({ _id: a.patientID }).select('fullName phoneNumber email').catch(() => null) : null;
             const name = (patient && patient.fullName) || a.name || 'there';
             const phone = patient && patient.phoneNumber;

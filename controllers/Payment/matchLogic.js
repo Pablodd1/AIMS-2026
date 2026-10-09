@@ -54,4 +54,16 @@ function chooseInvoice(candidates, payment) {
   return { invoice: null, method: 'unmatched' };   // 0 matches, or ambiguous
 }
 
-module.exports = { CLINIC_TZ, tzOffsetMinutes, dayBounds, chooseInvoice };
+/**
+ * Owner account for an invoice booked from a hand-assigned terminal payment.
+ * The chart's invoice tab lists invoices with docId === signed-in user, so a payment
+ * assigned by front desk / admin must still land on the patient's own doctor
+ * (patients.doc_id) or it never shows in that patient's chart.
+ * Fall back to the assigning user when the patient has no usable owner id.
+ */
+function invoiceOwner(patient, fallbackUserId) {
+  const owner = patient && patient.doc_id ? String(patient.doc_id) : '';
+  return /^[0-9a-f]{24}$/i.test(owner) ? owner : fallbackUserId;
+}
+
+module.exports = { CLINIC_TZ, tzOffsetMinutes, dayBounds, chooseInvoice, invoiceOwner };

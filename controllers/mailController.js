@@ -22,7 +22,7 @@ const appMail = async (businessMail,appCode,userEmail,time,phone_number,clinicna
       secure: true,
     });
 
-    const confirmLink = `https://www.aiscribers.com/AppointmentConfirmation/${apptID}`
+    const confirmLink = `https://www.aimedicalscriber.com/AppointmentConfirmation/${apptID}`
       await transporter.sendMail({
         from: businessMail,
         to: userEmail,

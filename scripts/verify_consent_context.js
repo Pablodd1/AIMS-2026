@@ -93,6 +93,7 @@ const getText = async (u) => (await get(u)).toString("utf8"); // page is UTF-8 (
       "treatment area": rec.area,
       "form version": rec.consentVersion,
       "captured by": (rec.capturedBy || "").split(" <")[0],
+      "provider name": rec.providerName,
       "text hash": rec.consentTextSha256,
       "consent body": (rec.consentText || "").slice(0, 60),
       "screening": rec.screening,

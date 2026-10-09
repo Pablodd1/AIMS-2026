@@ -99,12 +99,12 @@ const UserSchema = new Schema({
     },{timestamps:true})
 
         // Middleware to set getLocalDate before saving the document
-        UserSchema.pre('save', function (next) {
+        UserSchema.pre('save', async function () {
     if (this.isNew) {
         this.time = getCurrentTimeGlobally()// Set to current local date
         this.date = getCurrentDateGlobally() 
     }
-    next();
+
 });
 
 const User = mongoose.model("User", UserSchema);

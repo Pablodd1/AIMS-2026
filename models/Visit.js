@@ -146,7 +146,7 @@ const VisitSchema = new Schema({
   }],
 }, { timestamps: true });
 
-VisitSchema.pre('save', function (next) {
+VisitSchema.pre('save', async function () {
   console.log('Pre-save middleware executed for Visit');
   if (this.isNew) {
     const currentDate = getCurrentDateGlobally(this.userTimezone);
@@ -159,7 +159,7 @@ VisitSchema.pre('save', function (next) {
       console.log(`Date set to: ${currentDate}, Time set to: ${currentTime}`);
     }
   }
-  next();
+
 });
 
 const Visit = mongoose.model("Visit", VisitSchema);

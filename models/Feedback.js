@@ -25,12 +25,12 @@ const FeedBackSchema = new Schema({
     },{timestamps:true})
 
         // Middleware to set getLocalDate before saving the document
-        FeedBackSchema.pre('save', function (next) {
+        FeedBackSchema.pre('save', async function () {
     if (this.isNew) {
         this.time = getCurrentTimeGlobally()// Set to current local date
         this.date = getCurrentDateGlobally() 
     }
-    next();
+
 });
 
 module.exports =  mongoose.model('FeedBack',FeedBackSchema) 
