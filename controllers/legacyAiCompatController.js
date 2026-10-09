@@ -193,8 +193,9 @@ const getTranscription = asyncHandler(async (req, res) => {
         })
         return res.json({ response: true, msg: 'transcription generated', transcription: removeNewlinesAndPlus(transcription.text) })
     } catch (e) {
-        console.error('getTranscription:', e.error ? e.error.message : e.message)
-        return res.json({ response: false, msg: 'Failed to generated transcription ' })
+        const errorMsg = e.error ? e.error.message : e.message
+        console.error('getTranscription:', errorMsg)
+        return res.json({ response: false, msg: 'Failed to generated transcription: ' + errorMsg })
     } finally {
         if (req.file && req.file.path) fs.unlink(req.file.path, () => {})
     }
