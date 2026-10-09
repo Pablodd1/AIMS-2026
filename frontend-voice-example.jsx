@@ -1,7 +1,7 @@
 // AIMS Voice Realtime Integration Example
 // Drop this in your frontend (React/Next.js) to connect to the voice assistant
 
-import { RealtimeAgent, RealtimeSession } from "@openai/agents/realtime";
+import { RealtimeAgent, RealtimeSession } from "@openai/agents-realtime";
 
 export async function startVoiceSession() {
   // 1. Get ephemeral token from your backend
