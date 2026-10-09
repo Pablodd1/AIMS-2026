@@ -284,8 +284,6 @@ curl -s -X POST http://localhost:4000/api/get/transcription -F "file=@test.mp3" 
 
 ## Appendix A — Full HTTP route list (182 routes, from `index.js`)
 
-## Appendix B — Full tracked file list (512 files)
-
 ```
 POST /api/v1/auth/users/
 POST /api/v1/auth/jwt/create/
