@@ -1398,7 +1398,7 @@ function toTextVal(v) {
 // Frontend posts FormData: text|file, type: "text"|"upload", practice.
 // Expects: {success, code, data:{Subjective,Objective,Assessment,Plan,Medications,...}, Ros, original}
 const generateReportFromAudioFile = asyncHandler(async (req, res) => {
-  const { text, type } = req.body || {};
+  const { text, type, patientId } = req.body || {};
   let transcript = type === 'upload' ? null : text;
   if (type === 'upload' && req.file) {
     const r = await speechToText(req.file).catch((e) => ({ response: false, msg: e && e.message }));
@@ -1423,6 +1423,31 @@ const generateReportFromAudioFile = asyncHandler(async (req, res) => {
   });
   try {
     const __t0 = Date.now();
+    // Same-patient carry-forward: the last 3 visits feed the note pass so the new
+    // consultation is written with full chart context (historyUsed reports the count).
+    let historyContext = '';
+    let historyUsed = 0;
+    if (patientId) {
+      try {
+        const previousVisits = await Visit.find({ pId: patientId })
+          .sort({ createdAt: -1 })
+          .limit(3)
+          .select('soapNotesSummary subjective objective Assessment Plan dxCodes cptCodes date');
+        historyUsed = previousVisits ? previousVisits.length : 0;
+        if (historyUsed) {
+          historyContext = 'PREVIOUS VISIT HISTORY for this patient — use it to understand context, track progress and avoid contradictions; never copy old findings into today\'s note unless re-stated in the transcript:\n';
+          previousVisits.forEach((v, i) => {
+            historyContext += `\n--- Visit ${i + 1} (${v.date || 'unknown date'}) ---\n`;
+            if (v.soapNotesSummary) historyContext += `Summary: ${v.soapNotesSummary}\n`;
+            if (v.subjective) historyContext += `Subjective: ${v.subjective}\n`;
+            if (v.objective) historyContext += `Objective: ${v.objective}\n`;
+            if (v.Assessment) historyContext += `Assessment: ${v.Assessment}\n`;
+            if (v.Plan) historyContext += `Plan: ${v.Plan}\n`;
+            if (v.dxCodes && v.dxCodes.length) historyContext += `DX Codes: ${v.dxCodes.map(d => d.code || d).join(', ')}\n`;
+          });
+        }
+      } catch (e) { console.error('[scribe-gen] history fetch failed:', e.message); }
+    }
     const __template = readNoteTemplate();
     const NOTE_KEYS_HINT = 'Subjective, Objective, Assessment, "Medical Rationale", Plan, Medications, Allergies, SUMMARY, "History of Present Illness (HPI)", "Past Medical History (PMH)", "Chief Complaint", "Physical Examination", "Performed Today (present)", "Planned / Future (not yet done)"';
     const notePrompt = 'You are an expert medical scribe for a chiropractic clinic. Convert the consultation transcript into ONE comprehensive clinical note covering the full scope of practice for any visit type (initial exam, follow-up, re-evaluation). Return ONLY valid JSON with keys: ' + NOTE_KEYS_HINT + '. Fill every key with the relevant content from the transcript; use "" ONLY when truly not discussed. If family medical history is stated (parents, siblings — e.g. heart attack, diabetes), include it under "Past Medical History (PMH)" prefixed "Family history:"; never omit it. "Medical Rationale" must state the clinical reasoning and medical necessity justifying the Assessment and Plan (why this diagnosis, why this treatment, why medically necessary), based only on the transcript. Also include "ros": an object with keys Constitutional, Eyes, ENT, Cardiovascular, Respiratory, Gastrointestinal, Genitourinary, Musculoskeletal, Skin, Neurological, Psychiatric — each {"type":"Discussed" or "Not discussed","description":"findings for that system"}. Mark a system "Discussed" whenever ANY symptom, history or examination finding for it appears ANYWHERE in the transcript (for example any spinal, joint, muscle or range-of-motion finding makes Musculoskeletal "Discussed"); otherwise description = \'Not discussed during the consultation.\'. Also include: "rangeOfMotion" as an array of {"region","movement","measured","painElicited"} for dictated range-of-motion measurements, and "personalInjuryDossier" as an object for motor-vehicle/slip-and-fall/work injuries if mentioned (accidentRelated, dateOfInjury, mechanismOfInjury{accidentType,impactVelocityMph,patientPosition,seatbeltWorn,airbagDeployed,vehicleDamageSeverity,narrative}, adlDeficits[{activity,severity,baselineVsCurrent}], causationStatement{attestationText,confidenceLevel}); personalInjuryDossier null and rangeOfMotion [] when absent. Only document what the transcript supports — never invent findings. Every value of the main note keys must be a plain string (never a nested object or array). PRESENT vs FUTURE (critical): "Performed Today (present)" holds ONLY what was actually done, ordered or performed during THIS encounter (specific regions adjusted, techniques, modalities, exercises, education, tests done today). "Planned / Future (not yet done)" holds everything the provider plans, orders, refers or recommends for a LATER date (future visits, imaging/studies, labs, referrals, therapy courses, re-exam interval, what to do if not improving) — including anything phrased as will, want to, next time or in the future. NEVER record a planned or future item as if it were performed today, and NEVER leave a performed item only in the plan.\n\nCLINICIAN NOTE TEMPLATE (follow its structure, scope and voice exactly; it is the provider\'s documentation standard):\n' + __template;
@@ -1431,7 +1456,7 @@ const generateReportFromAudioFile = asyncHandler(async (req, res) => {
     let [noteCall, billCall, gapCall] = await Promise.all([
       openai.chat.completions.create({
         model: SCRIBE_MODEL,
-        messages: [{ role: 'user', content: notePrompt + '\n\nTranscript:\n' + transcript }],
+        messages: [{ role: 'user', content: notePrompt + (historyContext ? '\n\n' + historyContext : '') + '\n\nTranscript:\n' + transcript }],
         response_format: { type: 'json_object' },
       }),
       openai.chat.completions.create({
@@ -1457,7 +1482,7 @@ const generateReportFromAudioFile = asyncHandler(async (req, res) => {
         noteCall = await openai.chat.completions.create({
           model: SCRIBE_MODEL,
           temperature: 0,
-          messages: [{ role: 'user', content: notePrompt + '\n\nTranscript:\n' + transcript + '\n\nReturn ONLY the JSON object.' }],
+          messages: [{ role: 'user', content: notePrompt + (historyContext ? '\n\n' + historyContext : '') + '\n\nTranscript:\n' + transcript + '\n\nReturn ONLY the JSON object.' }],
           response_format: { type: 'json_object' },
         });
         parsed = JSON.parse(noteCall.choices[0].message.content);
@@ -1504,9 +1529,9 @@ const generateReportFromAudioFile = asyncHandler(async (req, res) => {
       console.log('[scribe-gen]', (Date.now() - __t0) + 'ms', 'model=' + SCRIBE_MODEL,
         'input_chars=' + String(transcript).length,
         'tokens=' + uu(noteCall) + '|' + uu(billCall) + '|' + uu(gapCall),
-        'missing=' + JSON.stringify(missing));
+        'missing=' + JSON.stringify(missing), 'historyUsed=' + historyUsed);
     } catch (e) {}
-    return res.json({ success: true, code: { 'ICD-10 Codes': pDx, 'CPT Codes': pCpt }, data, Ros: rosFinal, original: transcript, prescriptions: pRx, redFlags: pRf, clinicalReview: pGap, billing: { complianceNotes: Array.isArray(bill.complianceNotes) ? bill.complianceNotes : [], confidence: bill.confidence || null, safeToTreat: (bill.safeToTreat !== false) } });
+    return res.json({ success: true, historyUsed, code: { 'ICD-10 Codes': pDx, 'CPT Codes': pCpt }, data, Ros: rosFinal, original: transcript, prescriptions: pRx, redFlags: pRf, clinicalReview: pGap, billing: { complianceNotes: Array.isArray(bill.complianceNotes) ? bill.complianceNotes : [], confidence: bill.confidence || null, safeToTreat: (bill.safeToTreat !== false) } });
   } catch (e) {
     console.error('generateReportFromAudioFile error:', e.message);
     return res.status(500).json({ success: false, msg: (e && e.message) || 'generation failed' });
