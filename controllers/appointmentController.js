@@ -74,6 +74,10 @@ let { patientID , time ,number,clinicname,businessMail,
         appCode,website,address,pic,
         smsChecked,emailChecked,userTimezone
  } = req.body;
+    if (!patientID) {
+        // mongoose strips undefined filter keys -> findOne({_id:undefined}) would match the FIRST patient
+        return res.json({ success:false, msg: 'patientID is required' });
+    }
     let patientInfo
     let link 
     let msg =""
@@ -202,7 +206,9 @@ const editAppTime = asyncHandler(async(req,res)=>{
         if (!appt) {
             return res.status(404).json({ success:false, error: 'appointment not found' });
         }
-        await Appointment.updateOne({_id:appId},{ $set: { createdAt: new Date(time), time, reminder: getOriginalAndReminderDates(time).reminderDate } });
+        // moved appointment: old reminder flags are stale -> reset so reminders re-fire for the new time; confirmation applied to the old time
+        await Appointment.updateOne({_id:appId},{ $set: { createdAt: new Date(time), time, reminder: getOriginalAndReminderDates(time).reminderDate,
+            reminder24hSentAt: null, reminder2hSentAt: null, confirmation_status: 'none', confirmed_at: null } });
     } catch(e) {
         console.error('editAppTime db error:', e.message);
         return res.status(500).json({ success:false, error: 'update failed' }); // no notify on failure
@@ -399,7 +405,7 @@ const userResponseFromEmail = asyncHandler(async (req,res)=>{
             if (rescheduleRequested) {
                 const appt = await Appointment.findOne({_id:appId})
                 if (!appt) return res.send(false)
-                await Appointment.updateOne({_id:appId},{ $set:{ rescheduleRequested:true, rescheduleRequestedAt:new Date() } })
+                await Appointment.updateOne({_id:appId},{ $set:{ rescheduleRequested:true, rescheduleRequestedAt:new Date(), confirmation_status:'rescheduled', confirmed_at:new Date() } })
                 // best-effort clinic alert — never fail the patient response because of it
                 try {
                     const patientInfo = appt.patientID ? await Patient.findOne({_id:appt.patientID}).select('fullName phoneNumber').catch(()=>null) : null
@@ -413,7 +419,11 @@ const userResponseFromEmail = asyncHandler(async (req,res)=>{
                 return res.json({response:true, msg:'Reschedule requested'})
             }
 
-            await Appointment.updateOne({_id:appId},{status})
+            // patient confirm (page posts status 'Scheduled') / cancel ('Cancelled') from the email/text link
+            const confirmPatch = status === 'Scheduled'
+                ? { confirmation_status: 'confirmed', confirmed_at: new Date() }
+                : (status === 'Cancelled' ? { confirmation_status: 'cancelled' } : {});
+            await Appointment.updateOne({_id:appId},{ $set: { status, ...confirmPatch } })
             return res.send(true)
             
         
@@ -456,13 +466,13 @@ const allAppointments = asyncHandler(async(req,res)=>{
         const apptQuery = caller && caller.admin ? {} : { doctorID: req.user };
         if(status == 'All')
         {
-            appointments = await Appointment.find(apptQuery).sort({ createdAt: -1 }).select('status email name time')
+            appointments = await Appointment.find(apptQuery).sort({ createdAt: -1 }).select('status email name time patientID confirmation_status')
         }else if(status == 'Today') {
 
             appointments = await Appointment.find({...apptQuery, time: { $regex: `^${getTodayDateInTimeZone(userTimeZone)}` } // Match 'time' field starting with YYYY-MM-DD
-              }).sort({ createdAt: -1 }).select('status email name time');
+              }).sort({ createdAt: -1 }).select('status email name time patientID confirmation_status');
         }else{
-             appointments = await Appointment.find({...apptQuery, status:status}).sort({ createdAt: -1 }).select('status email name time')
+             appointments = await Appointment.find({...apptQuery, status:status}).sort({ createdAt: -1 }).select('status email name time patientID confirmation_status')
 
         }
         return res.json({ response: true, appointments });

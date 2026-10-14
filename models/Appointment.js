@@ -49,6 +49,15 @@ const AppointmentSchema = new Schema({
   rescheduleRequestedAt: {
     type: Date,
   },
+  /* --- patient confirmation (email/text confirm link -> green alert in calendar) --- */
+  confirmation_status: {
+    type: String,
+    enum: ['none', 'confirmed', 'rescheduled', 'cancelled'],
+    default: 'none',
+  },
+  confirmed_at: {
+    type: Date,
+  },
 
 }, { timestamps: true });
 
