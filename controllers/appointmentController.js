@@ -53,6 +53,12 @@ function formatDateString(dateString) {
 }
 function userInpuDateintoReadableFormat(dateTime,userTimeZone)
 {
+    // Appointments store clinic-local naive strings ("YYYY-MM-DD hh:mm AM/PM").
+    // Re-formatting them via the server clock (UTC) shifted them by the TZ offset
+    // in patient notifications; when the input already is that readable format, pass it through.
+    if (typeof dateTime === 'string' && /^\d{4}-\d{2}-\d{2}\s+\d{1,2}:\d{2}\s*(AM|PM)$/i.test(dateTime.trim())) {
+        return dateTime.trim();
+    }
     const formattedDate = new Date(dateTime).toLocaleString('en-US', {
         timeZone: userTimeZone,
         year: 'numeric',
@@ -181,6 +187,10 @@ const getbyDateAppointment = asyncHandler(async (req,res)=>{
 })
 const delAppointment = asyncHandler(async(req,res)=>{
     const { appId } = req.body
+    if (!appId) {
+        // mongoose strips undefined filter keys -> deleteOne({_id:undefined}) would delete the FIRST appointment
+        return res.json({success:false, error: 'appId is required'})
+    }
    try{
     await Appointment.deleteOne({_id:appId});
     return res.json({success:true})
@@ -278,6 +288,10 @@ const calenderDates = asyncHandler(async(req,res)=>{
 const changeStatus = asyncHandler(async(req,res)=>{
 
     const { appId , status ,sendMsg , sendMail } = req.body;
+    if (!appId || !status) {
+        // mongoose strips undefined filter keys -> updateOne({_id:undefined}) would update the FIRST appointment
+        return res.status(400).json({response:false, error: 'appId and status are required'});
+    }
     const notified = { email: 'skipped', sms: 'skipped' };
     try{
         const updated = await Appointment.updateOne({_id:appId},{status});
