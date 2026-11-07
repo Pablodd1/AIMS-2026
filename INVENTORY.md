@@ -20,8 +20,8 @@
 
 | What | Where |
 |---|---|
-| **Backend (this repo)** | GitHub `Pablodd1/AIMS-2026` — live clone on VPS at `/home/aims/aims-backend-node.js` (pm2 process `aims-backend`, port 4000) |
-| **Frontend (React build)** | GitHub `Pablodd1/aims-frontend-build` — local copy `/home/jasme/aims-source/frontend/aims-frontend-main`; deployed to VPS web root |
+| **Backend (this repo)** | GitHub `Pablodd1/AIMS-2026` — live clone on VPS at `/home/aims/aims-backend-node.js` (systemd `aims-backend.service`, port 4000 — migrated from pm2 2026-10) |
+| **Frontend (React build)** | GitHub `Pablodd1/aims-frontend-build` — local copy `/home/jasme/aims-source/frontend/aims-frontend-main`; deployed to VPS `/home/aims/frontend-build` (git repo, main — medical teal theme @ 060c8f8, 2026-10-31) |
 | **Patient portal (static)** | VPS `/home/aims/patient-portal`, served by nginx `^~` patient routes on `www.aimedicalscriber.com` |
 | **OpenAI proxy (agents + monitor)** | VPS `/home/aims/openai-proxy` (port 3456; serves agent routes + monitor WS) |
 | **Messaging service** | VPS `/home/aims/messaging` (systemd `aims-messaging`, port 3457) |
