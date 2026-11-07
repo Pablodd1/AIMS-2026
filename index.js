@@ -6,7 +6,7 @@ const { createAppointment , getbyDateAppointment , delAppointment , editAppTime 
 const {sendFeedBack , fetchFeedBack , deleteFeedBackById } = require('./controllers/feedbackController')
 require("dotenv").config();
 const { mountLocalStorage } = require("./controllers/localstorage");
-const { speechToTextForm ,patientDataToSummary , speechToTextFormWithOcr, extractPatientDataFromImage, downloadNoteAsAudio, validateRedFlags, suggestTreatment, extractDxCptCodes, generateNoteWithHistory, runQualityCheck, translateToEnglish, interpretCommand, generateReportFromAudioFile, extractIntakeEntities, getNoteTemplate, saveNoteTemplate, preSignAudit } = require('./controllers/openaiController')
+const { speechToTextForm ,patientDataToSummary , speechToTextFormWithOcr, extractPatientDataFromImage, downloadNoteAsAudio, validateRedFlags, suggestTreatment, extractDxCptCodes, generateNoteWithHistory, runQualityCheck, translateToEnglish, translateNote, interpretCommand, generateReportFromAudioFile, extractIntakeEntities, getNoteTemplate, saveNoteTemplate, preSignAudit } = require('./controllers/openaiController')
 const { getRealtimeToken } = require('./controllers/voiceRealtimeController')
 const { searchPatientFn, getPatientCalendarFn, scheduleAppointmentFn, startMedicalScribeFn, createPaymentFn, getPatientInfoFn, listTodayAppointmentsFn } = require('./controllers/voiceRealtimeFunctions')
 const { makeInvoice , getAllInvoices , getInvoiceById , getInvoiceAnalyitcs , updateInvoice , deleteInvoice, invoiceStatus, getAllByStatus } = require('./controllers/Invoice/invoiceController')
@@ -65,10 +65,19 @@ const app = express();
 mountLocalStorage(app);
 app.use(bodyParser.json({ limit: '15mb' }));
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(cors());// allow front api's
 app.use(express.json()); // to accept json data
+const allowedOrigins = [
+  'https://aimedicalscriber.com',
+  'https://www.aimedicalscriber.com',
+  'http://localhost:3000',
+  'http://localhost:5173'
+];
 app.use(cors({
-  origin: '*' // Replace with your Next.js frontend URL
+  origin: function (origin, cb) {
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) return cb(null, true);
+    return cb(null, false); // unknown origins get no CORS headers
+  },
+  credentials: true
 }));
 
 
@@ -229,6 +238,7 @@ app.post('/api/post/generateNoteWithHistory', protect, generateNoteWithHistory)
 app.post('/api/post/suggestTreatment', protect, suggestTreatment)
 // Validate red flags
 app.post('/api/post/validateRedFlags', protect, validateRedFlags)
+app.post('/api/post/translateNote', protect, translateNote)
 // Extract DX/CPT codes
 app.post('/api/post/extractDxCptCodes', protect, extractDxCptCodes)
 // Download note as audio

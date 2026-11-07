@@ -351,7 +351,7 @@ const voiceIntake2o = asyncHandler(async (req, res) => {
     try {
         const transcription = await openai.audio.transcriptions.create({
             file: await audioFileParam(req.file),
-            model: 'whisper-1',
+            model: 'gpt-4o-transcribe',
         })
         success = true
         text = removeNewlinesAndPlus(transcription.text)

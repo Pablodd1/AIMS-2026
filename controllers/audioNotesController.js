@@ -53,7 +53,7 @@ const uploadAndTranscribe = asyncHandler(async (req, res) => {
 
     const transcription = await openaiClient.audio.transcriptions.create({
       file: fs.createReadStream(req.file.path),
-      model: 'whisper-1',
+      model: 'gpt-4o-transcribe',
     });
 
     // Clean up temp file

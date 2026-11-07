@@ -21,7 +21,7 @@ async function speechToText(file)
         if (__ext === 'mpeg') __ext = 'mp3';
         const transcription = await openai.audio.transcriptions.create({
             file: await toFile(fs.createReadStream(file.path), `audio.${__ext}`, { type: file.mimetype || 'audio/mpeg' }),
-            model: "whisper-1",
+            model: "gpt-4o-transcribe",
         });
         return {response:true , msg: transcription.text} 
         // return transcription.text;
@@ -925,8 +925,14 @@ const downloadNoteAsAudio = asyncHandler(async (req, res) => {
 // Red-flag validation for patient intake / symptoms
 const validateRedFlags = asyncHandler(async (req, res) => {
   try {
-    const { text, answers } = req.body;
-    const inputText = text || JSON.stringify(answers);
+    const { text, answers, note, notes, soapNote, symptoms } = req.body;
+    // Accept common field names; 400 instead of sending null to OpenAI
+    const inputText = text || answers || note || soapNote || symptoms
+        ? String(text || JSON.stringify(answers) || note || soapNote || symptoms || notes || '')
+        : notes || '';
+    if (!inputText || !inputText.trim()) {
+        return res.status(400).json({ success: false, msg: "Provide 'text' (symptoms) or 'answers' (intake data)" });
+    }
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
@@ -954,6 +960,36 @@ const validateRedFlags = asyncHandler(async (req, res) => {
   } catch (error) {
     console.error("Red-flag validation error:", error);
     return res.status(500).json({ success: false, msg: error.message || "Error validating red flags" });
+  }
+});
+
+// Translate a finished note into a patient language (ES/HT). Medical codes stay verbatim.
+const translateNote = asyncHandler(async (req, res) => {
+  try {
+    const { text, lang } = req.body;
+    const langs = { es: "Spanish", ht: "Haitian Creole" };
+    if (!text || !String(text).trim()) {
+      return res.status(400).json({ success: false, msg: "'text' is required" });
+    }
+    const target = langs[String(lang || "es").toLowerCase()];
+    if (!target) {
+      return res.status(400).json({ success: false, msg: "'lang' must be 'es' or 'ht'" });
+    }
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0,
+      messages: [
+        {
+          role: "system",
+          content: `You are a medical translator. Translate the clinical note into ${target} so the patient can read it. Keep ALL ICD-10/CPT codes, medication names, dosages, numbers and dates exactly as written. Keep the same section layout ("Section: text" lines). Return ONLY the translated note.`
+        },
+        { role: "user", content: String(text) }
+      ]
+    });
+    return res.json({ success: true, data: { lang: String(lang).toLowerCase(), translation: response.choices[0].message.content } });
+  } catch (error) {
+    console.error("translateNote error:", error);
+    return res.status(500).json({ success: false, msg: error.message || "Translation failed" });
   }
 });
 
@@ -1595,4 +1631,5 @@ module.exports = {
     getNoteTemplate,
     saveNoteTemplate,
     preSignAudit,
+  translateNote,
 };
