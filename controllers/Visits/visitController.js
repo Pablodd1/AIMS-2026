@@ -6,6 +6,7 @@ const { buildRomTable, computeReExamDeltas } = require("../../Helper/romCalculat
 const { auditChiropracticBilling } = require("../../Helper/billingAuditor");
 
 // Reuse the same OpenAI client pattern as openaiController.js
+const { syncVisitCount } = require("../../Helper/visitCounter");
 // Read the key directly from the source to avoid env mismatch
 const fs = require("fs");
 function getOpenAiKey() {
@@ -178,7 +179,7 @@ const createVisit = asyncHandler(async (req, res) => {
       await visit.save();
       
       // Increment patient visit counter
-      await Patient.updateOne({ _id: pId }, { $inc: { visitCount: 1 } });
+      await syncVisitCount(pId);
 
       res.json({ response: true, msg: "Visited registered", id: visit._id, soapNotesSummary, auditResults, romAnalysis });
     } else if (mode == "edit") {
@@ -358,10 +359,10 @@ const getAllVisits = asyncHandler(async (req, res) => {
 const delVisit = asyncHandler(async (req, res) => {
   try {
     const visit = await Visit.findOne({ _id: req.query.id });
-    if (visit) {
-      await Patient.updateOne({ _id: visit.pId }, { $inc: { visitCount: -1 } });
-    }
     await Visit.deleteOne({ _id: req.query.id });
+    if (visit) {
+      await syncVisitCount(visit.pId);
+    }
     res.status(200).json({ response: true });
   } catch (e) {
     res.json({ response: false });
@@ -422,7 +423,7 @@ const newReportMethodStoredIntoDb = asyncHandler(async(req,res)=>{
 
       await visit.save();
 
-      await Patient.updateOne({ _id: pId }, { $inc: { visitCount: 1 } });
+      await syncVisitCount(pId);
 
      return res.json({ response: true, msg: "Visited registered", id: visit._id });
 

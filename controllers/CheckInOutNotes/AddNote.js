@@ -1,5 +1,6 @@
 const asyncHandler = require("express-async-handler");
 const CheckNotes = require("../../models/CheckNotes");
+const { syncVisitCount } = require("../../Helper/visitCounter");
 
 
 const addNote = asyncHandler(async (req, res) => {
@@ -15,6 +16,7 @@ const addNote = asyncHandler(async (req, res) => {
 
         req.body['docId'] = req.user
         const note = await CheckNotes.create(req.body);
+        await syncVisitCount(pId);
         return res.status(201).json({
             response: true,
             msg: "Note added",
