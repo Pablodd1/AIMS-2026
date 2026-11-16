@@ -52,6 +52,12 @@ const VisitSchema = new Schema({
   Rationale: {
     type: String,
   },
+  prescriptions: [{
+    type: Object,
+  }],
+  medicationGuides: [{
+    type: Object,
+  }],
   cptCodes: [{
     type: Object,
   }],

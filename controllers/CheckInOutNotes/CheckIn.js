@@ -1,6 +1,7 @@
 const asyncHandler = require("express-async-handler");
 const CheckNotes = require("../../models/CheckNotes");
 const Patient = require("../../models/Patients");
+const { syncVisitCount } = require("../../Helper/visitCounter");
 
 // Quick check-in endpoint: just needs pId + userTimezone
 // Sets checkInTime to now and checkOutTime to '' (empty)
@@ -37,7 +38,7 @@ const checkIn = asyncHandler(async (req, res) => {
         });
 
         // Count the visit: a check-in IS a visit (kiosk path counts via appointment Complete; web path counts here)
-        await Patient.updateOne({ _id: pId }, { $inc: { visitCount: 1 } });
+        await syncVisitCount(pId);
 
         return res.status(201).json({
             response: true,

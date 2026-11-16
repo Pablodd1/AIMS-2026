@@ -6,6 +6,7 @@ const { buildRomTable, computeReExamDeltas } = require("../../Helper/romCalculat
 const { auditChiropracticBilling } = require("../../Helper/billingAuditor");
 
 // Reuse the same OpenAI client pattern as openaiController.js
+const { syncVisitCount } = require("../../Helper/visitCounter");
 // Read the key directly from the source to avoid env mismatch
 const fs = require("fs");
 function getOpenAiKey() {
@@ -99,6 +100,7 @@ const createVisit = asyncHandler(async (req, res) => {
       qualityCheck,
       medicalRationale,
       clinicalReview,
+      prescriptions,
       reportType,
       userTimezone,
     } = req.body;
@@ -123,6 +125,10 @@ const createVisit = asyncHandler(async (req, res) => {
       objective, physicalExamination, rangeOfMotion, cptCodes, icdCodes,
     });
 
+    // An unknown/missing mode used to leave the request hanging with no response.
+    if (mode !== "generate" && mode !== "edit") {
+      return res.status(400).json({ response: false, msg: "mode must be generate or edit" });
+    }
     if (mode == "generate") {
       // AUTO-SUMMARIZE: if no summary was provided but SOAP fields exist, generate one
       const hasSummary = soapNotesSummary && soapNotesSummary.trim() && soapNotesSummary !== "N/A";
@@ -173,12 +179,13 @@ const createVisit = asyncHandler(async (req, res) => {
         qualityCheck,
         romAnalysis,
         auditResults,
-      });
+        prescriptions: Array.isArray(prescriptions) ? prescriptions.filter(x => x && x.medication).slice(0, 25) : [],
+});
 
       await visit.save();
       
       // Increment patient visit counter
-      await Patient.updateOne({ _id: pId }, { $inc: { visitCount: 1 } });
+      await syncVisitCount(pId);
 
       res.json({ response: true, msg: "Visited registered", id: visit._id, soapNotesSummary, auditResults, romAnalysis });
     } else if (mode == "edit") {
@@ -358,10 +365,10 @@ const getAllVisits = asyncHandler(async (req, res) => {
 const delVisit = asyncHandler(async (req, res) => {
   try {
     const visit = await Visit.findOne({ _id: req.query.id });
-    if (visit) {
-      await Patient.updateOne({ _id: visit.pId }, { $inc: { visitCount: -1 } });
-    }
     await Visit.deleteOne({ _id: req.query.id });
+    if (visit) {
+      await syncVisitCount(visit.pId);
+    }
     res.status(200).json({ response: true });
   } catch (e) {
     res.json({ response: false });
@@ -422,7 +429,7 @@ const newReportMethodStoredIntoDb = asyncHandler(async(req,res)=>{
 
       await visit.save();
 
-      await Patient.updateOne({ _id: pId }, { $inc: { visitCount: 1 } });
+      await syncVisitCount(pId);
 
      return res.json({ response: true, msg: "Visited registered", id: visit._id });
 

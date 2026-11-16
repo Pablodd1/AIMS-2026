@@ -5,7 +5,7 @@ const User = require('../models/User')
 const {appMail,appCancel,appUpdate,onComplete,appointmentReminderMail,clinicAlertMail} = require('./mailController')
 const { sendMessage } = require('../controllers/Twilio/twilio'); 
 const { getTodayDateInTimeZone } = require('../Helper/getLocalDates');
-
+const { syncVisitCount } = require("../Helper/visitCounter");
 
 function getOriginalAndReminderDates(originalDateString) {
     // Parse the original date
@@ -177,7 +177,6 @@ const getbyDateAppointment = asyncHandler(async (req,res)=>{
           };
         const results = await Appointment.find(query)
 
-
         return res.json({appointments:results,success:true})
 
     }catch(e)
@@ -274,7 +273,6 @@ const calenderDates = asyncHandler(async(req,res)=>{
         .select('time name status') // Select fields for individual event display
         .exec();
 
-
         // console.log(appts) 
         return res.json({response:true,appointments:appts})
     }
@@ -303,7 +301,7 @@ const changeStatus = asyncHandler(async(req,res)=>{
         if (status === "Complete") {
             const appt = await Appointment.findOne({_id: appId});
             if (appt && appt.patientID) {
-                await Patient.updateOne({ _id: appt.patientID }, { $inc: { visitCount: 1 } });
+                await syncVisitCount(appt.patientID);
             }
         }
     }
@@ -476,6 +474,7 @@ const allAppointments = asyncHandler(async(req,res)=>{
         const { status , userTimeZone } = req.query
         // Admins see ALL appointments; doctors see only their own
         const User = require('../models/User');
+
         const caller = await User.findById(req.user).select('admin').lean();
         const apptQuery = caller && caller.admin ? {} : { doctorID: req.user };
         if(status == 'All')
@@ -496,9 +495,7 @@ const allAppointments = asyncHandler(async(req,res)=>{
 })
 
 
-
   
-
 
 
 /* ================= Appointment reminders (24h + 2h before, clinic timezone) =================

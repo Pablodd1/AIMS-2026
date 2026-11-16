@@ -6,7 +6,7 @@ const { createAppointment , getbyDateAppointment , delAppointment , editAppTime 
 const {sendFeedBack , fetchFeedBack , deleteFeedBackById } = require('./controllers/feedbackController')
 require("dotenv").config();
 const { mountLocalStorage } = require("./controllers/localstorage");
-const { speechToTextForm ,patientDataToSummary , speechToTextFormWithOcr, extractPatientDataFromImage, downloadNoteAsAudio, validateRedFlags, suggestTreatment, extractDxCptCodes, generateNoteWithHistory, runQualityCheck, translateToEnglish, translateNote, interpretCommand, generateReportFromAudioFile, extractIntakeEntities, getNoteTemplate, saveNoteTemplate, preSignAudit } = require('./controllers/openaiController')
+const { speechToTextForm ,patientDataToSummary , speechToTextFormWithOcr, extractPatientDataFromImage, downloadNoteAsAudio, validateRedFlags, suggestTreatment, extractDxCptCodes, generateNoteWithHistory, runQualityCheck, translateToEnglish, translateNote, interpretCommand, voiceAssistant, generateReportFromAudioFile, extractIntakeEntities, getNoteTemplate, saveNoteTemplate, preSignAudit } = require('./controllers/openaiController')
 const { getRealtimeToken } = require('./controllers/voiceRealtimeController')
 const { searchPatientFn, getPatientCalendarFn, scheduleAppointmentFn, startMedicalScribeFn, createPaymentFn, getPatientInfoFn, listTodayAppointmentsFn } = require('./controllers/voiceRealtimeFunctions')
 const { makeInvoice , getAllInvoices , getInvoiceById , getInvoiceAnalyitcs , updateInvoice , deleteInvoice, invoiceStatus, getAllByStatus } = require('./controllers/Invoice/invoiceController')
@@ -22,6 +22,11 @@ const {
   getPatientAppointments,
   getPatientVisitHistory,
   patientAuth,
+  getPatientDocuments,
+  patientUploadDocument,
+  getPatientMedications,
+  explainMedication,
+  publicIntake,
 } = require('./controllers/patientPortalController')
 const {
   getPatientVisits,
@@ -249,6 +254,7 @@ app.post('/api/post/runQualityCheck', protect, runQualityCheck)
 app.post('/api/post/translateToEnglish', protect, translateToEnglish)
 // AI command interpreter
 app.post('/api/post/interpretCommand', protect, interpretCommand)
+app.post('/api/post/voiceAssistant', protect, voiceAssistant)
 
 // ── Legacy AI compat (aims-service2) — chat threads, custom-prompt Generate,
 // audio->text, lab interpreter, voice intake 2.0. Old service used the retired
@@ -344,6 +350,12 @@ app.get('/api/get/exportVisitDocx/:visitId', protect, exportVisitDocx)
 app.post('/api/post/patientLogin', patientLogin)
 app.get('/api/get/patientAppointments', patientAuth, getPatientAppointments)
 app.get('/api/get/patientVisitHistory', patientAuth, getPatientVisitHistory)
+app.get('/api/get/patientDocuments', patientAuth, getPatientDocuments)
+app.post('/api/post/patientUploadDocument', express.json({limit:'20mb'}), patientAuth, patientUploadDocument)
+app.get('/api/get/patientMedications', patientAuth, getPatientMedications);
+app.post('/api/post/explainMedication', patientAuth, explainMedication);
+// public: patients open /intake/<docId> with no session
+app.post('/api/post/publicIntake', publicIntake)
 
 
 //AWS-S3

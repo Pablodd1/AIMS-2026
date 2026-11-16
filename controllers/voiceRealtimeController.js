@@ -2,15 +2,7 @@ const asyncHandler = require("express-async-handler");
 const OpenAI = require("openai");
 
 function getOpenAiKey() {
-  const fs = require("fs");
-  const path = require("path");
-  try {
-    const src = fs.readFileSync(path.join(__dirname, "openaiController.js"), "utf8");
-    const m = src.match(/apiKey:\s*["']([^"']+)["']/);
-    return m ? m[1] : process.env.OPENAI_KEY || "";
-  } catch {
-    return process.env.OPENAI_KEY || "";
-  }
+  return process.env.OPENAI_KEY || "";
 }
 
 // OpenAI Realtime API ephemeral token endpoint
@@ -18,22 +10,36 @@ function getOpenAiKey() {
 // Returns: { client_secret: { value: "ek_...", expires_at: <unix_ts> } }
 const getRealtimeToken = asyncHandler(async (req, res) => {
   try {
-    const openai = new OpenAI({ apiKey: getOpenAiKey() });
-    const token = await openai.beta.realtime.sessions.create({
-      model: "gpt-4o-realtime-preview-2024-12-17",
-      voice: "alloy",
-      input_audio_transcription: { model: "gpt-4o-mini-transcribe" },
-      turn_detection: {
-        type: "server_vad",
-        threshold: 0.5,
-        prefix_padding_ms: 300,
-        silence_duration_ms: 200,
-      },
-      tools: VOICE_FUNCTIONS,
-      tool_choice: "auto",
-      instructions: REALTIME_SYSTEM_PROMPT,
+    // openai@4.52 has no beta.realtime, and /v1/realtime/sessions is retired.
+    // Current endpoint: POST /v1/realtime/client_secrets -> { value: "ek_...", expires_at }
+    const r = await fetch("https://api.openai.com/v1/realtime/client_secrets", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + getOpenAiKey(), "Content-Type": "application/json" },
+      body: JSON.stringify({
+        session: {
+          type: "realtime",
+          model: "gpt-realtime",
+          instructions: REALTIME_SYSTEM_PROMPT,
+          tools: VOICE_FUNCTIONS,
+          tool_choice: "auto",
+          audio: {
+            input: {
+              transcription: { model: "gpt-4o-mini-transcribe" },
+              turn_detection: { type: "server_vad", threshold: 0.5, prefix_padding_ms: 300, silence_duration_ms: 200 },
+            },
+            output: { voice: "alloy" },
+          },
+        },
+      }),
     });
-    res.json({ client_secret: token.client_secret });
+    const d = await r.json();
+    if (!r.ok) {
+      console.error("Realtime token error:", JSON.stringify(d).slice(0, 300));
+      return res.status(r.status).json({ success: false, msg: (d.error && d.error.message) || "Realtime session unavailable" });
+    }
+    const value = d.value || (d.client_secret && d.client_secret.value);
+    if (!value) return res.status(502).json({ success: false, msg: "No ephemeral token returned" });
+    res.json({ client_secret: { value, expires_at: d.expires_at || null } });
   } catch (e) {
     console.error("Realtime token error:", e.message);
     res.status(500).json({ success: false, msg: e.message });

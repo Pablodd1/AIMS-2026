@@ -1,12 +1,53 @@
 const asyncHandler = require("express-async-handler");
 const Patient = require('../models/Patients')
 const Appointment = require('../models/Appointment');
+const CheckNotes = require('../models/CheckNotes');
 const { addPatient } = require('./mailController')
 const { sendMessage } = require('../controllers/Twilio/twilio') 
 const User = require('../models/User')
 const csv = require('csv-parser');
 const fs = require('fs')
 const fsPromises = require('fs').promises;
+
+// Attach date-of-service (DOS) + visit counts from BOTH completed appointments
+// and kiosk check-ins (CheckNotes). Kiosk check-ins are the authoritative visit
+// source: AIMS misses most visits otherwise. Appointments store only the patient
+// NAME (no patientId) so they are matched by lowercased full name; CheckNotes
+// carry pId directly.
+const { dayOf } = require("../Helper/visitCounter");
+const attachDos = async (patients) => {
+  const namesLower = patients.map(p => (p.fullName || "").toLowerCase()).filter(Boolean);
+  const pids = patients.map(p => String(p._id));
+  const [rows, notes] = await Promise.all([
+    namesLower.length ? Appointment.aggregate([
+      { $match: { status: "Complete", $expr: { $in: [{ $toLower: "$name" }, namesLower] } } },
+      { $sort: { time: 1 } },
+      { $group: { _id: { $toLower: "$name" }, lastVisitDate: { $max: "$time" }, aptCount: { $sum: 1 }, dates: { $addToSet: "$time" } } }
+    ]) : Promise.resolve([]),
+    CheckNotes.aggregate([
+      { $match: { pId: { $in: pids } } },
+      { $group: { _id: "$pId", lastVisitDate: { $max: "$checkInDate" }, noteCount: { $sum: 1 }, dates: { $addToSet: "$checkInDate" } } }
+    ])
+  ]);
+  const map = {};
+  for (const r of rows) map[r._id] = r;
+  const noteMap = {};
+  for (const n of notes) noteMap[String(n._id)] = n;
+  for (const p of patients) {
+    const hit = map[(p.fullName || "").toLowerCase()];
+    const nt = noteMap[String(p._id)];
+    let best = null;
+    if (hit && hit.lastVisitDate) best = hit.lastVisitDate;
+    if (nt && nt.lastVisitDate && (!best || nt.lastVisitDate > best)) best = nt.lastVisitDate;
+    if (best) p.lastVisitDate = best;
+    p.aptCount = (hit ? hit.aptCount : 0) + (nt ? nt.noteCount : 0);
+    p.checkinCount = nt ? nt.noteCount : 0;
+    const ds = new Set([...(hit && hit.dates ? hit.dates : []), ...(nt && nt.dates ? nt.dates : [])].map(dayOf).filter(Boolean));
+    p.visitDates = [...ds].sort();
+    p.visitDatesStr = p.visitDates.join(', ');
+    p.visitCount = p.visitDates.length;
+  }
+};
 
 const createPatient = asyncHandler(async(req,res)=>{
 
@@ -166,7 +207,10 @@ const exportAllPatients = asyncHandler(async(req,res)=>{
   try
   {
     console.log('hit')
-    const patients = await Patient.find({doc_id:req.user})
+    const caller = await User.findById(req.user).select('admin').lean();
+    const query = caller && caller.admin ? {} : { doc_id: req.user };
+    const patients = await Patient.find(query).lean();
+    await attachDos(patients);
     res.status(200).json({patients,response:true})
   }
   catch(e)
@@ -206,10 +250,11 @@ const getPatients = asyncHandler(async (req, res) => {
       const query = caller && caller.admin ? {} : { doc_id: id };
 
       // Fetch paginated patients
-      const patients = await Patient.find(query)
+      const patients = await Patient.find(query).lean()
           .sort({ createdAt: -1 }) // Sort by creation date (most recent first)
           .skip(skip)
           .limit(limitNumber);
+      await attachDos(patients);
 
       // Fetch total count for metadata
       const totalCount = await Patient.countDocuments(query);
@@ -307,11 +352,11 @@ const getTodayPatients = asyncHandler(async(req,res)=>{
 
 const getPaitentsCount = asyncHandler(async(req,res)=>{
     Promise.all([
-      Patient.find({ doc_id: req.user }).count().exec(),
+      Patient.find({ doc_id: req.user }).countDocuments().exec(),
       Patient.find({ 
         doc_id: req.user,
         createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }
-      }).count().exec()
+      }).countDocuments().exec()
     ])
     .then(([totalPatientCount, todayPatientCount]) => {
       // Handle successful execution
@@ -802,8 +847,10 @@ const searchPatientsGlobal = asyncHandler(async (req, res) => {
     const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const regex = { $regex: escapedQuery, $options: 'i' };
 
+    const caller = await User.findById(req.user).select('admin').lean();
+    const scope = caller && caller.admin ? {} : { doc_id: req.user };
     const patients = await Patient.find({
-      doc_id: req.user,
+      ...scope,
       $or: [
         { fullName: regex },
         { email: regex },

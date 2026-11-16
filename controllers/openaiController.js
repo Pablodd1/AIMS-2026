@@ -1103,6 +1103,8 @@ const extractDxCptCodes = asyncHandler(async (req, res) => {
 // ===== Smart AI Assistant — generates note with previous visit context =====
 const Visit = require('../models/Visit');
 const Patient = require('../models/Patients');
+const Appointment = require('../models/Appointment');
+const User = require('../models/User');
 
 const generateNoteWithHistory = asyncHandler(async (req, res) => {
   try {
@@ -1382,6 +1384,96 @@ Return ONLY JSON:
 });
 
 
+const VOICE_ROUTES = [
+  { path: '/', label: 'Home / Dashboard' },
+  { path: '/Dashboard', label: 'Dashboard' },
+  { path: '/Patient', label: 'Patients list' },
+  { path: '/TodayPatients', label: "Today's patients" },
+  { path: '/AppointmentSelection', label: 'Calendar / appointments' },
+  { path: '/Appointment', label: 'Create appointment' },
+  { path: '/AppointmentStatus', label: 'Change appointment status' },
+  { path: '/ConsultationHub', label: 'Visit Hub (calendar + intake + AI notes)' },
+  { path: '/AimsAssistant', label: 'AIMS Assistant (AI chat)' },
+  { path: '/registerPatient/', label: 'Voice Intake / register new patient' },
+  { path: '/Invoice', label: 'Invoices / billing' },
+  { path: '/Settings', label: 'Settings' },
+  { path: '/Help', label: 'Help' },
+  { path: '/Admin/NoteTypes', label: 'Note templates' },
+  { path: '/LabResults/', label: 'Lab results (needs an open patient)' },
+];
+
+// @route POST /api/post/voiceAssistant
+// Full-site voice assistant: LLM picks intent, server resolves DB lookups.
+const voiceAssistant = asyncHandler(async (req, res) => {
+  try {
+    const { text, path } = req.body || {};
+    if (!text || !String(text).trim()) return res.status(400).json({ action: 'unknown', message: '' });
+    const routesJson = JSON.stringify(VOICE_ROUTES);
+    const r = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      temperature: 0,
+      messages: [
+        {
+          role: 'system',
+          content: 'You are the voice assistant for the AIMS medical practice app. The user speaks a request; decide the intent.\n' +
+            'Pages available: ' + routesJson + '\n' +
+            'If the user asks to find/open/search a patient by name, action="patient" and put the patient name in query.\n' +
+            'If the user asks about appointments or schedule for a day, action="appointments" and put the day in query ("today", "tomorrow", or a date).\n' +
+            'Otherwise action="navigate" and put the best matching path (exact path string from the list) in path, or action="unknown" if nothing fits.\n' +
+            'Return ONLY JSON: {"action":"navigate|patient|appointments|unknown","path":"","query":"","message":"short spoken confirmation"}',
+        },
+        { role: 'user', content: 'User said: "' + String(text).trim() + '". Current page: ' + (path || '') },
+      ],
+    });
+    const raw = (r.choices[0].message.content || '').replace(/```json/g, '').replace(/```/g, '').trim();
+    let parsed = null;
+    try { parsed = JSON.parse(raw); } catch (e) { parsed = null; }
+    if (!parsed) return res.json({ action: 'unknown', message: '' });
+    if (parsed.action === 'patient') {
+      const q = String(parsed.query || text || '').replace(/\b(find|search|look for|open|show me|get|patient|the)\b/gi, ' ').replace(/\s+/g, ' ').trim();
+      const toks = q.split(/\s+/).filter(Boolean).slice(0, 3);
+      const escaped = toks.map((tk) => tk.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+      const caller = await User.findById(req.user).select('admin').lean();
+      const scope = caller && caller.admin ? {} : { doc_id: req.user };
+      let list = [];
+      if (escaped.length) {
+        list = await Patient.find({ ...scope, $and: escaped.map((tk) => ({ fullName: { $regex: tk, $options: 'i' } })) }).limit(5).lean();
+      }
+      if (!list.length && escaped.length) {
+        list = await Patient.find({ ...scope, fullName: { $regex: escaped[0], $options: 'i' } }).limit(5).lean();
+      }
+      if (list.length) {
+        const p0 = list[0];
+        const seen = new Set(); const others = list.slice(1, 5).filter((p) => !seen.has(p.fullName) && seen.add(p.fullName)).slice(0, 2);
+        const alt = others.length ? '. Also: ' + others.map((p) => p.fullName).join(', ') : '';
+        return res.json({ action: 'openPatient', patientId: p0._id, name: p0.fullName, message: 'Opening ' + p0.fullName + alt });
+      }
+      return res.json({ action: 'unknown', message: 'No patient found for ' + q });
+    }
+    if (parsed.action === 'appointments') {
+      const now = new Date();
+      const tz = process.env.CLINIC_TZ || 'America/New_York';
+      const df = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' });
+      let d = df.format(now);
+      const q = String(parsed.query || '').toLowerCase();
+      if (q.includes('tomorrow') || q.includes('manana')) d = df.format(new Date(now.getTime() + 864e5));
+      const caller = await User.findById(req.user).select('admin').lean();
+      const apptScope = caller && caller.admin ? {} : { doctorID: req.user };
+      const found = await Appointment.find({ ...apptScope, status: { $in: ['Scheduled', 'Pending', 'Complete'] }, time: { $regex: '^' + d, $options: 'i' } }).sort({ time: 1 }).lean();
+      if (found.length) {
+        const names = found.slice(0, 5).map((a) => a.name || a.fullName).filter(Boolean).join(', ');
+        return res.json({ action: 'appointments', date: d, count: found.length, message: found.length + ' appointments on ' + d + '. ' + names });
+      }
+      return res.json({ action: 'appointments', date: d, count: 0, message: 'No appointments on ' + d });
+    }
+    if (parsed.action === 'navigate' && parsed.path) return res.json({ action: 'navigate', path: parsed.path, message: parsed.message || '' });
+    return res.json({ action: 'unknown', message: parsed.message || '' });
+  } catch (e) {
+    console.error('voiceAssistant:', e && e.message);
+    return res.status(500).json({ action: 'unknown', message: '' });
+  }
+});
+
 // --- Scribe note generation helpers (added 2026-09-30) ---
 // Model is env-configurable so a faster model can be A/B tested without a code change:
 //   export AIMS_SCRIBE_MODEL=... ; pm2 restart aims-backend --update-env
@@ -1627,6 +1719,7 @@ module.exports = {
     runQualityCheck,
     translateToEnglish,
     interpretCommand,
+    voiceAssistant,
     generateReportFromAudioFile,
     getNoteTemplate,
     saveNoteTemplate,

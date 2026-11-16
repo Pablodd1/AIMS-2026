@@ -4,6 +4,7 @@ const Appointment = require("../models/Appointment");
 const Visit = require("../models/Visit");
 const User = require("../models/User");
 const { getTodayDateInTimeZone } = require("../Helper/getLocalDates");
+const { syncVisitCount } = require("../Helper/visitCounter");
 
 // Helper: resolve patient by name/phone/email
 async function resolvePatient(query, doctorId) {
@@ -141,7 +142,7 @@ const startMedicalScribeFn = asyncHandler(async (req, res) => {
     });
 
     await visit.save();
-    await Patient.updateOne({ _id: patient_id }, { $inc: { visitCount: 1 } });
+    await syncVisitCount(patient_id);
 
     res.json({ success: true, data: { visitId: visit._id, patientName: patient.fullName }, msg: `Visit started for ${patient.fullName}` });
   } catch (e) {
@@ -163,6 +164,7 @@ const createPaymentFn = asyncHandler(async (req, res) => {
 
     // Use existing invoice/payment logic - create minimal invoice with payment
     const Invoice = require("../models/Invoice");
+
     const invoice = new Invoice({
       doc_id: doctorId,
       pId: patient_id,
