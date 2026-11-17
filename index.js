@@ -8,6 +8,7 @@ require("dotenv").config();
 const { mountLocalStorage } = require("./controllers/localstorage");
 const { speechToTextForm ,patientDataToSummary , speechToTextFormWithOcr, extractPatientDataFromImage, downloadNoteAsAudio, validateRedFlags, suggestTreatment, extractDxCptCodes, generateNoteWithHistory, runQualityCheck, translateToEnglish, translateNote, interpretCommand, voiceAssistant, generateReportFromAudioFile, extractIntakeEntities, getNoteTemplate, saveNoteTemplate, preSignAudit } = require('./controllers/openaiController')
 const { getRealtimeToken } = require('./controllers/voiceRealtimeController')
+const { logActivity, getActivityLogs } = require('./controllers/activityLogController')
 const { searchPatientFn, getPatientCalendarFn, scheduleAppointmentFn, startMedicalScribeFn, createPaymentFn, getPatientInfoFn, listTodayAppointmentsFn } = require('./controllers/voiceRealtimeFunctions')
 const { makeInvoice , getAllInvoices , getInvoiceById , getInvoiceAnalyitcs , updateInvoice , deleteInvoice, invoiceStatus, getAllByStatus } = require('./controllers/Invoice/invoiceController')
 const { uploadPDF, getDocuments , deleteDocument, updateDocumentDate } = require('./controllers/Documents/DocumentController')
@@ -172,6 +173,8 @@ app.get('/api/get/getQuestionsForIntake', getQuestionsForIntake)
 app.post('/api/post/createVisit',protect,createVisit);
 app.post('/api/post/signVisit',protect,signVisit);
 app.post('/api/post/preSignAudit',protect,preSignAudit);
+app.post('/api/post/activityLog', protect, logActivity);
+app.get('/api/get/activityLogs', protect, getActivityLogs);
 app.get("/api/get/viewReport",protect,viewReport)
 app.get('/api/get/getVists',protect,getVists)
 app.get('/api/get/getAllVisits',protect,getAllVisits)

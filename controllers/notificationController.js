@@ -160,6 +160,13 @@ const triggerDailySchedule = asyncHandler(async (req, res) => {
   const user = await User.findOne({ _id: userId, sendDailySchedule: true });
   if (!user) return res.json({ response: false, msg: "User not found or daily schedule disabled" });
 
+  // Miami (America/New_York) 7AM gate. Cron fires 11:00 and 12:00 UTC; only the run
+  // that maps to 7:00 Miami passes — DST-safe without CRON_TZ (which would shift other jobs).
+  // force=1 bypasses the gate for manual testing/ops.
+  const miamiHour = Number(new Date().toLocaleString('en-US', { timeZone: 'America/New_York', hour: 'numeric', hour12: false }));
+  const force = req.query.force === '1';
+  if (miamiHour !== 7 && !force) return res.json({ response: true, skipped: true, msg: `Skipped — Miami hour ${miamiHour}, not 7am` });
+
   const phones = user.notificationPhones || [];
   if (phones.length === 0) return res.json({ response: false, msg: "No phones configured" });
 
@@ -184,7 +191,31 @@ const triggerDailySchedule = asyncHandler(async (req, res) => {
     results.push({ phone, sent: ok });
   }
 
-  return res.json({ response: true, msg: `Sent to ${results.filter(r=>r.sent).length}/${results.length} numbers`, results });
+  // Email delivery — same nodemailer pattern as sendDailySchedule. Sends to the user's
+  // account email (drjeffreydraesel@gmail.com for the cron user). businessMail/appCode = Gmail app password.
+  if (user.businessMail && user.appCode) {
+    const nodemailer = require("nodemailer");
+    const transporter = nodemailer.createTransport({
+      port: 465, host: "smtp.gmail.com", service: "Gmail",
+      auth: { user: user.businessMail, pass: user.appCode },
+      secure: true,
+    });
+    try {
+      await transporter.sendMail({
+        from: user.businessMail,
+        to: user.email,
+        subject: `📅 ${user.clinicName || 'Your Clinic'} — Daily Schedule (${today})`,
+        text: msg,
+      });
+      results.push({ email: user.email, sent: true });
+    } catch (e) {
+      results.push({ email: user.email, sent: false, error: e.message });
+    }
+  } else {
+    results.push({ email: user.email || '(none)', sent: false, error: 'businessMail/appCode not configured' });
+  }
+
+  return res.json({ response: true, msg: `Sent to ${results.filter(r=>r.sent).length}/${results.length} number(s), email ${results.find(r=>r.email) ? (results.find(r=>r.email).sent ? 'OK' : 'FAILED') : 'n/a'}`, results });
 });
 
 module.exports = {
