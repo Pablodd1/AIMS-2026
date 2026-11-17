@@ -16,6 +16,19 @@ const addNote = asyncHandler(async (req, res) => {
 
         req.body['docId'] = req.user
         const note = await CheckNotes.create(req.body);
+        // Auto-complete any same-day appointment: a kiosk check-in proves the visit happened
+        const dayPrefix = String(checkInDate || '').slice(0, 10);
+        if (dayPrefix) {
+            const Appointment = require('../../models/Appointment');
+            const Patient = require('../../models/Patients');
+            const pat = await Patient.findById(pId).select('fullName').lean();
+            const or = [{ patientID: pId }];
+            if (pat && pat.fullName) or.push({ name: pat.fullName });
+            await Appointment.updateMany(
+                { status: { $ne: 'Complete' }, time: { $regex: '^' + dayPrefix, $options: 'i' }, $or: or },
+                { $set: { status: 'Complete' } }
+            );
+        }
         await syncVisitCount(pId);
         return res.status(201).json({
             response: true,

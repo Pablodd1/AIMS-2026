@@ -353,6 +353,13 @@ const checkUserToken = asyncHandler(async(req,res)=>{
     console.log(AssToken)
     if(AssToken==null)
     {
+      // The caller is already authenticated by `protect`; report the role that
+      // token actually belongs to instead of labelling every session Admin.
+      const Doctor = require('../models/Doctor');
+      const Assistant = require('../models/Assistant');
+      const id = req.user;
+      if (await Assistant.findOne({_id:id})) return res.json({response:true,msg:"token is valid",role:"Assistant"});
+      if (await Doctor.findOne({_id:id})) return res.json({response:true,msg:"token is valid",role:"Doctor"});
       return res.json({response:true,msg:"token is valid",role:"Admin"})
     }else{
       const decoded = jwt.verify(AssToken, process.env.JWTSECRET);
@@ -742,11 +749,11 @@ const getDoctors = asyncHandler(async(req,res)=>{
     const doctorsList=[];
     for(let i=0;i<doctors.length;i++)
     {
-      const obj = await Doctor.findOne({_id:doctors[i]}).select('username password access')
+      // Never ship plaintext credentials. Expose only whether one is set.
+      const obj = await Doctor.findOne({_id:doctors[i]}).select('username access password').lean()
       if(obj){
-        const bytes  = CryptoJS.AES.decrypt(obj.password,  process.env.JWTSECRET)
-        const originalText = bytes.toString(CryptoJS.enc.Utf8);
-        obj['password'] = originalText;
+        obj['hasPassword'] = !!obj.password;
+        delete obj.password;
         doctorsList.push(obj)
       }
     }

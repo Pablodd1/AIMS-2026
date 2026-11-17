@@ -13,10 +13,15 @@ const Visit = require("../models/Visit");
 function dayOf(v) {
   if (v == null) return null;
   const s = String(v).trim();
+  const good = (mo, d) => mo >= 1 && mo <= 12 && d >= 1 && d <= 31;
   let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+  if (m) return good(+m[2], +m[3]) ? `${m[1]}-${m[2]}-${m[3]}` : null;
   m = s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/);
-  if (m) return `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
+  if (m) {
+    let [a, b, y] = [+m[1], +m[2], m[3]];
+    if (a > 12 && b <= 12) [a, b] = [b, a]; // US M/D/Y slipped into a D/M/Y slot
+    return good(a, b) ? `${y}-${String(a).padStart(2, "0")}-${String(b).padStart(2, "0")}` : null;
+  }
   return null;
 }
 
@@ -40,7 +45,8 @@ const syncVisitCount = async (patientId) => {
     const d = dayOf(v.date);
     if (d) days.add(d);
   }
-  await Patient.updateOne({ _id: patientId }, { $set: { visitCount: days.size } });
+  const visitDates = [...days].sort();
+  await Patient.updateOne({ _id: patientId }, { $set: { visitCount: days.size, visitDates } });
 };
 
 module.exports = { syncVisitCount, dayOf };

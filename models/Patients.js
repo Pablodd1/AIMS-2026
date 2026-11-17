@@ -72,6 +72,7 @@ const PatientSchema = new Schema({
   date: { type: String }, // Default to current date
   time: { type: String }, // Default to current time
   visitCount: { type: Number, default: 0 },
+  visitDates: { type: [String], default: [] },
 
   // Pain & symptoms
   painScale: { type: Number, required: false },

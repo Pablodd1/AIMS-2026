@@ -100,6 +100,7 @@ const createVisit = asyncHandler(async (req, res) => {
       qualityCheck,
       medicalRationale,
       clinicalReview,
+      prescriptions,
       reportType,
       userTimezone,
     } = req.body;
@@ -124,6 +125,10 @@ const createVisit = asyncHandler(async (req, res) => {
       objective, physicalExamination, rangeOfMotion, cptCodes, icdCodes,
     });
 
+    // An unknown/missing mode used to leave the request hanging with no response.
+    if (mode !== "generate" && mode !== "edit") {
+      return res.status(400).json({ response: false, msg: "mode must be generate or edit" });
+    }
     if (mode == "generate") {
       // AUTO-SUMMARIZE: if no summary was provided but SOAP fields exist, generate one
       const hasSummary = soapNotesSummary && soapNotesSummary.trim() && soapNotesSummary !== "N/A";
@@ -174,7 +179,8 @@ const createVisit = asyncHandler(async (req, res) => {
         qualityCheck,
         romAnalysis,
         auditResults,
-      });
+        prescriptions: Array.isArray(prescriptions) ? prescriptions.filter(x => x && x.medication).slice(0, 25) : [],
+});
 
       await visit.save();
       
