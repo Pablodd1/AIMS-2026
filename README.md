@@ -2,7 +2,20 @@
 
 **AIMS (AI Intelligent Medical System)** is a full-stack Electronic Health Record (EHR) platform with an integrated AI medical assistant. It runs the clinical practice of **Innovative Medical Wellness (Miami)** and is deployed at **https://aimedicalscriber.com**.
 
-> Backend API (Node.js + Express + MongoDB). The frontend (React build) lives in the private repo `aims-frontend-build`.
+> Backend API (Node.js + Express + MongoDB). The frontend (React build + runtime overlays) lives in the private repo `Pablodd1/aims-frontend-build`.
+
+## 📋 Developer Review & Onboarding (Start Here)
+
+- **[Developer Handoff & Deployment Guide](docs/DEVELOPER_HANDOFF.md)** — Full summary of architecture, API/schema invariants, security hardening, and VPS deployment checklist (**read before deploying**).
+- **[System Inventory & VPS Topology](INVENTORY.md)** — Live VPS (`147.93.47.17`) layout, service map, cron jobs, and 182-route appendix.
+- **[Agent & Code Review Standards](AGENTS.md)** — Mandatory pre-commit gates, zero-secret policy, and Conventional Commits rules.
+- **[Environment Template](.env.example)** — All required environment variables (`MONGO_URI`, `JWTSECRET`, `OPENAI_KEY`, `CLOUDINARY_*`, `TWILIO_*`, `AWS_*`, `FRONTEND_URL`).
+- **Quick local verification:**
+  ```bash
+  npm run build              # node --check index.js
+  npm test                   # tests/clinical_moat_suite.js (19) + tests/platform_audit_suite.js (8)
+  node scripts/jev-audit.mjs # Jev System-1 route health monitor
+  ```
 
 ---
 
