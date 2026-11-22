@@ -68,10 +68,15 @@ ensureUploadsDirectory();
 
 
 const app = express();
-mountLocalStorage(app);
-app.use(bodyParser.json({ limit: '15mb' }));
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.json()); // to accept json data
+app.set('trust proxy', 1);
+app.disable('x-powered-by');
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(self), microphone=(self), geolocation=()');
+  next();
+});
 const allowedOrigins = [
   'https://aimedicalscriber.com',
   'https://www.aimedicalscriber.com',
@@ -85,7 +90,52 @@ app.use(cors({
   },
   credentials: true
 }));
+mountLocalStorage(app);
+app.use(bodyParser.json({ limit: '15mb' }));
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.json({ limit: '15mb' })); // to accept json data
 
+// Lightweight sliding-window rate limiter for public intake endpoints
+const publicBuckets = new Map();
+function publicRateLimit(maxHits, windowMs) {
+  return (req, res, next) => {
+    const ip = req.ip || req.connection?.remoteAddress || 'unknown';
+    const now = Date.now();
+    const rec = publicBuckets.get(ip);
+    if (!rec || now - rec.start > windowMs) {
+      publicBuckets.set(ip, { start: now, hits: 1 });
+      return next();
+    }
+    rec.hits += 1;
+    if (rec.hits > maxHits) {
+      return res.status(429).json({ response: false, success: false, msg: 'Too many requests, please wait a moment.' });
+    }
+    return next();
+  };
+}
+
+const SAFE_MIME_EXT = {
+  'audio/mpeg': 'mp3',
+  'audio/mp3': 'mp3',
+  'audio/mp4': 'm4a',
+  'audio/x-m4a': 'm4a',
+  'audio/m4a': 'm4a',
+  'audio/wav': 'wav',
+  'audio/wave': 'wav',
+  'audio/x-wav': 'wav',
+  'audio/webm': 'webm',
+  'audio/ogg': 'ogg',
+  'video/webm': 'webm',
+  'video/mp4': 'mp4',
+  'image/jpeg': 'jpg',
+  'image/jpg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'application/pdf': 'pdf',
+  'text/csv': 'csv',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+  'application/vnd.ms-excel': 'xls',
+};
 
 //multer
 const storage = multer.diskStorage({
@@ -94,14 +144,18 @@ const storage = multer.diskStorage({
     cb(null, './uploads'); // Uploads directory should exist
   },
   filename: (req, file, cb) => {
-    const ext = file.mimetype.split('/')[1]
-    cb(null, file.fieldname + '-' + Date.now() + '.' + ext);
+    const mime = String(file.mimetype || '').split(';')[0].trim().toLowerCase();
+    const fromOrig = String(file.originalname || '').split('.').pop().replace(/[^a-z0-9]/gi, '').slice(0, 8);
+    const ext = SAFE_MIME_EXT[mime] || fromOrig || 'bin';
+    const safeField = String(file.fieldname || 'file').replace(/[^a-z0-9_-]/gi, '').slice(0, 24) || 'file';
+    cb(null, `${safeField}-${Date.now()}.${ext}`);
   }
 });
 
-
-
-const uploadSet1 = multer({ storage });
+const uploadSet1 = multer({
+  storage,
+  limits: { fileSize: 100 * 1024 * 1024 },
+});
 
 //user Routes
 app.post('/api/v1/auth/users/',createUser);
@@ -112,10 +166,10 @@ app.post('/api/post/checkUserToken',protect,checkUserToken)
 app.get('/api/get/checkUserToken',async(req,res)=>{const t=req.headers.authorization?.split(' ')[1];if(!t)return res.json({response:false,msg:'token missing'});try{const jwt=require('jsonwebtoken');const d=jwt.verify(t,process.env.JWTSECRET);const User=require('./models/User');const Doctor=require('./models/Doctor');const Assistant=require('./models/Assistant');let role='None';const u=await User.findOne({_id:d.id});if(u)role='Admin';else{const doc=await Doctor.findOne({_id:d.id});if(doc)role='Doctor';else{const a=await Assistant.findOne({_id:d.id});if(a)role='Assistant'}}return res.json({response:true,msg:'token is valid',role});}catch(e){return res.json({response:false,msg:'token is not valid'})}})
 app.post('/api/post/updatEmailredentials',protect,updatEmailredentials)
 app.post('/api/post/updatewebsiteURL',protect,updatewebsiteURL)
-app.post('/api/post/setEmptyPic',setEmptyPic)
+app.post('/api/post/setEmptyPic',protect,setEmptyPic)
 app.post('/api/post/deletePatientHitory',protect,deletePatientHitory)
 app.post('/api/post/updatePassword',protect,updatePassword)
-app.post('/api/post/sendQrCode',sendQrCode)
+app.post('/api/post/sendQrCode',protect,sendQrCode)
 app.post('/api/post/setOpenAiKey',protect,setOpenAiKey)
 // Notification settings — daily schedule delivery
 app.post('/api/post/updateNotificationSettings',protect,updateNotificationSettings)
@@ -286,7 +340,7 @@ app.get('/api/get/getFavoriteCodes', protect, getFavoriteCodes)
 app.get('/api/get/getRecentCodes', protect, getRecentCodes)
 app.post('/api/post/runBillingCompliance', protect, runBillingCompliance)
 
-app.post('/api/post/extractIntakeEntities', extractIntakeEntities)
+app.post('/api/post/extractIntakeEntities', publicRateLimit(30, 15 * 60 * 1000), extractIntakeEntities)
 app.post('/api/post/patientDataToSummary', protect, patientDataToSummary)
 
 // Voice Realtime API
@@ -344,7 +398,7 @@ app.get('/api/post/createQuickDocx',protect,createQuickDocx)
 app.post('/api/post/reportDocxDirectDownload',protect,reportDocxDirectDownload)
 app.post('/api/post/ameriarePatientDocument',protect,ameriarePatientDocument)
 //inspection
-app.post('/api/post/inspectionDownload',inspectionDownload)
+app.post('/api/post/inspectionDownload',protect,inspectionDownload)
 // Visit timeline & export
 app.get('/api/get/getPatientVisits', protect, getPatientVisits)
 app.get('/api/get/exportVisitDocx/:visitId', protect, exportVisitDocx)
@@ -358,7 +412,7 @@ app.post('/api/post/patientUploadDocument', express.json({limit:'20mb'}), patien
 app.get('/api/get/patientMedications', patientAuth, getPatientMedications);
 app.post('/api/post/explainMedication', patientAuth, explainMedication);
 // public: patients open /intake/<docId> with no session
-app.post('/api/post/publicIntake', publicIntake)
+app.post('/api/post/publicIntake', publicRateLimit(20, 15 * 60 * 1000), publicIntake)
 
 
 //AWS-S3

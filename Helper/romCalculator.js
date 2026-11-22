@@ -29,7 +29,7 @@ function normalizeRegion(region) {
 // deficitPct is 0 when no baseline exists (unknown region/movement) or measured >= normal.
 function calculateRomDeficit(entry) {
   const region = normalizeRegion(entry.region);
-  const movement = normalizeMovement(entry.movement);
+  const movement = normalizeMovement(entry.movement || entry.motion);
   const table = ROM_REGION_INDEX[region];
   const baseline = table && table[movement];
   const measured = Number(entry.measured);
@@ -47,11 +47,11 @@ function buildRomTable(rangeOfMotion) {
     const { normal, deficitPct, matched } = calculateRomDeficit(e);
     return {
       region: e.region || null,
-      movement: e.movement || null,
+      movement: e.movement || e.motion || null,
       measured: Number.isFinite(Number(e.measured)) ? Number(e.measured) : null,
       normal,
       deficitPct: matched ? Number(deficitPct.toFixed(1)) : null,
-      painElicited: !!e.painElicited,
+      painElicited: !!(e.painElicited || e.painPresent),
       matched,
     };
   });

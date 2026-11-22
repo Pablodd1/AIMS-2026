@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const jwt = require('jsonwebtoken');
 
-const UPLOAD_ROOT = '/home/aims/uploads';
+const UPLOAD_ROOT = process.env.AIMS_UPLOAD_ROOT || (fs.existsSync('/home/aims') ? '/home/aims/uploads' : path.join(__dirname, '..', 'uploads'));
 fs.mkdirSync(UPLOAD_ROOT, { recursive: true });
 
 function authed(req) {

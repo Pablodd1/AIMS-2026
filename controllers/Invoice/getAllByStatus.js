@@ -1,14 +1,14 @@
 const asyncHandler = require("express-async-handler");
 const Invoice = require('../../models/Invoice')
-
+const Patient = require('../../models/Patients')
 
 
 const getAllByStatus = asyncHandler(async (req, res) => {
   try {
-      const { status, page = 1 , limit = 3 } = req.query;
+      const { status, page = 1 , limit = 100 } = req.query;
 
-      // Set the limit to 3 records per page
-      const limitNumber = limit;
+      const parsedLimit = parseInt(limit, 10);
+      const limitNumber = Math.min(Math.max(isNaN(parsedLimit) ? 100 : parsedLimit, 1), 500);
 
       // Parse page to ensure it is a number
       const pageNumber = parseInt(page, 10);
@@ -24,12 +24,24 @@ const getAllByStatus = asyncHandler(async (req, res) => {
       const skip = (pageNumber - 1) * limitNumber;
 
       // Fetch paginated invoices
-      const invoices = await Invoice.find({
+      const rawInvoices = await Invoice.find({
           docId: req.user,
           status
       }).sort({ createdAt: -1 })
         .skip(skip)
-        .limit(limitNumber);
+        .limit(limitNumber)
+        .lean();
+
+      const pIds = [...new Set(rawInvoices.map((inv) => inv.pId).filter(Boolean))];
+      const nameMap = {};
+      if (pIds.length) {
+        const pts = await Patient.find({ _id: { $in: pIds } }).select('fullName').lean().catch(() => []);
+        pts.forEach((pt) => { nameMap[String(pt._id)] = pt.fullName; });
+      }
+      const invoices = rawInvoices.map((inv) => ({
+        ...inv,
+        patientName: inv.patientName || nameMap[String(inv.pId)] || 'Unknown Patient',
+      }));
 
 
       // Fetch total count for metadata

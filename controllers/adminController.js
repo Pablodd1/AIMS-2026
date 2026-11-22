@@ -10,7 +10,7 @@ const getRecentUsers = asyncHandler(async(req,res)=>{
 
   try {
     Promise.all([
-      User.find({ admin: false }).sort({ createdAt: -1 }).limit(4).exec(),
+      User.find({ admin: false }).select('-password').sort({ createdAt: -1 }).limit(4).exec(),
       User.countDocuments({ admin: false }).exec(),
       User.countDocuments({ admin: true }).exec(),
     ])
@@ -93,7 +93,7 @@ const fetchAllDoctors = asyncHandler(async(req,res)=>{
       let offset = (currentPage - 1) * dataPerPage;
       const users = await User.find(
         {admin:'false'}
-      ).sort({createdAt:-1}).skip(offset).limit(dataPerPage)
+      ).select('-password').sort({createdAt:-1}).skip(offset).limit(dataPerPage)
       return res.status(200).send({success:true,users,totalPages})
     }
     catch(e)
@@ -114,7 +114,7 @@ const fetchAllAdmins = asyncHandler(async(req,res)=>{
       if(Number(page) >= 1) currentPage = Number(page);
   
       let offset = (currentPage - 1) * dataPerPage;
-        const users = await User.find({admin:true}).sort({ createdAt: -1 }).skip(offset).limit(dataPerPage)
+        const users = await User.find({admin:true}).select('-password').sort({ createdAt: -1 }).skip(offset).limit(dataPerPage)
         return res.status(200).send({success:true,users,totalPages})
     }
     catch(e)
@@ -129,7 +129,6 @@ const createDoctor = asyncHandler(async (req,res)=>{
     const { first_name,last_name, email ,password, phone , access , role , address} = req.body;
     if (req.method == "POST") {
       try {
-        console.log(username,email,password,phone,address,role,access)
         //-------------------checking input fields-----------------------------------------------
         if(!email  || !username || !password || !access || !role)
         {

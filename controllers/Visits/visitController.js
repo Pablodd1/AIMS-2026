@@ -1,22 +1,14 @@
 const asyncHandler = require("express-async-handler");
 const Visit = require("../../models/Visit");
 const Patient = require("../../models/Patients");
+const CheckNotes = require("../../models/CheckNotes");
 const OpenAI = require("openai");
 const { buildRomTable, computeReExamDeltas } = require("../../Helper/romCalculator");
 const { auditChiropracticBilling } = require("../../Helper/billingAuditor");
-
-// Reuse the same OpenAI client pattern as openaiController.js
 const { syncVisitCount } = require("../../Helper/visitCounter");
-// Read the key directly from the source to avoid env mismatch
-const fs = require("fs");
+
 function getOpenAiKey() {
-  try {
-    const src = fs.readFileSync(require("path").join(__dirname, "../openaiController.js"), "utf8");
-    const m = src.match(/apiKey:\s*["']([^"']+)["']/);
-    return m ? m[1] : process.env.OPENAI_KEY || "";
-  } catch {
-    return process.env.OPENAI_KEY || "";
-  }
+  return process.env.OPENAI_KEY || process.env.OPENAI_API_KEY || "";
 }
 
 // Auto-generate a SOAP summary from visit fields if none was provided.
@@ -296,16 +288,22 @@ const getVists = asyncHandler(async (req, res) => {
 
       const skip = (pageNumber - 1) * limitNumber;
 
-      const visits = await Visit.find({ pId: id })
-          .sort({ createdAt: -1 })
-          .skip(skip)
-          .limit(limitNumber);
-
-      const totalCount = await Visit.countDocuments({ pId: id });
+      const [visits, totalCount, checkInsCount, patientDoc] = await Promise.all([
+          Visit.find({ pId: id })
+              .sort({ createdAt: -1 })
+              .skip(skip)
+              .limit(limitNumber),
+          Visit.countDocuments({ pId: id }),
+          CheckNotes.countDocuments({ pId: id }),
+          Patient.findById(id).select('visitCount visitDates').lean(),
+      ]);
 
       return res.status(200).json({
           response: true,
           visits,
+          checkInsCount,
+          visitCount: (patientDoc && patientDoc.visitCount) || 0,
+          visitDates: (patientDoc && patientDoc.visitDates) || [],
           pagination: {
               total: totalCount,
               page: pageNumber,

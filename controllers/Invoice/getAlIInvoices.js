@@ -5,7 +5,7 @@ const Invoice = require('../../models/Invoice')
 
 const getAllInvoices = asyncHandler(async (req, res) => {
   try {
-      const { pId, page = 1 } = req.query;
+      const { pId, page = 1, limit = 25 } = req.query;
       if (!pId) {
           return res.status(400).json({
               response: false,
@@ -13,8 +13,8 @@ const getAllInvoices = asyncHandler(async (req, res) => {
           });
       }
 
-      // Set the limit to 3 records per page
-      const limitNumber = 3;
+      const parsedLimit = parseInt(limit, 10);
+      const limitNumber = Math.min(Math.max(isNaN(parsedLimit) ? 25 : parsedLimit, 1), 200);
 
       // Parse page to ensure it is a number
       const pageNumber = parseInt(page, 10);
@@ -36,8 +36,6 @@ const getAllInvoices = asyncHandler(async (req, res) => {
       }).sort({ createdAt: -1 })
         .skip(skip)
         .limit(limitNumber);
-
-        console.log(pageNumber)
 
       // Fetch total count for metadata
       const totalCount = await Invoice.countDocuments({

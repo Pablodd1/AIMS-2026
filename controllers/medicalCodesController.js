@@ -1,6 +1,7 @@
 const asyncHandler = require('express-async-handler');
 const MedicalCode = require('../models/MedicalCode');
 const FavoriteCode = require('../models/FavoriteCode');
+const { auditChiropracticBilling } = require('../Helper/billingAuditor');
 
 // ===== Seed Medical Codes on First Run =====
 const seedMedicalCodes = async () => {
@@ -316,12 +317,18 @@ const getRecentCodes = asyncHandler(async (req, res) => {
 // Billing compliance check
 const runBillingCompliance = asyncHandler(async (req, res) => {
   try {
-    const { dxCodes, cptCodes, notes } = req.body;
+    const { dxCodes: rawDx, cptCodes: rawCpt, objective, physicalExamination, rangeOfMotion } = req.body || {};
+    const norm = (arr) => (Array.isArray(arr) ? arr : [])
+      .map((c) => (typeof c === 'string' ? { code: c.trim() } : { ...c, code: String((c && c.code) || '').trim() }))
+      .filter((c) => c.code);
+    const dxCodes = norm(rawDx);
+    const cptCodes = norm(rawCpt);
     const issues = [];
+    let totalChecks = 5;
 
     // Basic compliance rules for chiropractic billing
-    if (dxCodes && dxCodes.length > 0 && cptCodes && cptCodes.length > 0) {
-      // Check: CMT requires a diagnosis of spinal/somatic dysfunction
+    if (dxCodes.length > 0 && cptCodes.length > 0) {
+      // Check 1: CMT requires a diagnosis of spinal/somatic dysfunction
       const hasCMT = cptCodes.some(c => ['98940', '98941', '98942', '98943'].includes(c.code));
       const hasSomaticDx = dxCodes.some(c => c.code.startsWith('M99.'));
 
@@ -334,18 +341,19 @@ const runBillingCompliance = asyncHandler(async (req, res) => {
         });
       }
 
-      // Check: E/M codes shouldn't be billed same day as CMT without modifier 25
-      const hasEM = cptCodes.some(c => c.code.startsWith('992'));
-      if (hasEM && hasCMT) {
+      // Check 2: E/M codes same day as CMT require modifier 25 on the E/M code
+      const emCodes = cptCodes.filter(c => c.code.startsWith('992'));
+      const hasMod25 = emCodes.some(c => String(c.modifier || '').split(/[,\s]+/).includes('25'));
+      if (emCodes.length > 0 && hasCMT && !hasMod25) {
         issues.push({
           severity: 'caution',
           category: 'modifier_needed',
           message: 'E/M and CMT on same day requires modifier 25 on the E/M code.',
-          recommendation: 'Add modifier 25 to the E/M code or verify medical necessity.',
+          recommendation: 'Add modifier 25 to the E/M code or verify separate identifiable medical necessity.',
         });
       }
 
-      // Check: Therapeutic exercise requires compatible dx
+      // Check 3: Therapeutic exercise requires compatible dx
       const hasTherEx = cptCodes.some(c => c.code === '97110');
       if (hasTherEx) {
         const hasMusculoskeletalDx = dxCodes.some(c =>
@@ -361,7 +369,7 @@ const runBillingCompliance = asyncHandler(async (req, res) => {
         }
       }
 
-      // Check: Ultrasound requires compatible dx
+      // Check 4: Ultrasound requires compatible dx
       const hasUS = cptCodes.some(c => c.code === '97035');
       if (hasUS) {
         const hasPainDx = dxCodes.some(c =>
@@ -378,8 +386,8 @@ const runBillingCompliance = asyncHandler(async (req, res) => {
       }
     }
 
-    // Check for missing primary diagnosis
-    if (dxCodes && dxCodes.length > 0) {
+    // Check 5: Check for missing primary diagnosis
+    if (dxCodes.length > 0) {
       const hasPrimary = dxCodes.some(c => c.primary);
       if (!hasPrimary) {
         issues.push({
@@ -391,13 +399,38 @@ const runBillingCompliance = asyncHandler(async (req, res) => {
       }
     }
 
+    // Optional spinal region substantiation check (when clinical note text/ROM is supplied)
+    let auditResults = null;
+    if (objective || physicalExamination || (Array.isArray(rangeOfMotion) && rangeOfMotion.length)) {
+      totalChecks += 1;
+      auditResults = auditChiropracticBilling({
+        objective: objective || '',
+        physicalExamination: physicalExamination || '',
+        rangeOfMotion: rangeOfMotion || [],
+        cptCodes,
+        icdCodes: dxCodes,
+      });
+      (auditResults.findings || []).forEach((f) => {
+        if (f.code === 'M99.0X_MISSING' && issues.some((i) => i.category === 'code_mismatch')) return;
+        issues.push({
+          severity: String(f.severity || 'warning').toLowerCase(),
+          category: f.code === 'M99.0X_MISSING' ? 'code_mismatch' : 'region_substantiation',
+          code: f.code,
+          message: f.message,
+          recommendation: f.code === '98941' ? 'Document at least 3 spinal regions or downcode to 98940.'
+            : (f.code === '98942' ? 'Document all 5 spinal regions or downcode to 98940/98941.' : 'Pair CMT with M99.0x diagnosis.'),
+        });
+      });
+    }
+
     return res.json({
       response: true,
       data: {
         compliant: issues.length === 0,
         issues,
-        totalChecks: 5,
-        passedChecks: 5 - issues.length,
+        auditResults,
+        totalChecks,
+        passedChecks: Math.max(0, totalChecks - issues.length),
       },
     });
   } catch (error) {

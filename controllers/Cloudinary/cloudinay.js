@@ -1,10 +1,14 @@
 const cloudinary = require('cloudinary').v2;
 
-cloudinary.config({
-    cloud_name: 'dklqbx5k0',
-    api_key: '586219556714458',
-    api_secret: 'JY7qKHk1QeMN5FqaW4lPf9N3k1E'
-});
+if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
+} else {
+  console.warn('[cloudinary] CLOUDINARY_CLOUD_NAME / CLOUDINARY_API_KEY / CLOUDINARY_API_SECRET not set in env');
+}
 
   
 const deleteAsset = async(publicId)=>{

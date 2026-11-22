@@ -18,7 +18,7 @@ const getPatientVisits = asyncHandler(async (req, res) => {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit))
-      .select('soapNotesSummary subjective objective Assessment Plan med cptCodes icdCodes date createdAt chiefComplaint')
+      .select('soapNotesSummary subjective objective Assessment Plan Rationale med cptCodes icdCodes dxCodes date time createdAt chiefComplaint performedToday plannedFuture rangeOfMotion romAnalysis auditResults signedBy signedAt signatureName clinicalReview personalInjuryDossier reportType')
       .lean();
 
     const total = await Visit.countDocuments({ pId: patientId });
@@ -108,10 +108,13 @@ const exportVisitDocx = asyncHandler(async (req, res) => {
       const headers = withUnits ? ['Code', 'Description', 'Units'] : ['Code', 'Description'];
       const rows = [
         new TableRow({ children: headers.map((h2) => new TableCell({ children: [new Paragraph({ text: h2, bold: true })], width: { size: 20, type: WidthType.PERCENTAGE } })) }),
-        ...items.map((it) => new TableRow({
-          children: (withUnits ? [it.code, it.description || '', String(it.units || 1)] : [it.code, it.description || ''])
-            .map((c2) => new TableCell({ children: [new Paragraph(String(c2 == null ? '—' : c2))] })),
-        })),
+        ...items.map((it) => {
+          const codeLabel = it.modifier ? `${it.code} (-${it.modifier})` : it.code;
+          return new TableRow({
+            children: (withUnits ? [codeLabel, it.description || '', String(it.units || 1)] : [codeLabel, it.description || ''])
+              .map((c2) => new TableCell({ children: [new Paragraph(String(c2 == null ? '—' : c2))] })),
+          });
+        }),
       ];
       return [H(label), new Table({ rows, width: { size: 100, type: WidthType.PERCENTAGE } }), P('', { spacing: { after: 120 } })];
     };
@@ -158,6 +161,16 @@ const exportVisitDocx = asyncHandler(async (req, res) => {
     }
     children.push(...codeTable('Diagnosis (ICD-10)', (Array.isArray(visit.icdCodes) && visit.icdCodes.length) ? visit.icdCodes : visit.dxCodes));
     children.push(...codeTable('Procedures (CPT)', visit.cptCodes, true));
+    if (visit.personalInjuryDossier && typeof visit.personalInjuryDossier === 'object') {
+      const pi = visit.personalInjuryDossier;
+      const piLines = [];
+      if (pi.accidentRelated != null) piLines.push(`Accident Related: ${pi.accidentRelated ? 'Yes' : 'No'}`);
+      if (pi.dateOfInjury) piLines.push(`Date of Injury: ${pi.dateOfInjury}`);
+      if (pi.mechanismOfInjury) piLines.push(`Mechanism: ${flatten(typeof pi.mechanismOfInjury === 'string' ? pi.mechanismOfInjury : JSON.stringify(pi.mechanismOfInjury))}`);
+      if (Array.isArray(pi.adlDeficits) && pi.adlDeficits.length) piLines.push(`ADL Deficits: ${pi.adlDeficits.map((d) => typeof d === 'string' ? d : [d.activity, d.severity, d.baselineVsCurrent].filter(Boolean).join(' - ')).join('; ')}`);
+      if (pi.causationStatement) piLines.push(`Causation: ${flatten(typeof pi.causationStatement === 'string' ? pi.causationStatement : JSON.stringify(pi.causationStatement))}`);
+      if (piLines.length) children.push(...sec('Personal Injury / Causation Dossier', piLines.join('\n')));
+    }
     if (romRows.length) {
       children.push(H('Range of Motion (vs AMA Guides)'));
       children.push(new Table({ rows: romRows, width: { size: 100, type: WidthType.PERCENTAGE } }));

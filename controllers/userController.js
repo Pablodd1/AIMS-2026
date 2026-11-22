@@ -324,7 +324,7 @@ const updatePassword = asyncHandler(async(req,res)=>{
 })
 const getUserInfo = asyncHandler(async(req,res)=>{
   try{
-    const user = await User.findOne({_id:req.user})
+    const user = await User.findOne({_id:req.user}).select('-password')
     return res.status(200).json({ response: true, user})
 }
 catch(e)
@@ -535,7 +535,8 @@ const sendQrCode = asyncHandler(async(req, res) => {
   } = req.body;
 
   try {
-    const link = `https://www.aidemoscriber.com/updatePatient/${id}`;
+    const portalBase = (process.env.FRONTEND_URL || 'https://aimedicalscriber.com').replace(/\/$/, '');
+    const link = `${portalBase}/updatePatient/${id}`;
     sendQrCodeToPatient(businessMail, appCode, link, userEmail);
     
       return res.json({
@@ -662,11 +663,11 @@ const getAssistant = asyncHandler(async(req,res)=>{
     const assistantsList=[];
     for(let i=0;i<assistants.length;i++)
     {
-      const obj = await Assistant.findOne({_id:assistants[i]}).select('username password access')
+      // Never ship plaintext credentials in API responses.
+      const obj = await Assistant.findOne({_id:assistants[i]}).select('username access password').lean()
       if(obj){
-        const bytes  = CryptoJS.AES.decrypt(obj.password,  process.env.JWTSECRET)
-        const originalText = bytes.toString(CryptoJS.enc.Utf8);
-        obj['password'] = originalText;
+        obj['hasPassword'] = !!obj.password;
+        delete obj.password;
         assistantsList.push(obj)
       }
     }
