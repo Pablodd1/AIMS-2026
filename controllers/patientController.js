@@ -2,6 +2,7 @@ const asyncHandler = require("express-async-handler");
 const Patient = require('../models/Patients')
 const Appointment = require('../models/Appointment');
 const CheckNotes = require('../models/CheckNotes');
+const Visit = require('../models/Visit');
 const { addPatient } = require('./mailController')
 const { sendMessage } = require('../controllers/Twilio/twilio') 
 const User = require('../models/User')
@@ -16,36 +17,57 @@ const fsPromises = require('fs').promises;
 // carry pId directly.
 const { dayOf } = require("../Helper/visitCounter");
 const attachDos = async (patients) => {
-  const namesLower = patients.map(p => (p.fullName || "").toLowerCase()).filter(Boolean);
+  const namesLower = patients.map(p => (p.fullName || "").trim().toLowerCase()).filter(Boolean);
   const pids = patients.map(p => String(p._id));
-  const [rows, notes] = await Promise.all([
+  const [rowsByName, rowsByPid, notes, visits] = await Promise.all([
     namesLower.length ? Appointment.aggregate([
-      { $match: { status: "Complete", $expr: { $in: [{ $toLower: "$name" }, namesLower] } } },
-      { $sort: { time: 1 } },
+      { $match: { status: { $regex: /^complet/i }, $expr: { $in: [{ $toLower: "$name" }, namesLower] } } },
       { $group: { _id: { $toLower: "$name" }, lastVisitDate: { $max: "$time" }, aptCount: { $sum: 1 }, dates: { $addToSet: "$time" } } }
     ]) : Promise.resolve([]),
-    CheckNotes.aggregate([
+    pids.length ? Appointment.aggregate([
+      { $match: { status: { $regex: /^complet/i }, patientID: { $in: pids } } },
+      { $group: { _id: "$patientID", lastVisitDate: { $max: "$time" }, aptCount: { $sum: 1 }, dates: { $addToSet: "$time" } } }
+    ]) : Promise.resolve([]),
+    pids.length ? CheckNotes.aggregate([
       { $match: { pId: { $in: pids } } },
-      { $group: { _id: "$pId", lastVisitDate: { $max: "$checkInDate" }, noteCount: { $sum: 1 }, dates: { $addToSet: "$checkInDate" } } }
-    ])
+      { $group: { _id: "$pId", lastVisitDate: { $max: { $ifNull: ["$checkInDate", "$createdAt"] } }, noteCount: { $sum: 1 }, dates: { $addToSet: { $ifNull: ["$checkInDate", "$createdAt"] } } } }
+    ]) : Promise.resolve([]),
+    pids.length ? Visit.aggregate([
+      { $match: { pId: { $in: pids } } },
+      { $group: { _id: "$pId", lastVisitDate: { $max: { $ifNull: ["$date", "$createdAt"] } }, visitDocCount: { $sum: 1 }, dates: { $addToSet: { $ifNull: ["$date", "$createdAt"] } } } }
+    ]) : Promise.resolve([]),
   ]);
-  const map = {};
-  for (const r of rows) map[r._id] = r;
+  const nameMap = {};
+  for (const r of rowsByName) nameMap[r._id] = r;
+  const pidApptMap = {};
+  for (const r of rowsByPid) pidApptMap[String(r._id)] = r;
   const noteMap = {};
   for (const n of notes) noteMap[String(n._id)] = n;
+  const visitMap = {};
+  for (const v of visits) visitMap[String(v._id)] = v;
+
   for (const p of patients) {
-    const hit = map[(p.fullName || "").toLowerCase()];
-    const nt = noteMap[String(p._id)];
-    let best = null;
-    if (hit && hit.lastVisitDate) best = hit.lastVisitDate;
-    if (nt && nt.lastVisitDate && (!best || nt.lastVisitDate > best)) best = nt.lastVisitDate;
-    if (best) p.lastVisitDate = best;
-    p.aptCount = (hit ? hit.aptCount : 0) + (nt ? nt.noteCount : 0);
+    const pid = String(p._id);
+    const hitName = nameMap[(p.fullName || "").trim().toLowerCase()];
+    const hitPid = pidApptMap[pid];
+    const nt = noteMap[pid];
+    const vd = visitMap[pid];
+    const rawDates = [
+      ...(hitName && hitName.dates ? hitName.dates : []),
+      ...(hitPid && hitPid.dates ? hitPid.dates : []),
+      ...(nt && nt.dates ? nt.dates : []),
+      ...(vd && vd.dates ? vd.dates : []),
+      ...(Array.isArray(p.visitDates) ? p.visitDates : []),
+    ];
+    const ds = new Set(rawDates.map(d => dayOf(d instanceof Date ? d.toISOString() : d)).filter(Boolean));
+    const sorted = [...ds].sort();
+    p.visitDates = sorted;
+    p.visitDatesStr = sorted.join(', ');
+    p.visitCount = sorted.length;
+    if (sorted.length) p.lastVisitDate = sorted[sorted.length - 1];
     p.checkinCount = nt ? nt.noteCount : 0;
-    const ds = new Set([...(hit && hit.dates ? hit.dates : []), ...(nt && nt.dates ? nt.dates : [])].map(dayOf).filter(Boolean));
-    p.visitDates = [...ds].sort();
-    p.visitDatesStr = p.visitDates.join(', ');
-    p.visitCount = p.visitDates.length;
+    p.soapCount = vd ? vd.visitDocCount : 0;
+    p.aptCount = Math.max(hitName ? hitName.aptCount : 0, hitPid ? hitPid.aptCount : 0) + p.checkinCount + p.soapCount;
   }
 };
 
@@ -679,37 +701,92 @@ const searchPatientsByAlphabet = asyncHandler(async (req, res) => {
   }
 });
 
+const buildSmartPatientFilter = async (rawQuery, type = 'all') => {
+  const q = String(rawQuery || '').trim();
+  const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const rx = { $regex: escaped, $options: 'i' };
+
+  if (type === 'email') return { email: rx };
+  if (type === 'dob') {
+    const iso = dayOf(q);
+    return iso ? { $or: [{ dateOfBirth: rx }, { dateOfBirth: { $regex: iso, $options: 'i' } }] } : { dateOfBirth: rx };
+  }
+  if (type === 'phone') {
+    const digits = q.replace(/\D/g, '');
+    if (digits.length >= 4) {
+      const flexPhone = digits.split('').join('[^\\d]*');
+      return { $or: [{ phoneNumber: rx }, { phoneNumber: { $regex: flexPhone, $options: 'i' } }] };
+    }
+    return { phoneNumber: rx };
+  }
+
+  // Unified smart match (name / last name / DOB / phone / email / DOS)
+  const orClauses = [
+    { fullName: rx },
+    { email: rx },
+    { dateOfBirth: rx },
+    { phoneNumber: rx },
+    { visitDates: rx },
+  ];
+
+  // Flexible phone digit matching (e.g. "3148137555" matches "+1 (314) 813-7555")
+  const digits = q.replace(/\D/g, '');
+  if (digits.length >= 4 && !/^\d{4}-\d{2}-\d{2}$/.test(q)) {
+    const flexPhone = digits.split('').join('[^\\d]*');
+    orClauses.push({ phoneNumber: { $regex: flexPhone, $options: 'i' } });
+  }
+
+  // Date matching: DOB or Date of Service (DOS) across CheckNotes, Visit, and Appointment
+  const isoDay = dayOf(q);
+  if (isoDay) {
+    orClauses.push({ dateOfBirth: { $regex: isoDay, $options: 'i' } });
+    orClauses.push({ visitDates: isoDay });
+    const [mNotes, mVisits, mAppts] = await Promise.all([
+      CheckNotes.find({ checkInDate: { $regex: isoDay, $options: 'i' } }).select('pId').lean().catch(() => []),
+      Visit.find({ date: { $regex: isoDay, $options: 'i' } }).select('pId').lean().catch(() => []),
+      Appointment.find({ time: { $regex: isoDay, $options: 'i' } }).select('patientID name').lean().catch(() => []),
+    ]);
+    const dosIds = new Set();
+    const dosNames = new Set();
+    mNotes.forEach(n => { if (n.pId) dosIds.add(String(n.pId)); });
+    mVisits.forEach(v => { if (v.pId) dosIds.add(String(v.pId)); });
+    mAppts.forEach(a => {
+      if (a.patientID) dosIds.add(String(a.patientID));
+      if (a.name) dosNames.add(String(a.name).trim());
+    });
+    if (dosIds.size) orClauses.push({ _id: { $in: [...dosIds] } });
+    if (dosNames.size) {
+      dosNames.forEach(nm => {
+        orClauses.push({ fullName: { $regex: `^${nm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' } });
+      });
+    }
+  }
+
+  return { $or: orClauses };
+};
+
 const searchPatientsByType = asyncHandler(async (req, res) => {
   try {
-    const { type, query } = req.body;
+    const { type = 'name', query } = req.body;
 
-    // Validate type input
-    if (!['name', 'email', 'dob', 'phone'].includes(type)) {
-      return res.status(400).json({ response: false, msg: "Invalid search type. Use: name, email, dob, or phone" });
+    if (!['name', 'email', 'dob', 'phone', 'dos', 'all'].includes(type)) {
+      return res.status(400).json({ response: false, msg: "Invalid search type. Use: name, email, dob, phone, dos, or all" });
+    }
+    if (!query || !String(query).trim()) {
+      return res.status(400).json({ response: false, msg: "Search query is required" });
     }
 
-    // Build the search filter based on the type
-    let filter = {};
-    if (type === 'name') {
-      filter = { fullName: { $regex: query, $options: 'i' } };
-    } else if (type === 'email') {
-      filter = { email: { $regex: query, $options: 'i' } };
-    } else if (type === 'dob') {
-      filter = { dateOfBirth: { $regex: query, $options: 'i' } };
-    } else if (type === 'phone') {
-      filter = { phoneNumber: { $regex: query, $options: 'i' } };
-    }
-
-    // Search patients in the database
+    const filter = await buildSmartPatientFilter(query, type);
     const patients = await Patient.find({
       doc_id: req.user,
       ...filter
-    });
+    }).lean();
 
     if (!patients.length) {
       return res.status(404).json({ response: false, msg: "No patients found" });
     }
 
+    await attachDos(patients);
     res.status(200).json({ response: true, patients });
   } catch (error) {
     console.error(error);
@@ -719,33 +796,23 @@ const searchPatientsByType = asyncHandler(async (req, res) => {
 
 const searchPatientsByTypeAndLimit5 = asyncHandler(async (req, res) => {
   try {
-    const { type, query } = req.body;
+    const { type = 'name', query } = req.body;
 
-    // Validate type input
-    if (!['name', 'email', 'dob', 'phone'].includes(type)) {
-      return res.status(400).json({ response: false, msg: "Invalid search type. Use: name, email, dob, or phone" });
+    if (!['name', 'email', 'dob', 'phone', 'dos', 'all'].includes(type)) {
+      return res.status(400).json({ response: false, msg: "Invalid search type. Use: name, email, dob, phone, dos, or all" });
+    }
+    if (!query || !String(query).trim()) {
+      return res.status(400).json({ response: false, msg: "Search query is required" });
     }
 
-    // Build the search filter based on the type
-    let filter = {};
-    if (type === 'name') {
-      filter = { fullName: { $regex: query, $options: 'i' } };
-    } else if (type === 'email') {
-      filter = { email: { $regex: query, $options: 'i' } };
-    } else if (type === 'dob') {
-      filter = { dateOfBirth: { $regex: query, $options: 'i' } };
-    } else if (type === 'phone') {
-      filter = { phoneNumber: { $regex: query, $options: 'i' } };
-    }
-
-    // Search patients in the database
+    const filter = await buildSmartPatientFilter(query, type);
     const patients = await Patient.find({
       doc_id: req.user,
       ...filter
     })
-    .select('fullName email _id')  // Specify the fields you want to include
-    .limit(5);
-    
+    .select('fullName email dateOfBirth phoneNumber visitDates _id')
+    .limit(8)
+    .lean();
 
     if (!patients.length) {
       return res.status(404).json({ response: false, msg: "No patients found" });
@@ -846,24 +913,23 @@ const searchPatientsGlobal = asyncHandler(async (req, res) => {
 
     const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const regex = { $regex: escapedQuery, $options: 'i' };
+    const smartFilter = await buildSmartPatientFilter(query, 'all');
 
     const caller = await User.findById(req.user).select('admin').lean();
     const scope = caller && caller.admin ? {} : { doc_id: req.user };
     const patients = await Patient.find({
       ...scope,
       $or: [
-        { fullName: regex },
-        { email: regex },
-        { phoneNumber: regex },
-        { dateOfBirth: regex },
+        ...(smartFilter.$or || []),
         { address: regex },
         { insuranceProvider: regex },
         { insurancePolicyNumber: regex },
         { medications: regex },
         { allergies: regex },
       ]
-    }).limit(20);
+    }).limit(25).lean();
 
+    await attachDos(patients);
     return res.json({ response: true, patients });
   } catch (error) {
     console.error(error);

@@ -5,8 +5,11 @@ const Module = require('module');
 const path = require('path');
 
 const stubInvoice = { find: () => {}, countDocuments: async () => 0 };
-const stubPatient = { find: () => {}, findById: () => {} };
-const stubVisit = { findById: () => {} };
+const stubPatient = { find: () => {}, findById: () => {}, updateOne: async () => ({}) };
+const stubVisit = { find: () => {}, findById: () => {} };
+const stubAppointment = { find: () => {} };
+const stubCheckNotes = { find: () => {} };
+const stubUser = { findById: () => ({ select: () => ({ lean: async () => ({ clinicName: 'Innovative Medical Wellness' }) }) }) };
 const stubDocxCapture = { calls: [] };
 
 const stubDocx = {
@@ -28,6 +31,10 @@ Module._load = function patchedLoad(request, parent, isMain) {
   if (request.endsWith('/models/Invoice') || request.endsWith('\\models\\Invoice')) return stubInvoice;
   if (request.endsWith('/models/Patients') || request.endsWith('\\models\\Patients')) return stubPatient;
   if (request.endsWith('/models/Visit') || request.endsWith('\\models\\Visit')) return stubVisit;
+  if (request.endsWith('/models/Appointment') || request.endsWith('\\models\\Appointment')) return stubAppointment;
+  if (request.endsWith('/models/CheckNotes') || request.endsWith('\\models\\CheckNotes')) return stubCheckNotes;
+  if (request.endsWith('/models/User') || request.endsWith('\\models\\User')) return stubUser;
+  if (request.endsWith('/Twilio/twilio') || request.endsWith('\\Twilio\\twilio')) return { sendMessage: async () => true };
   if (request.endsWith('/models/MedicalCode') || request.endsWith('\\models\\MedicalCode')) return {};
   if (request.endsWith('/models/FavoriteCode') || request.endsWith('\\models\\FavoriteCode')) return {};
   if (request === 'docx') {
@@ -40,6 +47,8 @@ Module._load = function patchedLoad(request, parent, isMain) {
 const { runBillingCompliance } = require('../controllers/medicalCodesController');
 const { getAllByStatus } = require('../controllers/Invoice/getAllByStatus');
 const { exportVisitDocx } = require('../controllers/visitExportController');
+const { syncVisitCount, dayOf } = require('../Helper/visitCounter');
+const { sendSmsCampaign } = require('../controllers/notificationController');
 
 let passed = 0;
 let failed = 0;
@@ -216,6 +225,53 @@ async function test(name, fn) {
       assert.ok(uc.includes(".select('-password')"), 'userController must exclude password');
       assert.ok(ac.includes(".select('-password')"), 'adminController must exclude password');
       assert.ok(!/console\.log\(username,\s*email,\s*password/.test(ac), 'Plaintext password log still present');
+    });
+
+    console.log('== Visit Counter & SMS Campaign Tests ==');
+    await test('dayOf() normalizes ISO, YYYY-MM-DD, and M/D/YYYY dates accurately', () => {
+      assert.strictEqual(dayOf('2026-11-23T10:54:22'), '2026-11-23');
+      assert.strictEqual(dayOf('11/5/2026'), '2026-11-05');
+      assert.strictEqual(dayOf('2026-02-28'), '2026-02-28');
+      assert.strictEqual(dayOf('not-a-date'), null);
+    });
+
+    await test('syncVisitCount unions completed Appointments, Kiosk CheckNotes, and SOAP Visits', async () => {
+      let savedUpdate = null;
+      stubPatient.findById = () => ({ select: () => ({ lean: async () => ({ _id: 'pat9', fullName: 'Bury Patient' }) }) });
+      stubAppointment.find = () => ({ lean: async () => ([{ time: '2026-11-23T10:54:22' }]) });
+      stubCheckNotes.find = () => ({ lean: async () => ([{ checkInDate: '2026-11-23T10:54:22' }, { date: '2026-11-20' }]) });
+      stubVisit.find = () => ({ lean: async () => ([{ date: '2026-11-18' }]) });
+      stubPatient.updateOne = async (filter, update) => { savedUpdate = { filter, update }; };
+
+      await syncVisitCount('pat9');
+      assert.ok(savedUpdate, 'Expected Patient.updateOne to be called');
+      assert.strictEqual(savedUpdate.update.$set.visitCount, 3, 'Expected 3 distinct clinic days');
+      assert.deepStrictEqual(savedUpdate.update.$set.visitDates, ['2026-11-18', '2026-11-20', '2026-11-23']);
+    });
+
+    await test('sendSmsCampaign dryRun normalizes US E.164, deduplicates, and appends TCPA STOP', async () => {
+      const req = {
+        user: 'doc1',
+        body: {
+          campaignId: 'reactivation_60d',
+          message: 'Hi {{name}}, book your visit at {{clinic}}!',
+          dryRun: true,
+          recipients: [
+            { name: 'Alicia Martinez', phone: '(314) 813-7555' },
+            { name: 'Alicia Duplicate', phone: '+13148137555' },
+            { name: 'Bad Phone', phone: '123' },
+          ],
+        },
+      };
+      const res = makeMockRes();
+      await sendSmsCampaign(req, res);
+      assert.strictEqual(res.statusCode, 200);
+      assert.strictEqual(res.body.response, true);
+      assert.strictEqual(res.body.dryRun, true);
+      assert.strictEqual(res.body.recipientCount, 1, 'Expected 1 deduplicated valid US phone');
+      assert.strictEqual(res.body.sampleRecipients[0].phone, '+13148137555');
+      assert.ok(res.body.sampleMessage.includes('Alicia'), 'Expected {{name}} interpolation');
+      assert.ok(res.body.sampleMessage.includes('Reply STOP to opt out.'), 'Expected TCPA opt-out footer');
     });
 
     console.log(`\nPlatform audit suite: ${passed} passed, ${failed} failed`);

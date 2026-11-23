@@ -218,9 +218,115 @@ const triggerDailySchedule = asyncHandler(async (req, res) => {
   return res.json({ response: true, msg: `Sent to ${results.filter(r=>r.sent).length}/${results.length} number(s), email ${results.find(r=>r.email) ? (results.find(r=>r.email).sent ? 'OK' : 'FAILED') : 'n/a'}`, results });
 });
 
+function normalizeUsE164(raw) {
+  const digits = String(raw || '').replace(/\D/g, '');
+  if (digits.length === 10) return '+1' + digits;
+  if (digits.length === 11 && digits.startsWith('1')) return '+' + digits;
+  if (String(raw || '').trim().startsWith('+') && digits.length >= 10) return '+' + digits;
+  return null;
+}
+
+/**
+ * Send or dry-run preview an SMS campaign via Twilio.
+ * POST /api/post/sendSmsCampaign
+ * Body: { campaignId, message, recipients?: [{name, phone}], audience?: string, dryRun?: boolean }
+ */
+const sendSmsCampaign = asyncHandler(async (req, res) => {
+  try {
+    const { campaignId = 'custom', message, recipients, audience = 'custom', dryRun = true } = req.body || {};
+    const rawMsg = String(message || '').trim();
+    if (!rawMsg) return res.status(400).json({ response: false, msg: 'Campaign message is required.' });
+    if (rawMsg.length > 600) return res.status(400).json({ response: false, msg: 'Message too long (max 600 chars).' });
+
+    const user = await User.findById(req.user).select('clinicName').lean().catch(() => null);
+    const clinicName = (user && user.clinicName) || process.env.CLINIC_NAME || 'Innovative Medical Wellness';
+    const hasStop = /reply\s+stop/i.test(rawMsg);
+    const finalTemplate = hasStop ? rawMsg : `${rawMsg}\nReply STOP to opt out.`;
+
+    let targets = [];
+    if (Array.isArray(recipients) && recipients.length) {
+      targets = recipients.map((r) => ({ name: r.name || 'Patient', phone: normalizeUsE164(r.phone) })).filter((r) => r.phone);
+    } else {
+      const pats = await Patient.find({ doc_id: req.user, phoneNumber: { $exists: true, $ne: '' } })
+        .select('fullName phoneNumber visitDates updatedAt createdAt')
+        .limit(200)
+        .lean();
+      const now = Date.now();
+      const filtered = pats.filter((p) => {
+        const phone = normalizeUsE164(p.phoneNumber);
+        if (!phone) return false;
+        if (audience === 'inactive_60d') {
+          const last = Array.isArray(p.visitDates) && p.visitDates.length ? p.visitDates[p.visitDates.length - 1] : null;
+          if (!last) return true;
+          const ts = Date.parse(last);
+          return !isNaN(ts) && (now - ts) > 60 * 86400000;
+        }
+        if (audience === 'completed_recent_7d') {
+          const last = Array.isArray(p.visitDates) && p.visitDates.length ? p.visitDates[p.visitDates.length - 1] : null;
+          if (!last) return false;
+          const ts = Date.parse(last);
+          return !isNaN(ts) && (now - ts) <= 7 * 86400000;
+        }
+        return true;
+      });
+      targets = filtered.map((p) => ({ name: p.fullName || 'Patient', phone: normalizeUsE164(p.phoneNumber) }));
+    }
+
+    // Deduplicate by normalized phone and cap batch at 100 per call
+    const seen = new Set();
+    const deduped = [];
+    for (const t of targets) {
+      if (!t.phone || seen.has(t.phone)) continue;
+      seen.add(t.phone);
+      deduped.push(t);
+      if (deduped.length >= 100) break;
+    }
+
+    const renderBody = (name) => finalTemplate
+      .replace(/\{\{\s*name\s*\}\}/gi, String(name || 'there').split(/\s+/)[0])
+      .replace(/\{\{\s*clinic\s*\}\}/gi, clinicName);
+
+    if (dryRun) {
+      return res.json({
+        response: true,
+        dryRun: true,
+        campaignId,
+        audience,
+        recipientCount: deduped.length,
+        sampleRecipients: deduped.slice(0, 10),
+        sampleMessage: renderBody(deduped[0] ? deduped[0].name : 'Patient'),
+      });
+    }
+
+    const results = [];
+    for (const t of deduped) {
+      try {
+        const ok = await sendMessage(renderBody(t.name), t.phone);
+        results.push({ phone: t.phone, name: t.name, sent: ok !== false });
+      } catch (e) {
+        results.push({ phone: t.phone, name: t.name, sent: false, error: e.message });
+      }
+    }
+    const sentCount = results.filter((r) => r.sent).length;
+    return res.json({
+      response: true,
+      dryRun: false,
+      campaignId,
+      recipientCount: deduped.length,
+      sentCount,
+      failedCount: results.length - sentCount,
+      results,
+    });
+  } catch (error) {
+    console.error('sendSmsCampaign error:', error);
+    return res.status(500).json({ response: false, msg: error.message });
+  }
+});
+
 module.exports = {
   updateNotificationSettings,
   getDailySchedule,
   sendDailySchedule,
-  triggerDailySchedule
+  triggerDailySchedule,
+  sendSmsCampaign,
 };

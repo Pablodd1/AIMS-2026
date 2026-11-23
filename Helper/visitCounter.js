@@ -27,10 +27,17 @@ function dayOf(v) {
 
 const syncVisitCount = async (patientId) => {
   if (!patientId) return;
+  const pidStr = String(patientId);
+  const pat = await Patient.findById(pidStr).select("fullName").lean().catch(() => null);
+  const apptOr = [{ patientID: pidStr }];
+  if (pat && pat.fullName) {
+    const escapedName = pat.fullName.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    apptOr.push({ name: { $regex: `^${escapedName}$`, $options: "i" } });
+  }
   const [appts, notes, visits] = await Promise.all([
-    Appointment.find({ patientID: patientId, status: "Complete" }, { time: 1 }),
-    CheckNotes.find({ pId: patientId }, { checkInDate: 1 }),
-    Visit.find({ pId: patientId }, { date: 1 }),
+    Appointment.find({ status: /^complet/i, $or: apptOr }, { time: 1 }).lean(),
+    CheckNotes.find({ pId: pidStr }, { checkInDate: 1, date: 1, createdAt: 1 }).lean(),
+    Visit.find({ pId: pidStr }, { date: 1, createdAt: 1 }).lean(),
   ]);
   const days = new Set();
   for (const a of appts) {
@@ -38,15 +45,15 @@ const syncVisitCount = async (patientId) => {
     if (d) days.add(d);
   }
   for (const n of notes) {
-    const d = dayOf(n.checkInDate);
+    const d = dayOf(n.checkInDate || n.date || (n.createdAt ? n.createdAt.toISOString() : null));
     if (d) days.add(d);
   }
   for (const v of visits) {
-    const d = dayOf(v.date);
+    const d = dayOf(v.date || (v.createdAt ? v.createdAt.toISOString() : null));
     if (d) days.add(d);
   }
   const visitDates = [...days].sort();
-  await Patient.updateOne({ _id: patientId }, { $set: { visitCount: days.size, visitDates } });
+  await Patient.updateOne({ _id: pidStr }, { $set: { visitCount: days.size, visitDates } });
 };
 
 module.exports = { syncVisitCount, dayOf };
