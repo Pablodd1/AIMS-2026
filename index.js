@@ -310,9 +310,12 @@ app.get('/api/get/downloadNoteAsAudio', protect, downloadNoteAsAudio)
 app.post('/api/post/runQualityCheck', protect, runQualityCheck)
 // Translation — Spanish/Creole to English
 app.post('/api/post/translateToEnglish', protect, translateToEnglish)
-// AI command interpreter
+// AI command interpreter & Tactical Voice Command Center (multi-step NLU + Neural TTS)
+const { voiceCommandPro, voiceSpeak } = require('./controllers/voiceCommandController')
 app.post('/api/post/interpretCommand', protect, interpretCommand)
-app.post('/api/post/voiceAssistant', protect, voiceAssistant)
+app.post('/api/post/voiceAssistant', protect, voiceCommandPro)
+app.post('/api/post/voiceCommand', protect, voiceCommandPro)
+app.post('/api/post/voiceSpeak', protect, voiceSpeak)
 
 // ── Legacy AI compat (aims-service2) — chat threads, custom-prompt Generate,
 // audio->text, lab interpreter, voice intake 2.0. Old service used the retired

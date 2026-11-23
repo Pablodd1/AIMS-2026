@@ -37,6 +37,15 @@ Module._load = function patchedLoad(request, parent, isMain) {
   if (request.endsWith('/Twilio/twilio') || request.endsWith('\\Twilio\\twilio')) return { sendMessage: async () => true };
   if (request.endsWith('/models/MedicalCode') || request.endsWith('\\models\\MedicalCode')) return {};
   if (request.endsWith('/models/FavoriteCode') || request.endsWith('\\models\\FavoriteCode')) return {};
+  if (request === 'openai') {
+    try { return origLoad.call(this, request, parent, isMain); }
+    catch (_) {
+      return function MockOpenAI() {
+        this.chat = { completions: { create: async () => ({ choices: [{ message: { content: '{}' } }] }) } };
+        this.audio = { speech: { create: async () => ({ arrayBuffer: async () => new ArrayBuffer(8) }) } };
+      };
+    }
+  }
   if (request === 'docx') {
     try { return origLoad.call(this, request, parent, isMain); }
     catch (_) { usedStubDocx = true; return stubDocx; }
@@ -272,6 +281,21 @@ async function test(name, fn) {
       assert.strictEqual(res.body.sampleRecipients[0].phone, '+13148137555');
       assert.ok(res.body.sampleMessage.includes('Alicia'), 'Expected {{name}} interpolation');
       assert.ok(res.body.sampleMessage.includes('Reply STOP to opt out.'), 'Expected TCPA opt-out footer');
+    });
+
+    console.log('== Tactical Voice Command & Neural TTS Tests ==');
+    await test('voiceCommandController covers all major AIMS modules & validates empty utterances', async () => {
+      const { FULL_AIMS_ROUTES, voiceCommandPro, voiceSpeak } = require('../controllers/voiceCommandController');
+      const paths = new Set(FULL_AIMS_ROUTES.map((r) => r.path));
+      for (const reqPath of ['/TodayPatients', '/Patient', '/sms-center/', '/billing-ai/portal', '/dx-cpt-codes/', '/consent/', '/scribe/', '/voice-commander/', '/Settings', '/kiosk']) {
+        assert.ok(paths.has(reqPath), 'FULL_AIMS_ROUTES missing ' + reqPath);
+      }
+      const resCmd = makeMockRes();
+      await voiceCommandPro({ user: 'doc1', body: { text: '' } }, resCmd);
+      assert.strictEqual(resCmd.statusCode, 400);
+      const resTts = makeMockRes();
+      await voiceSpeak({ user: 'doc1', body: { text: '' } }, resTts);
+      assert.strictEqual(resTts.statusCode, 400);
     });
 
     console.log(`\nPlatform audit suite: ${passed} passed, ${failed} failed`);
