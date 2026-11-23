@@ -559,7 +559,8 @@ const triggerAppointmentReminders = asyncHandler(async (req, res) => {
             const patient = a.patientID ? await Patient.findOne({ _id: a.patientID }).select('fullName phoneNumber email').catch(() => null) : null;
             const name = (patient && patient.fullName) || a.name || 'there';
             const phone = patient && patient.phoneNumber;
-            const email = a.email || (patient && patient.email);
+            const rawEmail = String(a.email || (patient && patient.email) || '').trim();
+            const email = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawEmail) ? rawEmail : '';
             const outcome = { id: String(a._id), stage, when: a.time, sms: 'no-contact', email: 'no-contact' };
             if (dryRun) {
                 outcome.sms = phone ? 'WOULD SEND' : 'no-phone';
