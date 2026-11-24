@@ -298,6 +298,30 @@ async function test(name, fn) {
       assert.strictEqual(resTts.statusCode, 400);
     });
 
+    console.log('== Physician Clinical Copilot (PHI-Stripping) Tests ==');
+    await test('buildDeidentifiedDossier strips name/email/phone/address/exact DOB while keeping clinical context', () => {
+      const { buildDeidentifiedDossier } = require('../controllers/clinicalCopilotController');
+      const built = buildDeidentifiedDossier({
+        fullName: 'Alicia Martinez',
+        email: 'alicia@example.com',
+        phoneNumber: '+13148137555',
+        address: '123 Secret St, Miami FL',
+        dateOfBirth: '1984-05-12',
+        gender: 'Female',
+        visitReason: 'Lower back pain radiating to left leg',
+        medications: 'Lisinopril 10mg, Ibuprofen 600mg',
+        allergies: 'Penicillin',
+      }, [{ date: '2026-11-20', chiefComplaint: 'Lumbar radiculopathy', Assessment: 'M54.16', Plan: 'Decompression' }]);
+      assert.ok(built && built.contextText, 'Expected contextText');
+      assert.ok(!built.contextText.includes('Alicia'), 'PHI leak: fullName present');
+      assert.ok(!built.contextText.includes('alicia@example.com'), 'PHI leak: email present');
+      assert.ok(!built.contextText.includes('3148137555'), 'PHI leak: phone present');
+      assert.ok(!built.contextText.includes('123 Secret St'), 'PHI leak: address present');
+      assert.ok(!built.contextText.includes('1984-05-12'), 'PHI leak: exact DOB present');
+      assert.ok(built.contextText.includes('Lower back pain') && built.contextText.includes('Lisinopril'), 'Clinical context missing');
+      assert.ok(built.dossier.ageYears >= 40 && built.dossier.ageYears <= 45, 'Expected computed age in years');
+    });
+
     console.log(`\nPlatform audit suite: ${passed} passed, ${failed} failed`);
     if (failed > 0) process.exit(1);
   } finally {

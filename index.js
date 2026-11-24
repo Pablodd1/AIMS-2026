@@ -312,10 +312,13 @@ app.post('/api/post/runQualityCheck', protect, runQualityCheck)
 app.post('/api/post/translateToEnglish', protect, translateToEnglish)
 // AI command interpreter & Tactical Voice Command Center (multi-step NLU + Neural TTS)
 const { voiceCommandPro, voiceSpeak } = require('./controllers/voiceCommandController')
+const { getDeidentifiedPatientContext, clinicalBrainstorm } = require('./controllers/clinicalCopilotController')
 app.post('/api/post/interpretCommand', protect, interpretCommand)
 app.post('/api/post/voiceAssistant', protect, voiceCommandPro)
 app.post('/api/post/voiceCommand', protect, voiceCommandPro)
 app.post('/api/post/voiceSpeak', protect, voiceSpeak)
+app.get('/api/get/deidentifiedPatientContext', protect, getDeidentifiedPatientContext)
+app.post('/api/post/clinicalBrainstorm', protect, clinicalBrainstorm)
 
 // ── Legacy AI compat (aims-service2) — chat threads, custom-prompt Generate,
 // audio->text, lab interpreter, voice intake 2.0. Old service used the retired
