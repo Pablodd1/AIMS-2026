@@ -826,67 +826,92 @@ const searchPatientsByTypeAndLimit5 = asyncHandler(async (req, res) => {
 });
 
 
-  // API to import patients from CSV file
+  // API to import patients from CSV file (supports both AIMS Export headers and First/Last Name templates)
   const importPatients = asyncHandler(async (req, res) => {
     const file = req.file;
+    const cleanup = async () => {
+      if (file && file.path) {
+        try { await fsPromises.unlink(file.path); } catch (_) {}
+      }
+    };
     try {
       if (!file) {
-        return res.status(400).json({ message: 'No file uploaded.' });
+        return res.status(400).json({ response: false, message: 'No CSV file uploaded.' });
+      }
+      const user = await User.findOne({ _id: req.user }).lean().catch(() => null);
+      const docId = (user && user._id) || req.user;
+      const tz = (user && user.timezone) || process.env.CLINIC_TZ || 'America/New_York';
+
+      const normRow = (raw) => {
+        const m = {};
+        for (const [k, v] of Object.entries(raw || {})) {
+          const cleanKey = String(k || '').replace(/^\uFEFF/, '').trim().toLowerCase();
+          m[cleanKey] = String(v == null ? '' : v).trim();
+        }
+        return m;
+      };
+      const pick = (m, keys) => {
+        for (const k of keys) {
+          if (m[k]) return m[k];
+        }
+        return '';
+      };
+
+      const rows = [];
+      await new Promise((resolve, reject) => {
+        fs.createReadStream(file.path)
+          .on('error', reject)
+          .pipe(csv())
+          .on('data', (data) => rows.push(normRow(data)))
+          .on('error', reject)
+          .on('end', resolve);
+      });
+
+      let importedCount = 0;
+      let skippedCount = 0;
+      const saves = [];
+      for (const m of rows) {
+        const directFull = pick(m, ['full name', 'fullname', 'name', 'patient name', 'patient']);
+        const first = pick(m, ['first name', 'firstname', 'first']);
+        const last = pick(m, ['last name', 'lastname', 'last']);
+        const fullName = (directFull || `${first} ${last}`).replace(/\s+/g, ' ').trim();
+        const phoneNumber = pick(m, ['phone number', 'phone', 'phonenumber', 'mobile', 'cell', 'telephone']);
+        const email = pick(m, ['email', 'email address', 'e-mail']);
+        const address = pick(m, ['address (full)', 'address', 'street address']);
+        const gender = pick(m, ['gender', 'sex']);
+        const dateOfBirth = pick(m, ['date of birth', 'birth date', 'dob', 'dateofbirth', 'birthdate']);
+
+        if (!fullName) {
+          skippedCount++;
+          continue;
+        }
+        const newPatient = new Patient({
+          doc_id: docId,
+          fullName,
+          phoneNumber,
+          email,
+          address,
+          gender,
+          dateOfBirth,
+          userTimezone: tz,
+        });
+        saves.push(newPatient.save().then(() => { importedCount++; }).catch(() => { skippedCount++; }));
       }
 
-      const user = await User.findOne({_id:req.user})
-  
-      const patients = [];
-      const csvData = [];
-  
-      fs.createReadStream(file.path)
-        .pipe(csv())
-        .on('data', (data) => {
-          if ((data['First Name'] || data['Last Name']) && (data['Email'] || data['Phone'])) {
-            csvData.push(data);
-          }
-        })
-        .on('end', async () => {
-          for (const item of csvData) {
-            const newPatient = new Patient(
-              {
-              doc_id: user._id,
-              fullName: `${item['First Name']} ${item['Last Name']}`,
-              phoneNumber: item['Phone'],
-              email: item['Email'],
-              address: item['Address (full)'],
-              gender: item['Sex'],
-              dateOfBirth: item['Birth Date'],
-              userTimezone: user.timezone,
-            }
-          );
-  
-            patients.push(newPatient.save());
-          }
-  
-          await Promise.all(patients);
-          if (file && file.path) {
-            try {
-              await fsPromises.unlink(file.path);
-              console.log('File deleted:', file.path);
-            } catch (err) {
-              console.error('Failed to delete file:', err);
-            }
-          }
-          res.status(200).json({ message: 'Patients imported successfully.' });
-        });
-  
+      await Promise.all(saves);
+      await cleanup();
+      return res.status(200).json({
+        response: true,
+        importedCount,
+        skippedCount,
+        message: importedCount > 0
+          ? `Imported ${importedCount} patient${importedCount === 1 ? '' : 's'}${skippedCount ? ` (${skippedCount} skipped)` : ''}.`
+          : 'No valid patient rows found in CSV (expected a Full Name or First Name / Last Name column).',
+      });
     } catch (error) {
       console.error('Error importing patients:', error);
-        if (file && file.path) {
-          try {
-            await fsPromises.unlink(file.path);
-            console.log('File deleted:', file.path);
-          } catch (err) {
-            console.error('Failed to delete file:', err);
-          }
-        }
-      res.status(500).json({ message: 'Error importing patients. Please try again.' });
+      await cleanup();
+      return res.status(500).json({ response: false, message: 'Error importing patients: ' + (error.message || 'Please check CSV format.') });
     }
   });
 
