@@ -227,16 +227,16 @@ function normalizeUsE164(raw) {
 }
 
 /**
- * Send or dry-run preview an SMS campaign via Twilio.
+ * Send or dry-run preview an SMS or Email campaign via Twilio / Nodemailer.
  * POST /api/post/sendSmsCampaign
- * Body: { campaignId, message, recipients?: [{name, phone, email}], audience?: string, dryRun?: boolean }
+ * Body: { campaignId, message, emailSubject?: string, recipients?: [{name, phone, email}], audience?: string, channel?: 'sms'|'email'|'both', dryRun?: boolean }
  */
 const sendSmsCampaign = asyncHandler(async (req, res) => {
   try {
-    const { campaignId = 'custom', message, recipients, audience = 'custom', dryRun = true } = req.body || {};
+    const { campaignId = 'custom', message, emailSubject, recipients, audience = 'custom', channel = 'sms', dryRun = true } = req.body || {};
     const rawMsg = String(message || '').trim();
     if (!rawMsg) return res.status(400).json({ response: false, msg: 'Campaign message is required.' });
-    if (rawMsg.length > 1000) return res.status(400).json({ response: false, msg: 'Message too long (max 1000 chars).' });
+    if (rawMsg.length > 2000) return res.status(400).json({ response: false, msg: 'Message too long (max 2000 chars).' });
 
     const user = await User.findById(req.user)
       .select('clinicName website email businessMail phone_number notificationPhones')
@@ -250,7 +250,7 @@ const sendSmsCampaign = asyncHandler(async (req, res) => {
     const jasmelEmail = 'jasmel.acosta@gmail.com';
 
     // Strict internal staff & company exclusion registry.
-    // Explicit user constraint: Never text Jeffrey Draesel/Draysol, Maria Draesel/Draysol, Caitlyn Moore, Caitlyn Draesel/Draysol, or company staff.
+    // Explicit user constraint: Never text/email Jeffrey Draesel/Draysol, Maria Draesel/Draysol, Caitlyn Moore, Caitlyn Draesel/Draysol, or company staff.
     const internalPhones = new Set();
     if (user) {
       if (user.phone_number) {
@@ -314,11 +314,12 @@ const sendSmsCampaign = asyncHandler(async (req, res) => {
           excludedCount++;
         } else {
           const ph = normalizeUsE164(r.phone);
-          if (ph) targets.push({ name: r.name || 'Patient', phone: ph });
+          const em = String(r.email || '').trim();
+          if (ph || em) targets.push({ name: r.name || 'Patient', phone: ph, email: em });
         }
       });
     } else {
-      const pats = await Patient.find({ doc_id: req.user, phoneNumber: { $exists: true, $ne: '' } })
+      const pats = await Patient.find({ doc_id: req.user })
         .select('fullName email phoneNumber visitDates updatedAt createdAt')
         .limit(300)
         .lean();
@@ -329,7 +330,11 @@ const sendSmsCampaign = asyncHandler(async (req, res) => {
           return false;
         }
         const phone = normalizeUsE164(p.phoneNumber);
-        if (!phone) return false;
+        const email = String(p.email || '').trim();
+        if (channel === 'sms' && !phone) return false;
+        if (channel === 'email' && !email) return false;
+        if (channel === 'both' && !phone && !email) return false;
+
         if (audience === 'inactive_60d') {
           const last = Array.isArray(p.visitDates) && p.visitDates.length ? p.visitDates[p.visitDates.length - 1] : null;
           if (!last) return true;
@@ -344,15 +349,20 @@ const sendSmsCampaign = asyncHandler(async (req, res) => {
         }
         return true;
       });
-      targets = filtered.map((p) => ({ name: p.fullName || 'Patient', phone: normalizeUsE164(p.phoneNumber) }));
+      targets = filtered.map((p) => ({
+        name: p.fullName || 'Patient',
+        phone: normalizeUsE164(p.phoneNumber),
+        email: String(p.email || '').trim()
+      }));
     }
 
-    // Deduplicate by normalized phone and cap batch at 100 per call
+    // Deduplicate by normalized phone (or email when phone is absent) and cap batch at 100 per call
     const seen = new Set();
     const deduped = [];
     for (const t of targets) {
-      if (!t.phone || seen.has(t.phone)) continue;
-      seen.add(t.phone);
+      const key = t.phone ? `ph:${t.phone}` : (t.email ? `em:${t.email.toLowerCase()}` : '');
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
       deduped.push(t);
       if (deduped.length >= 100) break;
     }
@@ -365,33 +375,139 @@ const sendSmsCampaign = asyncHandler(async (req, res) => {
       .replace(/\{\{\s*contact_email\s*\}\}/gi, jasmelEmail)
       .replace(/\{\{\s*phone\s*\}\}/gi, clinicPhone);
 
+    const renderHtml = (name) => `
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body { margin:0; padding:0; background:#F4F1E8; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; color:#1A1916; }
+  .email-container { max-width:600px; margin:24px auto; background:#ffffff; border-radius:14px; overflow:hidden; border:1px solid #D9CCA6; box-shadow:0 4px 15px rgba(0,0,0,0.06); }
+  .header { background:#0F766E; color:#ffffff; padding:24px 20px; text-align:center; }
+  .header h1 { margin:0; font-size:24px; font-weight:800; }
+  .content { padding:26px 24px; line-height:1.6; font-size:15px; color:#334155; }
+  .highlight-box { background:#F8FAFC; border-left:4px solid #0F766E; padding:14px 16px; margin:18px 0; border-radius:0 8px 8px 0; }
+  .channels { margin:20px 0; padding:0; list-style:none; }
+  .channels li { margin-bottom:10px; display:flex; align-items:center; gap:8px; font-weight:600; color:#0F172A; }
+  .btn { display:inline-block; background:#0F766E; color:#ffffff !important; padding:12px 22px; text-decoration:none; border-radius:8px; font-weight:700; font-size:14px; margin:8px 4px; }
+  .footer { background:#F1F5F9; padding:16px 20px; text-align:center; font-size:12px; color:#64748B; border-top:1px solid #E2E8F0; }
+</style>
+</head>
+<body>
+<div class="email-container">
+  <div class="header">
+    <h1>🦃 Happy Thanksgiving from ${clinicName}</h1>
+  </div>
+  <div class="content">
+    <p>Dear ${String(name || 'there').split(/\s+/)[0]},</p>
+    <p>As the holiday season begins, all of us at <strong>${clinicName}</strong> want to express our deepest gratitude for trusting us with your health, recovery, and wellness.</p>
+    
+    <div class="highlight-box">
+      <strong>✨ Practice Update &amp; New Care Options:</strong><br>
+      We have recently introduced advanced <strong>new protocols and treatments</strong> designed to accelerate recovery, relieve stubborn pain, and enhance mobility. We would love to talk with you about them whenever you get a moment!
+    </div>
+
+    <p>Whether you'd like to learn more, need a holiday tune-up, or wish to schedule an appointment, reaching us is easy:</p>
+    <ul class="channels">
+      <li>📱 <strong>Text:</strong> Reply directly to our notification number</li>
+      <li>📧 <strong>Email:</strong> <a href="mailto:${companyEmail}?cc=${jasmelEmail}">${companyEmail}</a> or <a href="mailto:${jasmelEmail}">${jasmelEmail}</a></li>
+      <li>🌐 <strong>Website:</strong> <a href="${clinicWebsite}">${clinicWebsite}</a></li>
+      <li>📞 <strong>Phone:</strong> Call us at ${clinicPhone} &mdash; or simply let us know and we will gladly call you at your preferred time!</li>
+    </ul>
+
+    <div style="text-align:center; margin:24px 0 12px;">
+      <a href="${clinicWebsite}" class="btn">Visit Our Website</a>
+      <a href="mailto:${companyEmail}?cc=${jasmelEmail}&subject=Thanksgiving%20Care%20Inquiry" class="btn" style="background:#2F62B5;">Email Us</a>
+    </div>
+
+    <p>Wishing you and your family a restful, joyful, and healthy Thanksgiving holiday!</p>
+    <p style="margin-bottom:0;">Warmest regards,<br><strong>${clinicName} Team</strong></p>
+  </div>
+  <div class="footer">
+    ${clinicName} &bull; Confidential Patient Communication &bull; Reply STOP to opt out.
+  </div>
+</div>
+</body>
+</html>`;
+
     if (dryRun) {
+      const sample = deduped[0] || { name: 'Patient', phone: '+13055551234', email: 'patient@example.com' };
       return res.json({
         response: true,
         dryRun: true,
         campaignId,
+        channel,
         audience,
         recipientCount: deduped.length,
         excludedStaffCount: excludedCount,
         sampleRecipients: deduped.slice(0, 10),
-        sampleMessage: renderBody(deduped[0] ? deduped[0].name : 'Patient'),
+        sampleMessage: renderBody(sample.name),
+        sampleHtml: (channel === 'email' || channel === 'both') ? renderHtml(sample.name) : null,
       });
     }
 
     const results = [];
-    for (const t of deduped) {
-      try {
-        const ok = await sendMessage(renderBody(t.name), t.phone);
-        results.push({ phone: t.phone, name: t.name, sent: ok !== false });
-      } catch (e) {
-        results.push({ phone: t.phone, name: t.name, sent: false, error: e.message });
+    let transporter = null;
+    if (channel === 'email' || channel === 'both') {
+      const nodemailer = require('nodemailer');
+      if (user && user.businessMail && user.appCode) {
+        transporter = nodemailer.createTransport({
+          port: 465, host: 'smtp.gmail.com', service: 'Gmail',
+          auth: { user: user.businessMail, pass: user.appCode },
+          secure: true,
+        });
+      } else if (process.env.NODE_MAILER_USER && process.env.NODE_MAILER_PASS) {
+        transporter = nodemailer.createTransport({
+          port: 465, host: 'smtp.gmail.com', service: 'Gmail',
+          auth: { user: process.env.NODE_MAILER_USER, pass: process.env.NODE_MAILER_PASS },
+          secure: true,
+        });
       }
     }
+
+    const sub = String(emailSubject || '').trim() || `🦃 Happy Thanksgiving from ${clinicName}`;
+
+    for (const t of deduped) {
+      let smsSent = false;
+      let emailSent = false;
+      let error = null;
+
+      // SMS Delivery
+      if ((channel === 'sms' || channel === 'both') && t.phone) {
+        try {
+          const ok = await sendMessage(renderBody(t.name), t.phone);
+          smsSent = ok !== false;
+        } catch (e) {
+          error = e.message;
+        }
+      }
+
+      // Email Delivery
+      if ((channel === 'email' || channel === 'both') && t.email && transporter) {
+        try {
+          await transporter.sendMail({
+            from: (user && user.businessMail) || process.env.NODE_MAILER_USER,
+            to: t.email,
+            subject: sub,
+            text: renderBody(t.name),
+            html: renderHtml(t.name),
+          });
+          emailSent = true;
+        } catch (e) {
+          error = (error ? error + '; ' : '') + 'Email error: ' + e.message;
+        }
+      }
+
+      const sent = (channel === 'both') ? (smsSent || emailSent) : (channel === 'email' ? emailSent : smsSent);
+      results.push({ name: t.name, phone: t.phone, email: t.email, sent, smsSent, emailSent, error });
+    }
+
     const sentCount = results.filter((r) => r.sent).length;
     return res.json({
       response: true,
       dryRun: false,
       campaignId,
+      channel,
       recipientCount: deduped.length,
       sentCount,
       failedCount: results.length - sentCount,
