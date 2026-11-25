@@ -229,30 +229,105 @@ function normalizeUsE164(raw) {
 /**
  * Send or dry-run preview an SMS campaign via Twilio.
  * POST /api/post/sendSmsCampaign
- * Body: { campaignId, message, recipients?: [{name, phone}], audience?: string, dryRun?: boolean }
+ * Body: { campaignId, message, recipients?: [{name, phone, email}], audience?: string, dryRun?: boolean }
  */
 const sendSmsCampaign = asyncHandler(async (req, res) => {
   try {
     const { campaignId = 'custom', message, recipients, audience = 'custom', dryRun = true } = req.body || {};
     const rawMsg = String(message || '').trim();
     if (!rawMsg) return res.status(400).json({ response: false, msg: 'Campaign message is required.' });
-    if (rawMsg.length > 600) return res.status(400).json({ response: false, msg: 'Message too long (max 600 chars).' });
+    if (rawMsg.length > 1000) return res.status(400).json({ response: false, msg: 'Message too long (max 1000 chars).' });
 
-    const user = await User.findById(req.user).select('clinicName').lean().catch(() => null);
+    const user = await User.findById(req.user)
+      .select('clinicName website email businessMail phone_number notificationPhones')
+      .lean()
+      .catch(() => null);
+
     const clinicName = (user && user.clinicName) || process.env.CLINIC_NAME || 'Innovative Medical Wellness';
+    const clinicWebsite = (user && user.website) || process.env.CLINIC_WEBSITE || 'https://innovativemedicalwellness.com';
+    const companyEmail = (user && (user.businessMail || user.email)) || 'info@innovativemedicalwellness.com';
+    const clinicPhone = (user && user.phone_number) || '305-864-1373';
+    const jasmelEmail = 'jasmel.acosta@gmail.com';
+
+    // Strict internal staff & company exclusion registry.
+    // Explicit user constraint: Never text Jeffrey Draesel/Draysol, Maria Draesel/Draysol, Caitlyn Moore, Caitlyn Draesel/Draysol, or company staff.
+    const internalPhones = new Set();
+    if (user) {
+      if (user.phone_number) {
+        const p0 = normalizeUsE164(user.phone_number);
+        if (p0) internalPhones.add(p0);
+      }
+      if (Array.isArray(user.notificationPhones)) {
+        user.notificationPhones.forEach((ph) => {
+          const p = normalizeUsE164(ph);
+          if (p) internalPhones.add(p);
+        });
+      }
+    }
+
+    function isExcludedCompanyContact(name, email, phone) {
+      const n = String(name || '').toLowerCase();
+      const em = String(email || '').toLowerCase();
+      const ph = normalizeUsE164(phone);
+
+      // Blocked staff and family name patterns
+      const blockedNamePatterns = [
+        /jeffrey/i,
+        /draesel/i,
+        /draysol/i,
+        /maria/i,
+        /caitlyn/i,
+        /caitlin/i,
+        /moore/i,
+        /\badmin\b/i,
+        /\bstaff\b/i,
+        /\baims\b/i,
+        /innovative\s*medical/i,
+        /test\s*patient/i,
+      ];
+
+      for (const pat of blockedNamePatterns) {
+        if (pat.test(n)) return true;
+      }
+
+      // Blocked internal email patterns
+      if (em) {
+        if (/draesel|draysol|caitlyn|jasmel\.acosta/i.test(em)) return true;
+        if (user && (em === String(user.email || '').toLowerCase() || em === String(user.businessMail || '').toLowerCase())) return true;
+      }
+
+      // Blocked internal clinic and doctor notification phone numbers
+      if (ph && internalPhones.has(ph)) return true;
+
+      return false;
+    }
+
     const hasStop = /reply\s+stop/i.test(rawMsg);
     const finalTemplate = hasStop ? rawMsg : `${rawMsg}\nReply STOP to opt out.`;
 
     let targets = [];
+    let excludedCount = 0;
+
     if (Array.isArray(recipients) && recipients.length) {
-      targets = recipients.map((r) => ({ name: r.name || 'Patient', phone: normalizeUsE164(r.phone) })).filter((r) => r.phone);
+      recipients.forEach((r) => {
+        if (isExcludedCompanyContact(r.name, r.email, r.phone)) {
+          excludedCount++;
+        } else {
+          const ph = normalizeUsE164(r.phone);
+          if (ph) targets.push({ name: r.name || 'Patient', phone: ph });
+        }
+      });
     } else {
       const pats = await Patient.find({ doc_id: req.user, phoneNumber: { $exists: true, $ne: '' } })
-        .select('fullName phoneNumber visitDates updatedAt createdAt')
-        .limit(200)
+        .select('fullName email phoneNumber visitDates updatedAt createdAt')
+        .limit(300)
         .lean();
       const now = Date.now();
       const filtered = pats.filter((p) => {
+        if (isExcludedCompanyContact(p.fullName, p.email, p.phoneNumber)) {
+          excludedCount++;
+          return false;
+        }
         const phone = normalizeUsE164(p.phoneNumber);
         if (!phone) return false;
         if (audience === 'inactive_60d') {
@@ -284,7 +359,11 @@ const sendSmsCampaign = asyncHandler(async (req, res) => {
 
     const renderBody = (name) => finalTemplate
       .replace(/\{\{\s*name\s*\}\}/gi, String(name || 'there').split(/\s+/)[0])
-      .replace(/\{\{\s*clinic\s*\}\}/gi, clinicName);
+      .replace(/\{\{\s*clinic\s*\}\}/gi, clinicName)
+      .replace(/\{\{\s*website\s*\}\}/gi, clinicWebsite)
+      .replace(/\{\{\s*company_email\s*\}\}/gi, companyEmail)
+      .replace(/\{\{\s*contact_email\s*\}\}/gi, jasmelEmail)
+      .replace(/\{\{\s*phone\s*\}\}/gi, clinicPhone);
 
     if (dryRun) {
       return res.json({
@@ -293,6 +372,7 @@ const sendSmsCampaign = asyncHandler(async (req, res) => {
         campaignId,
         audience,
         recipientCount: deduped.length,
+        excludedStaffCount: excludedCount,
         sampleRecipients: deduped.slice(0, 10),
         sampleMessage: renderBody(deduped[0] ? deduped[0].name : 'Patient'),
       });

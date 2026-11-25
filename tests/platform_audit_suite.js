@@ -262,13 +262,17 @@ async function test(name, fn) {
       const req = {
         user: 'doc1',
         body: {
-          campaignId: 'reactivation_60d',
-          message: 'Hi {{name}}, book your visit at {{clinic}}!',
+          campaignId: 'thanksgiving_registered',
+          message: 'Happy Thanksgiving from {{clinic}}! Reach us at {{contact_email}}, website: {{website}}, email: {{company_email}}, or reply to text. Call if preferred.',
           dryRun: true,
           recipients: [
-            { name: 'Alicia Martinez', phone: '(314) 813-7555' },
+            { name: 'Alicia Martinez', phone: '(314) 813-7555', email: 'alicia@example.com' },
             { name: 'Alicia Duplicate', phone: '+13148137555' },
             { name: 'Bad Phone', phone: '123' },
+            { name: 'Dr. Jeffrey Draesel', phone: '+13058641373', email: 'drjeffreydraesel@gmail.com' },
+            { name: 'Maria Draysol', phone: '+13055559999' },
+            { name: 'Caitlyn Moore', phone: '+13055558888' },
+            { name: 'Caitlyn Draesel', phone: '+13055557777' },
           ],
         },
       };
@@ -277,9 +281,10 @@ async function test(name, fn) {
       assert.strictEqual(res.statusCode, 200);
       assert.strictEqual(res.body.response, true);
       assert.strictEqual(res.body.dryRun, true);
-      assert.strictEqual(res.body.recipientCount, 1, 'Expected 1 deduplicated valid US phone');
+      assert.strictEqual(res.body.recipientCount, 1, 'Expected 1 deduplicated valid patient phone');
+      assert.strictEqual(res.body.excludedStaffCount, 4, 'Expected 4 company/staff members to be blocked');
       assert.strictEqual(res.body.sampleRecipients[0].phone, '+13148137555');
-      assert.ok(res.body.sampleMessage.includes('Alicia'), 'Expected {{name}} interpolation');
+      assert.ok(res.body.sampleMessage.includes('jasmel.acosta@gmail.com'), 'Expected contact_email interpolation');
       assert.ok(res.body.sampleMessage.includes('Reply STOP to opt out.'), 'Expected TCPA opt-out footer');
     });
 
