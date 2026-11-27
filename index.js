@@ -44,7 +44,7 @@ const {
   getRecentCodes,
   runBillingCompliance,
 } = require('./controllers/medicalCodesController')
-const { updateNotificationSettings, getDailySchedule, sendDailySchedule, triggerDailySchedule, sendSmsCampaign } = require('./controllers/notificationController')
+const { updateNotificationSettings, getDailySchedule, sendDailySchedule, triggerDailySchedule, sendSmsCampaign, twilioInbound, getCampaignStats } = require('./controllers/notificationController')
 const { protect } = require('./middleware/authMiddleware')
 const bodyParser = require('body-parser');
 const  ensureUploadsDirectory  = require('./Helper/makeDirectory')
@@ -176,6 +176,8 @@ app.post('/api/post/updateNotificationSettings',protect,updateNotificationSettin
 app.get('/api/get/dailySchedule',protect,getDailySchedule)
 app.post('/api/post/sendDailySchedule',protect,sendDailySchedule)
 app.post('/api/post/sendSmsCampaign',protect,sendSmsCampaign)
+app.post('/api/post/twilioInbound',twilioInbound)
+app.get('/api/get/campaignStats',protect,getCampaignStats)
 app.get('/api/get/triggerDailySchedule',triggerDailySchedule)
 //add-new-assistant
 app.post('/api/post/addAssistant',protect,addAssistant)

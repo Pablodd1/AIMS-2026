@@ -3,6 +3,8 @@ const User = require('../models/User')
 const Appointment = require('../models/Appointment')
 const Patient = require('../models/Patients')
 const { sendMessage } = require('./Twilio/twilio');
+let ActivityLog = null;
+try { ActivityLog = require('../models/ActivityLog'); } catch (_) {}
 
 /**
  * Save notification phone numbers (max 3) and daily schedule toggle.
@@ -503,6 +505,13 @@ const sendSmsCampaign = asyncHandler(async (req, res) => {
     }
 
     const sentCount = results.filter((r) => r.sent).length;
+    if (ActivityLog && typeof ActivityLog.create === 'function') {
+      ActivityLog.create({
+        userId: req.user,
+        action: 'campaign_sent',
+        details: { campaignId, channel, audience, recipientCount: deduped.length, sentCount, failedCount: results.length - sentCount },
+      }).catch(() => {});
+    }
     return res.json({
       response: true,
       dryRun: false,
@@ -519,10 +528,103 @@ const sendSmsCampaign = asyncHandler(async (req, res) => {
   }
 });
 
+/**
+ * Twilio Inbound SMS Webhook — receives patient text replies to +18332164335.
+ * POST /api/post/twilioInbound
+ */
+const twilioInbound = asyncHandler(async (req, res) => {
+  try {
+    const fromRaw = (req.body && (req.body.From || req.body.from)) || '';
+    const bodyText = String((req.body && (req.body.Body || req.body.body)) || '').trim();
+    const messageSid = (req.body && req.body.MessageSid) || '';
+    const fromE164 = normalizeUsE164(fromRaw) || String(fromRaw).trim();
+    const digits10 = String(fromE164).replace(/\D/g, '').slice(-10);
+
+    let matchedPatient = null;
+    if (digits10.length === 10 && Patient && typeof Patient.findOne === 'function') {
+      matchedPatient = await Patient.findOne({
+        phoneNumber: { $regex: digits10.split('').join('\\D*') },
+      }).select('_id fullName email doc_id').lean().catch(() => null);
+    }
+
+    const isOptOut = /^\s*(stop|unsubscribe|cancel|end|quit)\s*$/i.test(bodyText);
+
+    if (ActivityLog && typeof ActivityLog.create === 'function') {
+      await ActivityLog.create({
+        userId: (matchedPatient && matchedPatient.doc_id) || undefined,
+        action: 'campaign_sms_reply',
+        details: {
+          from: fromE164,
+          patientId: matchedPatient ? String(matchedPatient._id) : null,
+          patientName: matchedPatient ? matchedPatient.fullName : 'Unmatched Number',
+          body: bodyText.slice(0, 1000),
+          messageSid,
+          isOptOut,
+        },
+      }).catch(() => {});
+    }
+
+    // Forward patient reply to clinic / Jasmel email if configured
+    if (!isOptOut && process.env.NODE_MAILER_USER && process.env.NODE_MAILER_PASS) {
+      try {
+        const nodemailer = require('nodemailer');
+        const transporter = nodemailer.createTransport({
+          port: 465, host: 'smtp.gmail.com', service: 'Gmail',
+          auth: { user: process.env.NODE_MAILER_USER, pass: process.env.NODE_MAILER_PASS },
+          secure: true,
+        });
+        const who = matchedPatient ? `${matchedPatient.fullName} (${fromE164})` : fromE164;
+        await transporter.sendMail({
+          from: process.env.NODE_MAILER_USER,
+          to: 'jasmel.acosta@gmail.com',
+          subject: `📱 Patient SMS Reply from ${who}`,
+          text: `Patient: ${who}\nMessage:\n${bodyText}\n\nReceived: ${new Date().toISOString()}`,
+        });
+      } catch (_) {}
+    }
+
+    res.set('Content-Type', 'text/xml');
+    if (isOptOut) {
+      return res.send('<Response><Message>You have been unsubscribed from Innovative Medical Wellness text messages. Reply START to resubscribe.</Message></Response>');
+    }
+    return res.send('<Response><Message>Thank you for messaging Innovative Medical Wellness! Our team received your text and will reply or call you shortly.</Message></Response>');
+  } catch (e) {
+    res.set('Content-Type', 'text/xml');
+    return res.send('<Response></Response>');
+  }
+});
+
+/**
+ * Campaign Monitoring & Patient Reply Stats
+ * GET /api/get/campaignStats
+ */
+const getCampaignStats = asyncHandler(async (req, res) => {
+  try {
+    if (!ActivityLog || typeof ActivityLog.find !== 'function') {
+      return res.json({ response: true, campaignsSent: 0, repliesReceived: 0, campaigns: [], replies: [] });
+    }
+    const [campaigns, replies] = await Promise.all([
+      ActivityLog.find({ action: 'campaign_sent' }).sort({ createdAt: -1 }).limit(25).lean().catch(() => []),
+      ActivityLog.find({ action: 'campaign_sms_reply' }).sort({ createdAt: -1 }).limit(50).lean().catch(() => []),
+    ]);
+    return res.json({
+      response: true,
+      campaignsSent: campaigns.length,
+      repliesReceived: replies.length,
+      campaigns: campaigns.map((c) => ({ id: c._id, at: c.createdAt, ...(c.details || {}) })),
+      replies: replies.map((r) => ({ id: r._id, at: r.createdAt, ...(r.details || {}) })),
+    });
+  } catch (e) {
+    return res.status(500).json({ response: false, msg: e.message });
+  }
+});
+
 module.exports = {
   updateNotificationSettings,
   getDailySchedule,
   sendDailySchedule,
   triggerDailySchedule,
   sendSmsCampaign,
+  twilioInbound,
+  getCampaignStats,
 };
