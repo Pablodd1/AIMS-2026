@@ -377,6 +377,19 @@ const sendSmsCampaign = asyncHandler(async (req, res) => {
       .replace(/\{\{\s*contact_email\s*\}\}/gi, jasmelEmail)
       .replace(/\{\{\s*phone\s*\}\}/gi, clinicPhone);
 
+    const isReactivation = campaignId === 'reactivation_60d';
+    const emailHeroTitle = isReactivation
+      ? `✨ We Miss You at ${clinicName} — New Protocols &amp; Treatments`
+      : `🦃 Happy Thanksgiving from ${clinicName}`;
+    const emailIntro = isReactivation
+      ? `It has been a little while since your last visit at <strong>${clinicName}</strong>, and we wanted to personally check in on how you are feeling.`
+      : `As the holiday season begins, all of us at <strong>${clinicName}</strong> want to express our deepest gratitude for trusting us with your health, recovery, and wellness.`;
+    const emailHighlight = isReactivation
+      ? `<strong>✨ What&rsquo;s New for Your Recovery &amp; Longevity:</strong><br>
+      We have introduced <strong>new clinical protocols and treatments</strong>—including targeted spinal &amp; joint decompression, <strong>IV Wellness Therapy</strong>, <strong>Peptide Protocols</strong>, and <strong>PRP Regenerative Care</strong>—designed to relieve stubborn pain, boost energy, and restore mobility. We would love to talk with you about which option fits your goals when you get a moment!`
+      : `<strong>✨ Practice Update &amp; New Care Options:</strong><br>
+      We have recently introduced advanced <strong>new protocols and treatments</strong> designed to accelerate recovery, relieve stubborn pain, and enhance mobility. We would love to talk with you about them whenever you get a moment!`;
+
     const renderHtml = (name) => `
 <!DOCTYPE html>
 <html>
@@ -386,7 +399,7 @@ const sendSmsCampaign = asyncHandler(async (req, res) => {
   body { margin:0; padding:0; background:#F4F1E8; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; color:#1A1916; }
   .email-container { max-width:600px; margin:24px auto; background:#ffffff; border-radius:14px; overflow:hidden; border:1px solid #D9CCA6; box-shadow:0 4px 15px rgba(0,0,0,0.06); }
   .header { background:#0F766E; color:#ffffff; padding:24px 20px; text-align:center; }
-  .header h1 { margin:0; font-size:24px; font-weight:800; }
+  .header h1 { margin:0; font-size:22px; font-weight:800; }
   .content { padding:26px 24px; line-height:1.6; font-size:15px; color:#334155; }
   .highlight-box { background:#F8FAFC; border-left:4px solid #0F766E; padding:14px 16px; margin:18px 0; border-radius:0 8px 8px 0; }
   .channels { margin:20px 0; padding:0; list-style:none; }
@@ -398,18 +411,17 @@ const sendSmsCampaign = asyncHandler(async (req, res) => {
 <body>
 <div class="email-container">
   <div class="header">
-    <h1>🦃 Happy Thanksgiving from ${clinicName}</h1>
+    <h1>${emailHeroTitle}</h1>
   </div>
   <div class="content">
     <p>Dear ${String(name || 'there').split(/\s+/)[0]},</p>
-    <p>As the holiday season begins, all of us at <strong>${clinicName}</strong> want to express our deepest gratitude for trusting us with your health, recovery, and wellness.</p>
+    <p>${emailIntro}</p>
     
     <div class="highlight-box">
-      <strong>✨ Practice Update &amp; New Care Options:</strong><br>
-      We have recently introduced advanced <strong>new protocols and treatments</strong> designed to accelerate recovery, relieve stubborn pain, and enhance mobility. We would love to talk with you about them whenever you get a moment!
+      ${emailHighlight}
     </div>
 
-    <p>Whether you'd like to learn more, need a holiday tune-up, or wish to schedule an appointment, reaching us is easy:</p>
+    <p>Whether you'd like to learn more, need a tune-up, or wish to schedule an appointment, reaching us is easy:</p>
     <ul class="channels">
       <li>📱 <strong>Text:</strong> Reply directly to our notification number</li>
       <li>📧 <strong>Email:</strong> <a href="mailto:${companyEmail}?cc=${jasmelEmail}">${companyEmail}</a> or <a href="mailto:${jasmelEmail}">${jasmelEmail}</a></li>
@@ -419,10 +431,10 @@ const sendSmsCampaign = asyncHandler(async (req, res) => {
 
     <div style="text-align:center; margin:24px 0 12px;">
       <a href="${clinicWebsite}" class="btn">Visit Our Website</a>
-      <a href="mailto:${companyEmail}?cc=${jasmelEmail}&subject=Thanksgiving%20Care%20Inquiry" class="btn" style="background:#2F62B5;">Email Us</a>
+      <a href="mailto:${companyEmail}?cc=${jasmelEmail}&subject=${encodeURIComponent(isReactivation ? 'New Protocols & Tune-Up Inquiry' : 'Thanksgiving Care Inquiry')}" class="btn" style="background:#2F62B5;">Email Us</a>
     </div>
 
-    <p>Wishing you and your family a restful, joyful, and healthy Thanksgiving holiday!</p>
+    <p>${isReactivation ? 'We look forward to seeing you soon and helping you feel your best!' : 'Wishing you and your family a restful, joyful, and healthy Thanksgiving holiday!'}</p>
     <p style="margin-bottom:0;">Warmest regards,<br><strong>${clinicName} Team</strong></p>
   </div>
   <div class="footer">
